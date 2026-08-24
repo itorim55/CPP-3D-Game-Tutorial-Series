@@ -17,6 +17,7 @@
   <!-- ============ HERO EM BANDA ============ -->
   <section class="hero-band">
     <canvas id="embers"></canvas>
+    <div class="sweep"></div>
     <div class="brand">
       <div class="meta-row">
         <span class="live-badge" id="live-badge" style="visibility:hidden"><span class="pulse"></span>LIVE</span>
@@ -178,12 +179,15 @@ async function refreshStatus(first) {
     const playersEl = document.getElementById('players-now');
     if (hb) {
       const txt = `${hb.players}/${hb.max_players}${hb.queued ? ` +${hb.queued}` : ''}`;
+      if (playersEl.textContent !== txt && !first) bump(playersEl);
       playersEl.textContent = txt;
       playersEl.style.color = s.online ? 'var(--live)' : 'var(--ink-muted)';
     }
+    const killsEl = document.getElementById('kills-wipe');
     if (first) {
       if (s.info.name) document.getElementById('server-tag').textContent = s.info.name;
-      countUp(document.getElementById('kills-wipe'), s.killsThisWipe);
+      countUp(killsEl, s.killsThisWipe);
+      killsEl.dataset.v = s.killsThisWipe;
       countUp(document.getElementById('players-known'), s.playersKnown);
       if (hb && hb.fps) countUp(document.getElementById('server-fps'), Math.round(hb.fps));
       if (s.nextWipe) startCountdown(document.getElementById('wipe-countdown'), s.nextWipe);
@@ -197,7 +201,13 @@ async function refreshStatus(first) {
         setTimeout(() => { document.getElementById('connect-text').textContent = ip; }, 2000);
       });
     } else {
-      document.getElementById('kills-wipe').textContent = fmtNum(s.killsThisWipe);
+      const prev = parseInt(killsEl.dataset.v || '0', 10);
+      if (s.killsThisWipe !== prev) {
+        // as kills novas contam a subir em vez de saltar — sensação de ao vivo
+        countUp(killsEl, s.killsThisWipe, { from: prev, duration: 700 });
+        killsEl.dataset.v = s.killsThisWipe;
+        bump(killsEl);
+      }
       if (hb && hb.fps) document.getElementById('server-fps').textContent = Math.round(hb.fps);
     }
   } catch {}

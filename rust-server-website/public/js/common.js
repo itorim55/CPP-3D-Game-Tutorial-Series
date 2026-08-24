@@ -234,14 +234,14 @@ function startEmbers(canvas) {
     max: 260 + Math.random() * 220,
     gold: Math.random() < 0.3,
   });
-  const parts = Array.from({ length: 26 }, () => spawn(false));
+  const parts = Array.from({ length: 42 }, () => spawn(false));
 
   const step = () => {
     ctx.clearRect(0, 0, W, H);
     for (const p of parts) {
       p.life++; p.y -= p.vy; p.x += Math.sin(p.life / 46 + p.phase) * p.sway * 0.4;
       if (p.life > p.max || p.y < -6) Object.assign(p, spawn(true));
-      const a = Math.max(0, 0.55 * (1 - p.life / p.max));
+      const a = Math.max(0, 0.65 * (1 - p.life / p.max));
       ctx.fillStyle = p.gold ? `rgba(255,176,32,${a})` : `rgba(255,91,38,${a})`;
       ctx.fillRect(p.x, p.y, p.r, p.r); // quadradinhos: mais "terminal" que círculos
     }
@@ -270,11 +270,11 @@ function startCountdown(el, isoDate) {
 }
 
 // Anima um número de 0 até target (efeito de contador a subir).
-function countUp(el, target, { duration = 900, suffix = '', prefix = '' } = {}) {
+function countUp(el, target, { duration = 900, suffix = '', prefix = '', from = 0 } = {}) {
   target = Number(target) || 0;
   if (reduceMotion) { el.textContent = prefix + fmtNum(target) + suffix; return; }
   const start = performance.now();
-  const from = 0;
+  from = Number(from) || 0;
   const step = (now) => {
     const p = Math.min(1, (now - start) / duration);
     const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
@@ -282,6 +282,14 @@ function countUp(el, target, { duration = 900, suffix = '', prefix = '' } = {}) 
     if (p < 1) requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
+}
+
+// Pulso visual num número que acabou de mudar.
+function bump(el) {
+  if (!el || reduceMotion) return;
+  el.classList.remove('bump');
+  void el.offsetWidth; // reiniciar a animação
+  el.classList.add('bump');
 }
 
 // ---- gráfico de área (série única) com crosshair + tooltip ----
@@ -335,6 +343,20 @@ function renderAreaChart(container, data, { color = '#ff5b26', maxY = null, xFmt
   container.appendChild(wrap);
 
   const svg = wrap.querySelector('svg');
+  if (!reduceMotion) {
+    const stroke = svg.querySelector('path[fill="none"]');
+    const fillArea = svg.querySelector('path[opacity]');
+    const len = stroke.getTotalLength();
+    stroke.style.strokeDasharray = len;
+    stroke.style.strokeDashoffset = len;
+    fillArea.style.opacity = 0;
+    requestAnimationFrame(() => {
+      stroke.style.transition = 'stroke-dashoffset 1.1s ease-out';
+      fillArea.style.transition = 'opacity .8s ease .5s';
+      stroke.style.strokeDashoffset = '0';
+      fillArea.style.opacity = '';
+    });
+  }
   const tip = wrap.querySelector('.chart-tip');
   const xhair = wrap.querySelector('.xhair');
   const pt = wrap.querySelector('.pt');
