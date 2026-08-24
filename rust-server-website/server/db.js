@@ -719,6 +719,84 @@ function achievements(steamId, wipeId) {
   return out;
 }
 
+// ---------- progresso diário de um jogador (gráfico no perfil) ----------
+
+function playerTrend(steamId, wipeId) {
+  const rows = db.prepare(`
+    SELECT ts / 86400 AS day,
+           SUM(CASE WHEN attacker_id = $id THEN 1 ELSE 0 END) AS kills,
+           SUM(CASE WHEN victim_id = $id THEN 1 ELSE 0 END) AS deaths
+    FROM kills WHERE wipe_id = $wipe AND (attacker_id = $id OR victim_id = $id)
+    GROUP BY day ORDER BY day`).all({ id: steamId, wipe: wipeId });
+  // K/D acumulado dia a dia — mostra a história da wipe, não só o total
+  let k = 0, d = 0;
+  return rows.map((r) => {
+    k += r.kills; d += r.deaths;
+    return { ts: r.day * 86400, kills: r.kills, deaths: r.deaths, kd: Math.round((k / Math.max(d, 1)) * 100) / 100 };
+  });
+}
+
+// ---------- "wipe wrapped" pessoal (resumo partilhável por jogador) ----------
+
+function wrapped(steamId, wipeId) {
+  const p = db.prepare('SELECT * FROM players WHERE steam_id = ?').get(steamId);
+  if (!p) return null;
+  const wipe = db.prepare('SELECT * FROM wipes WHERE id = ?').get(wipeId);
+  if (!wipe) return null;
+
+  const k = db.prepare(`
+    SELECT COUNT(*) kills, COALESCE(SUM(headshot),0) hs, COALESCE(MAX(distance),0) dist
+    FROM kills WHERE attacker_id = ? AND wipe_id = ?`).get(steamId, wipeId);
+  const d = db.prepare('SELECT COUNT(*) n FROM kills WHERE victim_id = ? AND wipe_id = ?').get(steamId, wipeId);
+  const rank = db.prepare(`
+    SELECT COUNT(*) + 1 n FROM (
+      SELECT attacker_id, COUNT(*) c FROM kills WHERE wipe_id = ? GROUP BY attacker_id HAVING c > ?
+    )`).get(wipeId, k.kills).n;
+  const totalKillers = db.prepare(
+    'SELECT COUNT(DISTINCT attacker_id) n FROM kills WHERE wipe_id = ?').get(wipeId).n;
+  const favWeapon = db.prepare(`
+    SELECT weapon, COUNT(*) n FROM kills
+    WHERE attacker_id = ? AND wipe_id = ? AND weapon IS NOT NULL
+    GROUP BY weapon ORDER BY n DESC LIMIT 1`).get(steamId, wipeId) || null;
+  const topVictim = db.prepare(`
+    SELECT pv.name, pv.avatar, k.victim_id steam_id, COUNT(*) n FROM kills k
+    LEFT JOIN players pv ON pv.steam_id = k.victim_id
+    WHERE k.attacker_id = ? AND k.wipe_id = ? GROUP BY k.victim_id ORDER BY n DESC LIMIT 1`)
+    .get(steamId, wipeId) || null;
+  const nemesis = db.prepare(`
+    SELECT pa.name, pa.avatar, k.attacker_id steam_id, COUNT(*) n FROM kills k
+    LEFT JOIN players pa ON pa.steam_id = k.attacker_id
+    WHERE k.victim_id = ? AND k.wipe_id = ? GROUP BY k.attacker_id ORDER BY n DESC LIMIT 1`)
+    .get(steamId, wipeId) || null;
+  const pw = db.prepare(
+    'SELECT seconds FROM playtime_wipe WHERE wipe_id = ? AND steam_id = ?').get(wipeId, steamId);
+  const farm = db.prepare(
+    'SELECT COALESCE(SUM(amount),0) n FROM gather WHERE steam_id = ? AND wipe_id = ?').get(steamId, wipeId).n;
+  const events = playerMapEvents(steamId, wipeId);
+  const eloRow = eloGet(wipeId, steamId);
+
+  return {
+    player: { steamId: p.steam_id, name: p.name, avatar: p.avatar },
+    wipe: { id: wipe.id, label: wipe.label, startedAt: wipe.started_at },
+    kills: k.kills, deaths: d.n,
+    kd: Math.round((k.kills / Math.max(d.n, 1)) * 100) / 100,
+    headshots: k.hs, hsRate: k.kills ? Math.round((k.hs / k.kills) * 100) : 0,
+    bestDistance: Math.round(k.dist),
+    rank, totalKillers,
+    favWeapon,
+    topVictim, nemesis,
+    hours: Math.round((pw?.seconds || 0) / 3600),
+    farm,
+    structures: raidStats(steamId, wipeId),
+    events,
+    elo: eloRow.games >= 5
+      ? { rating: Math.round(eloRow.rating), tier: eloTier(eloRow.rating) } : null,
+    badges: achievements(steamId, wipeId),
+    streak: playerStreak(steamId, wipeId),
+    trend: playerTrend(steamId, wipeId),
+  };
+}
+
 // ---------- catálogo de conquistas (página /conquistas) ----------
 
 // Inverso do achievements(): para cada badge, quem o desbloqueou.
@@ -1311,6 +1389,7 @@ function playerProfile(steamId) {
       ? { rating: Math.round(eloRow.rating), games: eloRow.games, tier: eloTier(eloRow.rating) }
       : null,
     badges: achievements(steamId, wipe.id),
+    trend: playerTrend(steamId, wipe.id),
     team: playerTeam(wipe.id, steamId),
     streak: playerStreak(steamId, wipe.id),
     structuresDestroyed: raidStats(steamId, wipe.id),
@@ -1412,7 +1491,7 @@ function startWipe({ mapSeed, mapSize, label }) {
 module.exports = {
   db, now, currentWipe, upsertPlayer, addPlaytime, recordKill, recordPveDeath,
   recordGather, recordHeartbeat, setInfo, getInfo, leaderboard, playerProfile,
-  avatarInfo, setAvatar, ensureWebPlayer, achievementsCatalog,
+  avatarInfo, setAvatar, ensureWebPlayer, achievementsCatalog, wrapped,
   killfeed, searchPlayers, status, staffList, banList, banStats,
   addApplication, recentApplicationFromIp, listApplications, setApplicationStatus, startWipe,
   // gemas e loja

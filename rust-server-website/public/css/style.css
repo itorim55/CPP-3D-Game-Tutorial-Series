@@ -155,6 +155,51 @@ header::after { /* fio de perigo sob a nav */
 .pfp-stack .pfp { margin-right: -8px; border: 2px solid var(--surface); box-sizing: content-box; }
 .ach .ach-ico { font-size: 34px; line-height: 1; flex: none; }
 
+/* ------------------------------------------------------- wipe wrapped */
+
+.wr-hero {
+  padding: 30px 34px; position: relative; overflow: hidden;
+  background: linear-gradient(115deg, #14181f 0%, #0e1116 55%, #12151b 100%);
+  border: 1px solid var(--line); box-shadow: var(--shadow); margin-top: 10px;
+}
+.wr-hero::before {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px;
+  background: repeating-linear-gradient(-55deg, var(--accent) 0 12px, #0000 12px 24px); opacity: .5;
+}
+.wr-eyebrow { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); letter-spacing: .5px; }
+.wr-stat { padding: 20px; }
+.wr-num {
+  font-family: var(--font-display); font-weight: 900; font-size: 44px; line-height: 1;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.wr-lbl { color: var(--accent); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 8px; }
+.wr-sub { color: var(--ink-muted); font-size: 12.5px; margin-top: 5px; }
+.wr-duel { padding: 20px; }
+
+/* ----------------------------------------------------------- modo TV */
+
+body.tv { overflow: hidden; }
+body.tv main.tv-grid {
+  max-width: none; padding: 22px; height: 100vh; margin: 0;
+  display: grid; grid-template-columns: 300px 1fr 380px; gap: 18px;
+}
+.tv-side { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+.tv-brand { font-family: var(--font-stencil); font-size: 34px; letter-spacing: 1px; }
+.tv-brand span { color: var(--accent); }
+.tv-clock { font-family: var(--font-mono); font-size: 15px; color: var(--ink-muted); }
+.tv-big {
+  background: var(--surface); border: 1px solid var(--line); clip-path: var(--chamfer);
+  padding: 16px 18px; position: relative;
+}
+.tv-big::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); opacity: .85; }
+.tv-big .n { font-family: var(--font-display); font-weight: 900; font-size: 44px; line-height: 1; font-variant-numeric: tabular-nums; }
+.tv-big .l { color: var(--ink-muted); font-family: var(--font-mono); font-size: 10.5px; margin-top: 7px; text-transform: uppercase; letter-spacing: 1.5px; }
+.tv-main { min-height: 0; }
+.tv-kills { max-height: none; height: 100%; }
+.tv-kills .kill { font-size: 15.5px; padding: 10px 14px; }
+.tv-rank { min-height: 0; overflow: hidden; }
+@media (max-width: 1100px) { body.tv main.tv-grid { grid-template-columns: 1fr; height: auto; } body.tv { overflow: auto; } }
+
 /* ------------------------------------------------------------ ticker */
 
 .ticker {

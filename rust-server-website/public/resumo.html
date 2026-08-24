@@ -20,6 +20,7 @@
   </div>
   <p style="color:var(--ink-muted);font-size:13px;margin-top:6px" id="wipe-meta"></p>
 
+  <div id="my-wrapped"></div>
   <div class="grid cols-3" id="highlights" style="margin-top:18px" data-i18n="loading">loading…</div>
 </main>
 
@@ -71,6 +72,13 @@ async function load(wipeId) {
   sel.value = urlWipe || data.current;
   sel.addEventListener('change', () => load(sel.value));
   await load(sel.value);
+
+  // atalho pessoal: se tiver sessão, mostrar o Wrapped do próprio jogador
+  const u = await me();
+  if (u.loggedIn) {
+    document.getElementById('my-wrapped').innerHTML =
+      `<a class="btn" style="margin-top:14px" href="/wrapped?id=${encodeURIComponent(u.steamId)}">🎁 ${t('sum.myWrapped')}</a>`;
+  }
 })().catch(console.error);
 </script>
 </body>

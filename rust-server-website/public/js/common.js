@@ -122,7 +122,7 @@ function renderChrome() {
       <span data-brand></span> · <a href="/regras">${t('footer.rules')}</a> · <a href="/staff">${t('footer.staff')}</a> ·
       <a href="/candidatura">${t('footer.apply')}</a> · <a href="/conquistas">${t('footer.ach')}</a> ·
       <a href="/novidades">${t('footer.news')}</a> ·
-      <a href="/apelo">${t('footer.appeal')}</a>
+      <a href="/apelo">${t('footer.appeal')}</a> · <a href="/tv">📺 TV</a>
       <br>${t('footer.disclaimer')}`;
   }
 
@@ -286,7 +286,7 @@ function countUp(el, target, { duration = 900, suffix = '', prefix = '' } = {}) 
 
 // ---- gráfico de área (série única) com crosshair + tooltip ----
 // data: [{hour: unixSeconds, players: n}]
-function renderAreaChart(container, data, { color = '#ff5b26', maxY = null } = {}) {
+function renderAreaChart(container, data, { color = '#ff5b26', maxY = null, xFmt = 'hour', yKey = 'players', yLabel = null } = {}) {
   container.innerHTML = '';
   if (!data || data.length < 2) {
     container.innerHTML = `<p style="color:var(--ink-muted);font-size:13px">${t('chart.empty')}</p>`;
@@ -294,17 +294,17 @@ function renderAreaChart(container, data, { color = '#ff5b26', maxY = null } = {
   }
   const W = 720, H = 180, PAD = { l: 34, r: 10, t: 12, b: 22 };
   const xs = data.map((d) => d.hour);
-  const ys = data.map((d) => d.players);
+  const ys = data.map((d) => d[yKey]);
   const minX = Math.min(...xs), maxX = Math.max(...xs);
   const topY = maxY || Math.max(...ys, 10);
   const x = (v) => PAD.l + ((v - minX) / (maxX - minX)) * (W - PAD.l - PAD.r);
   const y = (v) => H - PAD.b - (v / topY) * (H - PAD.t - PAD.b);
 
-  const line = data.map((d, i) => `${i ? 'L' : 'M'}${x(d.hour).toFixed(1)},${y(d.players).toFixed(1)}`).join(' ');
+  const line = data.map((d, i) => `${i ? 'L' : 'M'}${x(d.hour).toFixed(1)},${y(d[yKey]).toFixed(1)}`).join(' ');
   const area = `${line} L${x(maxX).toFixed(1)},${H - PAD.b} L${x(minX).toFixed(1)},${H - PAD.b} Z`;
 
   const gridLines = [0, 0.5, 1].map((f) => {
-    const v = Math.round(topY * f);
+    const v = topY < 10 ? Math.round(topY * f * 10) / 10 : Math.round(topY * f);
     const yy = y(v);
     return `<line x1="${PAD.l}" y1="${yy}" x2="${W - PAD.r}" y2="${yy}" stroke="#252b35" stroke-width="1"/>
             <text x="${PAD.l - 6}" y="${yy + 4}" text-anchor="end" font-size="10" fill="#5c6675">${v}</text>`;
@@ -312,6 +312,7 @@ function renderAreaChart(container, data, { color = '#ff5b26', maxY = null } = {
 
   const fmtHour = (ts) => {
     const d = new Date(ts * 1000);
+    if (xFmt === 'day') return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
     return `${String(d.getHours()).padStart(2, '0')}:00`;
   };
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => {
@@ -347,12 +348,12 @@ function renderAreaChart(container, data, { color = '#ff5b26', maxY = null } = {
       if (dist < bestDist) { bestDist = dist; best = i; }
     });
     const d = data[best];
-    const px = x(d.hour), py = y(d.players);
+    const px = x(d.hour), py = y(d[yKey]);
     xhair.setAttribute('x1', px); xhair.setAttribute('x2', px);
     xhair.style.display = ''; pt.style.display = '';
     pt.setAttribute('cx', px); pt.setAttribute('cy', py);
     const dt = new Date(d.hour * 1000);
-    tip.innerHTML = `<b>${d.players}</b> ${t('chart.players')} · ${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')} ${fmtHour(d.hour)}`;
+    tip.innerHTML = `<b>${d[yKey]}</b> ${yLabel || t('chart.players')} · ${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}${xFmt === 'day' ? '' : ` ${fmtHour(d.hour)}`}`;
     tip.style.display = 'block';
     tip.style.left = `${(px / W) * rect.width}px`;
     tip.style.top = `${(py / H) * rect.height}px`;

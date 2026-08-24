@@ -287,6 +287,15 @@ function route(req, res, url, body, config, session) {
         const wid = parseInt(url.searchParams.get('wipeId') || '', 10) || store.currentWipe().id;
         json(res, 200, { rows: store.raidList(wid) }); return true;
       }
+      case '/api/wrapped': {
+        const id = url.searchParams.get('id');
+        if (!id) { json(res, 400, { error: 'Missing id parameter' }); return true; }
+        const wid = parseInt(url.searchParams.get('wipe') || '', 10) || store.currentWipe().id;
+        const w = store.wrapped(id, wid);
+        if (!w) { json(res, 404, { error: 'Player not found' }); return true; }
+        steam.refresh(id);
+        json(res, 200, w); return true;
+      }
       case '/api/achievements':
         json(res, 200, { rows: store.achievementsCatalog(store.currentWipe().id) }); return true;
       case '/api/streaks':

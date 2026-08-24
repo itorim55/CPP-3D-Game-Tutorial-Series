@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n-key="wr.title">Wipe Wrapped</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpolygon points='0,0 50,0 64,14 64,64 0,64' fill='%23ff5b26'/%3E%3Ctext x='32' y='47' font-family='Arial,sans-serif' font-size='40' font-weight='900' text-anchor='middle' fill='%230b0d11'%3ER%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Stencil+One&family=Saira+Condensed:wght@500;600;700;800;900&family=Barlow:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header></header>
+
+<main id="content">
+  <p style="color:var(--ink-muted)" data-i18n="loading">loading…</p>
+</main>
+
+<footer></footer>
+
+<script src="/js/i18n.js"></script>
+<script src="/js/common.js"></script>
+<script>
+(async () => {
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id');
+  const el = document.getElementById('content');
+  if (!id) { el.innerHTML = `<p>Missing <code>id</code> parameter.</p>`; return; }
+
+  let w;
+  try { w = await api(`/api/wrapped?id=${encodeURIComponent(id)}${params.get('wipe') ? `&wipe=${params.get('wipe')}` : ''}`); }
+  catch (e) {
+    el.innerHTML = `<p>😕 ${/not found/i.test(e.message) ? t('player.notSeen') : esc(e.message)}</p>
+      <p><a href="/stats">${t('player.backToStats')}</a></p>`;
+    return;
+  }
+
+  document.title = `${w.player.name} — Wipe Wrapped`;
+
+  const big = (value, label, sub) => `
+    <div class="card wr-stat lift">
+      <div class="wr-num">${value}</div>
+      <div class="wr-lbl">${label}</div>
+      ${sub ? `<div class="wr-sub">${sub}</div>` : ''}
+    </div>`;
+
+  const duel = (icon, label, who) => who && who.steam_id ? `
+    <div class="card wr-duel lift">
+      <span style="font-size:26px">${icon}</span>
+      <div class="wr-lbl" style="margin:6px 0 10px">${label}</div>
+      <div class="pcell" style="font-size:16px;font-weight:700">
+        ${pfp(who.avatar, who.name, 34)}${playerLink(who.steam_id, who.name || who.steam_id)}
+      </div>
+      <div class="wr-sub" style="margin-top:6px">× ${who.n}</div>
+    </div>` : '';
+
+  el.innerHTML = `
+    <section class="wr-hero">
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        ${pfp(w.player.avatar, w.player.name, 84, 'pfp-lg')}
+        <div>
+          <div class="wr-eyebrow">🎁 ${t('wr.eyebrow', esc(w.wipe.label || t('stats.wipeWord')), fmtDate(w.wipe.startedAt))}</div>
+          <h1 style="font-family:var(--font-stencil);font-size:clamp(34px,5vw,58px);line-height:1;letter-spacing:1px">${esc(w.player.name)}</h1>
+          <div class="wr-eyebrow" style="margin-top:6px;color:var(--gold)">
+            ${w.kills ? t('wr.rank', w.rank, w.totalKillers) : t('wr.peaceful')}
+            ${w.elo ? ` · ${esc(w.elo.tier)} · ${w.elo.rating} Elo` : ''}</div>
+        </div>
+        <button class="btn" id="share" style="margin-left:auto">⧉ ${t('wr.share')}</button>
+      </div>
+    </section>
+
+    <div class="grid cols-4" style="margin-top:20px">
+      ${big(fmtNum(w.kills), t('wr.kills'), t('wr.killsSub'))}
+      ${big(fmtNum(w.deaths), t('wr.deaths'), t('wr.deathsSub'))}
+      ${big(w.kd.toFixed(2), 'K/D', w.hsRate ? t('wr.hsSub', w.hsRate) : '')}
+      ${big(w.bestDistance ? w.bestDistance + 'm' : '—', t('wr.longest'), esc(w.favWeapon ? t('wr.withWeapon', w.favWeapon.weapon) : ''))}
+      ${big(w.hours + 'h', t('wr.hours'), '')}
+      ${big(fmtNum(w.farm), t('wr.farm'), '')}
+      ${big('💥 ' + fmtNum(w.structures), t('wr.structures'), '')}
+      ${big('🏅 ' + w.badges.length, t('wr.badges'), w.badges.map((b) => b.icon).join(' '))}
+    </div>
+
+    <div class="grid cols-2" style="margin-top:16px">
+      ${duel('🎯', t('wr.victim'), w.topVictim)}
+      ${duel('💀', t('wr.nemesis'), w.nemesis)}
+    </div>
+
+    ${w.trend && w.trend.length >= 2 ? `
+      <h2 class="section">${t('player.progress')}</h2>
+      <div class="card"><div id="trend"></div></div>` : ''}
+
+    <p style="margin-top:22px;color:var(--ink-muted);font-size:12.5px">
+      ${t('wr.footer')} · <a href="/player?id=${encodeURIComponent(w.player.steamId)}">${t('wr.fullProfile')}</a></p>`;
+
+  const trendEl = document.getElementById('trend');
+  if (trendEl) {
+    renderAreaChart(trendEl, w.trend.map((d) => ({ hour: d.ts, kd: d.kd })),
+      { xFmt: 'day', yKey: 'kd', yLabel: 'K/D' });
+  }
+
+  document.getElementById('share').addEventListener('click', () => {
+    navigator.clipboard.writeText(location.origin + `/wrapped?id=${encodeURIComponent(w.player.steamId)}${w.wipe.id ? `&wipe=${w.wipe.id}` : ''}`);
+    const b = document.getElementById('share');
+    b.textContent = '✓ ' + t('wr.shared');
+    setTimeout(() => { b.textContent = '⧉ ' + t('wr.share'); }, 2000);
+  });
+})().catch(console.error);
+</script>
+</body>
+</html>

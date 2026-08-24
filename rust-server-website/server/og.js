@@ -87,6 +87,7 @@ const STATIC_PAGES = {
   '/overwatch': { title: 'Community Overwatch', desc: 'Help hunt cheaters: watch anonymous clips of suspects and give your verdict.' },
   '/regras': { title: 'Server rules', desc: 'Zero tolerance for cheats, no group limit, transparent staff with public bans.' },
   '/conquistas': { title: 'Achievements', desc: 'Every badge you can unlock on the server — and who holds it right now.' },
+  '/tv': { title: 'TV Mode', desc: 'Fullscreen live dashboard — killfeed, population and wipe top for screens and streams.' },
   '/staff': { title: 'Staff & Transparency', desc: 'The Moderator Code, a public ban list with evidence, and Moderator of the Month.' },
   '/candidatura': { title: 'Moderator Application', desc: 'Want to moderate like camomo_10? Apply — recorded evidence behind every ban.' },
   '/heatmap': { title: 'Death heatmap', desc: 'Where do people die on this map? The hottest zones of the wipe.' },
@@ -97,6 +98,17 @@ const STATIC_PAGES = {
 // ---------- construção do bloco de tags ----------
 
 /** Devolve o bloco de meta tags OG para injetar no <head>, ou '' em caso de erro. */
+function forWrapped(query) {
+  const id = query.get('id');
+  if (!id) return null;
+  const p = store.playerProfile(id);
+  if (!p) return null;
+  return {
+    title: `${p.name} — Wipe Wrapped`,
+    desc: `${p.wipe.kills} kills · ${p.wipe.kd} K/D · ${Math.round(p.wipe.bestDistance)}m longest — the story of ${p.name}'s wipe.`,
+  };
+}
+
 function tagsFor(pathname, query, siteUrl) {
   try {
     let meta = null;
@@ -104,6 +116,7 @@ function tagsFor(pathname, query, siteUrl) {
     else if (pathname === '/player') meta = forPlayer(query);
     else if (pathname === '/resumo') meta = forSummary(query);
     else if (pathname === '/vs') meta = forVs(query);
+    else if (pathname === '/wrapped') meta = forWrapped(query);
     else if (pathname === '/stats') meta = forStats();
     else meta = STATIC_PAGES[pathname] || null;
     if (!meta) meta = { title: brand(), desc: store.getInfo('server_name') || 'Rust server' };

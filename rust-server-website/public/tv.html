@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n-key="tv.title">TV Mode</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpolygon points='0,0 50,0 64,14 64,64 0,64' fill='%23ff5b26'/%3E%3Ctext x='32' y='47' font-family='Arial,sans-serif' font-size='40' font-weight='900' text-anchor='middle' fill='%230b0d11'%3ER%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Stencil+One&family=Saira+Condensed:wght@500;600;700;800;900&family=Barlow:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="tv">
+
+<main class="tv-grid">
+  <aside class="tv-side">
+    <div class="tv-brand" data-brand-hero></div>
+    <div class="tv-clock" id="clock">--:--</div>
+
+    <div class="tv-big">
+      <div class="n" id="online" style="color:var(--live)">—</div>
+      <div class="l" data-i18n="home.playersOnline">players online</div>
+    </div>
+    <div class="tv-big">
+      <div class="n" id="countdown">—</div>
+      <div class="l" data-i18n="home.untilWipe">until next wipe</div>
+    </div>
+    <div class="tv-big">
+      <div class="n" id="kills">—</div>
+      <div class="l" data-i18n="home.killsWipe">kills this wipe</div>
+    </div>
+
+    <div id="streaks" style="margin-top:auto"></div>
+  </aside>
+
+  <section class="tv-main">
+    <div class="panel" style="height:100%;display:flex;flex-direction:column">
+      <div class="panel-head">
+        <h3 data-i18n="home.liveKillfeed">Live killfeed</h3>
+        <span class="spacer"></span>
+        <span class="live-badge"><span class="pulse"></span>LIVE</span>
+      </div>
+      <div class="panel-body" style="flex:1;overflow:hidden">
+        <div class="kill-list tv-kills" id="killfeed"></div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="tv-rank">
+    <div class="panel">
+      <div class="panel-head"><h3 data-i18n="home.topWipe">Wipe top</h3></div>
+      <div class="panel-body" style="padding-top:6px">
+        <table class="mini-lb"><tbody id="top"></tbody></table>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <div class="panel-head"><h3 data-i18n="home.population">Population</h3></div>
+      <div class="panel-body"><div id="chart"></div></div>
+    </div>
+  </aside>
+</main>
+
+<script src="/js/i18n.js"></script>
+<script src="/js/common.js"></script>
+<script>
+// Modo TV: dashboard fullscreen para um ecrã na parede ou overlay de stream.
+const seen = new Set();
+const kkey = (k) => `${k.ts}|${k.attacker_id}|${k.victim_id}|${k.weapon}`;
+
+function tick() {
+  const d = new Date();
+  document.getElementById('clock').textContent =
+    `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+tick(); setInterval(tick, 5000);
+
+async function feed(first) {
+  try {
+    const kf = await api('/api/killfeed?limit=18');
+    document.getElementById('killfeed').innerHTML = kf.rows.map((k) => `
+      <div class="kill${!first && !seen.has(kkey(k)) ? ' fresh' : ''}">
+        ${pfp(k.attacker_avatar, k.attacker_name, 26)}
+        <span class="k">${esc(k.attacker_name || '?')}</span>
+        <span class="wpn">${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}</span>
+        ${k.headshot ? '<span class="hs">HS</span>' : ''}
+        ${pfp(k.victim_avatar, k.victim_name, 26)}
+        <span class="v">${esc(k.victim_name || '?')}</span>
+        <span class="ago">${timeAgo(k.ts)}</span>
+      </div>`).join('');
+    kf.rows.forEach((k) => seen.add(kkey(k)));
+  } catch {}
+}
+
+async function status(first) {
+  try {
+    const s = await api('/api/status');
+    const hb = s.heartbeat;
+    if (hb) document.getElementById('online').textContent = `${hb.players}/${hb.max_players}`;
+    document.getElementById('kills').textContent = fmtNum(s.killsThisWipe);
+    if (first && s.nextWipe) startCountdown(document.getElementById('countdown'), s.nextWipe);
+    if (first) renderAreaChart(document.getElementById('chart'), s.history, { maxY: hb ? hb.max_players : null });
+  } catch {}
+}
+
+async function board() {
+  try {
+    const lb = await api('/api/leaderboard?by=kills&limit=6');
+    document.getElementById('top').innerHTML = lb.rows.map((r, i) => `
+      <tr>
+        <td class="r ${i < 3 ? 'top' : ''}">${i + 1}</td>
+        <td>${pfp(r.avatar, r.name, 24)} ${esc(r.name)}</td>
+        <td class="n">${r.kills}</td>
+      </tr>`).join('');
+  } catch {}
+}
+
+async function streaks() {
+  try {
+    const st = await api('/api/streaks');
+    document.getElementById('streaks').innerHTML = st.rows.slice(0, 3).map((s) => `
+      <div class="fire-row" style="font-size:16px"><b>🔥 ${s.streak}</b> ${esc(s.name)}</div>`).join('');
+  } catch {}
+}
+
+(async () => {
+  await status(true); await feed(true); board(); streaks();
+  setInterval(() => feed(false), 5000);
+  setInterval(() => status(false), 15000);
+  setInterval(board, 60000);
+  setInterval(streaks, 60000);
+})();
+</script>
+</body>
+</html>

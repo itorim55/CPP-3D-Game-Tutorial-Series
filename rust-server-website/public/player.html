@@ -75,9 +75,15 @@
       ${statTile(hours(p.playtimeS), t('player.playtimeTotal'))}
     </div>
 
-    <div style="margin-top:14px">
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
       <a class="btn ghost" href="/vs?a=${encodeURIComponent(p.steamId)}">${t('player.compare')}</a>
+      <a class="btn ghost" href="/wrapped?id=${encodeURIComponent(p.steamId)}">🎁 ${t('player.wrapped')}</a>
     </div>
+
+    ${p.trend && p.trend.length >= 2 ? `
+    <h2 class="section">${t('player.progress')}</h2>
+    <div class="card"><div id="trend-chart"></div>
+      <p style="color:var(--ink-muted);font-size:12px;margin-top:8px">${t('player.progressHint')}</p></div>` : ''}
 
     <h2 class="section">${t('vs.allTime')}</h2>
     <div class="grid cols-4">
@@ -127,6 +133,13 @@
         </div>`;
       }).join('') || `<p style="color:var(--ink-muted)">${t('player.noActivity')}</p>`}
     </div>`;
+
+  const trendEl = document.getElementById('trend-chart');
+  if (trendEl) {
+    renderAreaChart(trendEl,
+      p.trend.map((d) => ({ hour: d.ts, kd: d.kd })),
+      { xFmt: 'day', yKey: 'kd', yLabel: 'K/D' });
+  }
 })();
 </script>
 </body>
