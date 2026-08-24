@@ -287,6 +287,8 @@ function route(req, res, url, body, config, session) {
         const wid = parseInt(url.searchParams.get('wipeId') || '', 10) || store.currentWipe().id;
         json(res, 200, { rows: store.raidList(wid) }); return true;
       }
+      case '/api/achievements':
+        json(res, 200, { rows: store.achievementsCatalog(store.currentWipe().id) }); return true;
       case '/api/streaks':
         json(res, 200, { rows: store.currentStreaks(store.currentWipe().id) }); return true;
       case '/api/mapevents': {

@@ -33,7 +33,8 @@ if (!config.sessionSecret) {
 const SITE_URL = (config.siteUrl || `http://localhost:${config.port || 8080}`).replace(/\/$/, '');
 
 const store = require('./db');
-require('./steam').init(config.steamApiKey);
+const steam = require('./steam');
+steam.init(config.steamApiKey);
 const clips = require('./clips');
 for (const [k, v] of Object.entries({
   server_name: config.serverName, server_ip: config.serverIp,
@@ -115,6 +116,7 @@ async function handleAuth(req, res, url) {
     case '/auth/steam/return': {
       const steamId = await auth.verifySteamReturn(url, SITE_URL);
       if (!steamId) { redirect(res, '/conta?erro=login'); return true; }
+      await steam.adopt(steamId); // nome + avatar prontos antes do redirect
       redirect(res, '/conta', auth.makeSessionCookie(steamId, config.sessionSecret));
       return true;
     }

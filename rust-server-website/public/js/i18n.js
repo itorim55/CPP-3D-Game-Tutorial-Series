@@ -62,6 +62,13 @@ const EN_JS = {
   'ow.clipGone': 'Clip removed after the verdict (frees server space).',
   'map.voteFail': 'Your vote was not registered: $1',
 
+  // conquistas (JS)
+  'footer.ach': 'Achievements',
+  'player.allBadges': 'all achievements →',
+  'ach.holders': '$1 unlocked',
+  'ach.best': 'record: $1 ($2)',
+  'ach.none': 'Nobody yet — be the first!',
+
   // stats
   'stats.noPeriod': 'No data for this period.', 'stats.noPlayers': 'No players found.',
   'stats.eloEmpty': 'Nobody with 5+ fights this wipe yet.',
@@ -208,6 +215,15 @@ const I18N = {
 
     'ow.clipGone': 'Clip removido após o veredicto (liberta espaço no servidor).',
     'map.voteFail': 'O teu voto não ficou registado: $1',
+
+    'footer.ach': 'Conquistas',
+    'player.allBadges': 'todas as conquistas →',
+    'stats.achLink': '🏅 Conquistas',
+    'ach.title': '🏅 Conquistas',
+    'ach.desc': 'Todos os badges que podes desbloquear no servidor e quem os tem. Os badges de wipe fazem reset com o mapa; os restantes são para sempre. Aparecem automaticamente no teu perfil público.',
+    'ach.holders': '$1 desbloqueado(s)',
+    'ach.best': 'recorde: $1 ($2)',
+    'ach.none': 'Ainda ninguém — sê o primeiro!',
     // home (HTML)
     'home.tagline': 'Live stats · transparent staff · zero pay-to-win.',
     'home.playersOnline': 'jogadores online', 'home.untilWipe': 'até à próxima wipe',

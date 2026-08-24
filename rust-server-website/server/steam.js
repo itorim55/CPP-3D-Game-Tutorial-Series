@@ -15,21 +15,23 @@ const inflight = new Set(); // evita pedidos duplicados e limita concorrência
 let apiKey = '';
 function init(key) { apiKey = key || ''; }
 
-async function fetchAvatar(steamId) {
+async function fetchProfile(steamId) {
   if (apiKey) {
     const r = await fetch(
       `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${apiKey}&steamids=${steamId}`,
       { signal: AbortSignal.timeout(6000) });
     if (!r.ok) throw new Error(`steam api ${r.status}`);
     const d = await r.json();
-    return d?.response?.players?.[0]?.avatarmedium || null;
+    const pl = d?.response?.players?.[0];
+    return pl ? { name: pl.personaname || null, avatar: pl.avatarmedium || null } : null;
   }
   const r = await fetch(`https://steamcommunity.com/profiles/${steamId}/?xml=1`,
     { signal: AbortSignal.timeout(6000) });
   if (!r.ok) throw new Error(`steam profile ${r.status}`);
   const xml = await r.text();
-  const m = xml.match(/<avatarMedium><!\[CDATA\[(.*?)\]\]><\/avatarMedium>/);
-  return m ? m[1] : null;
+  const name = xml.match(/<steamID><!\[CDATA\[(.*?)\]\]><\/steamID>/);
+  const av = xml.match(/<avatarMedium><!\[CDATA\[(.*?)\]\]><\/avatarMedium>/);
+  return { name: name ? name[1] : null, avatar: av ? av[1] : null };
 }
 
 /**
@@ -47,12 +49,28 @@ function refresh(steamId) {
   if (inflight.has(steamId) || inflight.size >= 4) return;
 
   inflight.add(steamId);
-  fetchAvatar(steamId)
-    .then((url) => store.setAvatar(steamId, url))
+  fetchProfile(steamId)
+    .then((prof) => store.setAvatar(steamId, prof?.avatar || null))
     // Falha de rede: mantém o avatar antigo mas carimba a tentativa,
     // para não martelar a Steam a cada pedido.
     .catch(() => store.setAvatar(steamId, info.avatar || null))
     .finally(() => inflight.delete(steamId));
 }
 
-module.exports = { init, refresh };
+/**
+ * Chamado no regresso do login Steam. Garante que quem entra pelo site tem
+ * nome e avatar mesmo sem nunca ter jogado no servidor: cria o registo
+ * mínimo na tabela players (sem tocar em last_seen nem em nomes do jogo).
+ */
+async function adopt(steamId) {
+  steamId = String(steamId || '');
+  if (!/^7656119\d{10}$/.test(steamId)) return;
+  try {
+    const prof = await fetchProfile(steamId);
+    if (!prof || (!prof.name && !prof.avatar)) return;
+    store.ensureWebPlayer(steamId, prof.name || null);
+    if (prof.avatar) store.setAvatar(steamId, prof.avatar);
+  } catch { /* o login nunca falha por causa do perfil */ }
+}
+
+module.exports = { init, refresh, adopt };

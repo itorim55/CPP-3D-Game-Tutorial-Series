@@ -294,6 +294,19 @@ function upsertPlayer(steamId, name, ts) {
   upsertPlayer.stmt.run({ id: steamId, name: name || null, ts });
 }
 
+// Utilizador que entrou pelo site sem nunca ter jogado: registo mínimo.
+// Nunca toca em last_seen de quem já existe nem substitui nomes do jogo
+// ('Unknown' é a única exceção — aí o nome Steam é melhor que nada).
+function ensureWebPlayer(steamId, name) {
+  db.prepare(`
+    INSERT INTO players (steam_id, name, first_seen, last_seen)
+    VALUES ($id, COALESCE($name, 'Unknown'), $ts, $ts)
+    ON CONFLICT(steam_id) DO UPDATE SET
+      name = CASE WHEN players.name = 'Unknown'
+                  THEN COALESCE($name, players.name) ELSE players.name END
+  `).run({ id: steamId, name: name || null, ts: now() });
+}
+
 // Cache de avatares Steam (preenchida por server/steam.js).
 function avatarInfo(steamId) {
   return db.prepare('SELECT avatar, avatar_ts FROM players WHERE steam_id = ?').get(steamId) || null;
@@ -706,6 +719,112 @@ function achievements(steamId, wipeId) {
   return out;
 }
 
+// ---------- catálogo de conquistas (página /conquistas) ----------
+
+// Inverso do achievements(): para cada badge, quem o desbloqueou.
+// Cada consulta é um GROUP BY simples — nada de calcular por jogador a pedido.
+function achievementsCatalog(wipeId) {
+  const H = 24; // máximo de detentores devolvidos por badge
+  const rows = (sql, ...args) => db.prepare(sql).all(...args, H);
+  const shape = (r, detail) => ({
+    steamId: r.steam_id, name: r.name, avatar: r.avatar,
+    detail: detail ? detail(r.v) : null,
+  });
+  const out = [];
+  const add = (icon, name, desc, list, detail) =>
+    out.push({ icon, name, desc, holders: list.map((r) => shape(r, detail)) });
+
+  const KJ = 'JOIN players p ON p.steam_id = x.steam_id';
+  const fmt = (n) => n.toLocaleString('en-GB');
+
+  add('🩸', 'First Blood', 'Get your first kill on the server', rows(`
+    SELECT x.steam_id, p.name, p.avatar, x.v FROM (
+      SELECT attacker_id steam_id, COUNT(*) v FROM kills GROUP BY attacker_id
+    ) x ${KJ} ORDER BY x.v DESC LIMIT ?`), (v) => `${fmt(v)} kills`);
+
+  add('🎯', 'Elite Sniper', 'Land a kill from 300 m or further', rows(`
+    SELECT x.steam_id, p.name, p.avatar, x.v FROM (
+      SELECT attacker_id steam_id, MAX(distance) v FROM kills GROUP BY attacker_id HAVING v >= 300
+    ) x ${KJ} ORDER BY x.v DESC LIMIT ?`), (v) => `${Math.round(v)} m`);
+
+  add('💀', 'Machine', '100+ kills in one wipe', rows(`
+    SELECT x.steam_id, p.name, p.avatar, x.v FROM (
+      SELECT attacker_id steam_id, COUNT(*) v FROM kills WHERE wipe_id = ? GROUP BY attacker_id HAVING v >= 100
+    ) x ${KJ} ORDER BY x.v DESC LIMIT ?`, wipeId), (v) => `${fmt(v)} kills`);
+
+  add('🎖️', 'Headhunter', '50+ headshots in one wipe', rows(`
+    SELECT x.steam_id, p.name, p.avatar, x.v FROM (
+      SELECT attacker_id steam_id, COALESCE(SUM(headshot),0) v FROM kills WHERE wipe_id = ?
+      GROUP BY attacker_id HAVING v >= 50
+    ) x ${KJ} ORDER BY x.v DESC LIMIT ?`, wipeId), (v) => `${fmt(v)} HS`);
+
+  add('🧲', 'Bullet Magnet', '100+ deaths in one wipe (a hero)', rows(`
+    SELECT x.steam_id, p.name, p.avatar, x.v FROM (
+      SELECT victim_id steam_id, COUNT(*) v FROM kills WHERE wipe_id = ? GROUP BY victim_id HAVING v >= 100
+    ) x ${KJ} ORDER BY x.v DESC LIMIT ?`, wipeId), (v) => `${fmt(v)} deaths`);
+
+  add('🔥', 'On Fire', '5+ kills inside a single hour', rows(`
+    SELECT x.steam_id, p.name, p.avatar, x.v FROM (
+      SELECT steam_id, MAX(n) v FROM (
+        SELECT attacker_id steam_id, COUNT(*) n FROM kills GROUP BY attacker_id, ts / 3600
+      ) GROUP BY steam_id HAVING v >= 5
+    ) x ${KJ} ORDER BY x.v DESC LIMIT ?`), (v) => `${v} in one hour`);
+
+  add('🦉', 'Night Owl', '10+ kills in the small hours (00–06)', rows(`
+    SELECT x.steam_id, p.name, p.avatar, x.v FROM (
+      SELECT attacker_id steam_id, COUNT(*) v FROM kills
+      WHERE ((ts % 86400) / 3600) BETWEEN 0 AND 5 GROUP BY attacker_id HAVING v >= 10
+    ) x ${KJ} ORDER BY x.v DESC LIMIT ?`), (v) => `${fmt(v)} night kills`);
+
+  const gatherBadge = (icon, name, desc, resource, min, unit) =>
+    add(icon, name, desc, rows(`
+      SELECT x.steam_id, p.name, p.avatar, x.v FROM (
+        SELECT steam_id, amount v FROM gather WHERE wipe_id = ? AND resource = ? AND amount >= ?
+      ) x ${KJ} ORDER BY x.v DESC LIMIT ?`, wipeId, resource, min), (v) => `${fmt(v)} ${unit}`);
+  gatherBadge('🌲', 'Lumberjack', '100k+ wood in one wipe', 'wood', 100000, 'wood');
+  gatherBadge('⛏️', 'Miner', '100k+ stone in one wipe', 'stone', 100000, 'stone');
+  gatherBadge('💥', 'Sulfur King', '50k+ sulfur in one wipe', 'sulfur.ore', 50000, 'sulfur');
+
+  add('🏆', 'Veteran', '100+ hours on the server', rows(`
+    SELECT steam_id, name, avatar, playtime_s v FROM players
+    WHERE playtime_s >= ${100 * 3600} ORDER BY v DESC LIMIT ?`), (v) => `${Math.round(v / 3600)} h`);
+
+  add('👻', 'Untouchable', '10h+ this wipe without a PVP death', rows(`
+    SELECT x.steam_id, p.name, p.avatar, x.v FROM (
+      SELECT pw.steam_id, pw.seconds v FROM playtime_wipe pw
+      WHERE pw.wipe_id = ? AND pw.seconds >= ${10 * 3600}
+        AND NOT EXISTS (SELECT 1 FROM kills k WHERE k.victim_id = pw.steam_id AND k.wipe_id = pw.wipe_id)
+    ) x ${KJ} ORDER BY x.v DESC LIMIT ?`, wipeId), (v) => `${Math.round(v / 3600)} h`);
+
+  add('🧨', 'Demolition Man', '50+ structures destroyed this wipe', rows(`
+    SELECT x.steam_id, p.name, p.avatar, x.v FROM (
+      SELECT attacker_id steam_id, COUNT(*) v FROM raid_events WHERE wipe_id = ?
+      GROUP BY attacker_id HAVING v >= 50
+    ) x ${KJ} ORDER BY x.v DESC LIMIT ?`, wipeId), (v) => `${fmt(v)} structures`);
+
+  const eventBadge = (icon, name, desc, kind, min, unit) =>
+    add(icon, name, desc, rows(`
+      SELECT x.steam_id, p.name, p.avatar, x.v FROM (
+        SELECT steam_id, COUNT(*) v FROM map_events WHERE wipe_id = ? AND kind = ?
+        GROUP BY steam_id HAVING v >= ?
+      ) x ${KJ} ORDER BY x.v DESC LIMIT ?`, wipeId, kind, min), (v) => `${v} ${unit}`);
+  eventBadge('🚁', 'Heli Hunter', '3+ Patrol Helicopters downed this wipe', 'heli', 3, 'helis');
+  eventBadge('🛡️', 'Tank Buster', '3+ Bradleys destroyed this wipe', 'bradley', 3, 'Bradleys');
+  eventBadge('📦', 'Fast Hands', '5+ locked crates hacked this wipe', 'crate', 5, 'crates');
+
+  add('⚡', 'Rampage', '10+ kills without dying (ongoing)', currentStreaks(wipeId, 10, H)
+    .map((r) => ({ steam_id: r.steam_id, name: r.name, avatar: r.avatar, v: r.streak })),
+    (v) => `${v} streak`);
+
+  add('💎', 'Supporter', 'Redeemed the supporter badge in the store', rows(`
+    SELECT x.steam_id, p.name, p.avatar, x.v FROM (
+      SELECT steam_id, COUNT(*) v FROM redemptions
+      WHERE item_id = 'site-badge' AND status != 'failed' GROUP BY steam_id
+    ) x ${KJ} ORDER BY x.v DESC LIMIT ?`), null);
+
+  return out;
+}
+
 // ---------- heatmap de mortes ----------
 
 function deathHeatmap(wipeId, limit = 5000) {
@@ -891,7 +1010,7 @@ function playerMapEvents(steamId, wipeId) {
 /** Streaks atuais (kills desde a última morte PVP), jogadores vistos nas últimas 24 h. */
 function currentStreaks(wipeId, min = 3, limit = 10) {
   return db.prepare(`
-    SELECT k.attacker_id AS steam_id, p.name, COUNT(*) AS streak, MAX(k.ts) AS last_kill
+    SELECT k.attacker_id AS steam_id, p.name, p.avatar, COUNT(*) AS streak, MAX(k.ts) AS last_kill
     FROM kills k
     JOIN players p ON p.steam_id = k.attacker_id
     WHERE k.wipe_id = ?
@@ -1201,7 +1320,8 @@ function playerProfile(steamId) {
 function killfeed(limit = 50) {
   return db.prepare(`
     SELECT k.ts, k.weapon, k.distance, k.headshot, k.bodypart,
-           k.attacker_id, k.victim_id, pa.name attacker_name, pv.name victim_name
+           k.attacker_id, k.victim_id, pa.name attacker_name, pv.name victim_name,
+           pa.avatar attacker_avatar, pv.avatar victim_avatar
     FROM kills k
     LEFT JOIN players pa ON pa.steam_id = k.attacker_id
     LEFT JOIN players pv ON pv.steam_id = k.victim_id
@@ -1292,7 +1412,7 @@ function startWipe({ mapSeed, mapSize, label }) {
 module.exports = {
   db, now, currentWipe, upsertPlayer, addPlaytime, recordKill, recordPveDeath,
   recordGather, recordHeartbeat, setInfo, getInfo, leaderboard, playerProfile,
-  avatarInfo, setAvatar,
+  avatarInfo, setAvatar, ensureWebPlayer, achievementsCatalog,
   killfeed, searchPlayers, status, staffList, banList, banStats,
   addApplication, recentApplicationFromIp, listApplications, setApplicationStatus, startWipe,
   // gemas e loja

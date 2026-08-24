@@ -148,6 +148,13 @@ header::after { /* fio de perigo sob a nav */
 .pfp-lg { border-width: 2px; border-color: var(--accent); box-shadow: 0 0 24px rgba(255, 91, 38, .25); }
 .pcell { display: inline-flex; align-items: center; gap: 9px; vertical-align: middle; }
 
+/* pilha de avatares (página de conquistas) */
+.pfp-stack { display: flex; align-items: center; }
+.pfp-stack a { display: inline-flex; transition: transform .12s ease; }
+.pfp-stack a:hover { transform: translateY(-3px); z-index: 2; }
+.pfp-stack .pfp { margin-right: -8px; border: 2px solid var(--surface); box-sizing: content-box; }
+.ach .ach-ico { font-size: 34px; line-height: 1; flex: none; }
+
 /* ------------------------------------------------------------ ticker */
 
 .ticker {

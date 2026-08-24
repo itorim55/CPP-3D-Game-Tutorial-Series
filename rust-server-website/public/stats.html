@@ -80,6 +80,7 @@
     <a class="btn ghost" href="/vs" data-i18n="stats.vsLink">⚔️ 1v1 comparator</a>
     <a class="btn ghost" href="/heatmap" data-i18n="stats.heatLink">🗺️ Death heatmap</a>
     <a class="btn ghost" href="/resumo" data-i18n="stats.sumLink">🏁 Wipe recap</a>
+    <a class="btn ghost" href="/conquistas" data-i18n="stats.achLink">🏅 Achievements</a>
   </div>
 
   <h2 class="section" data-i18n="stats.killfeedTitle">Full killfeed</h2>
@@ -243,9 +244,11 @@ async function loadRaids() {
   const kf = await api('/api/killfeed?limit=50');
   document.getElementById('killfeed').innerHTML = kf.rows.map((k) => `
     <div class="row">
+      ${pfp(k.attacker_avatar, k.attacker_name, 20)}
       <span class="who k">${k.attacker_name ? playerLink(k.attacker_id, k.attacker_name) : '?'}</span>
       <span class="weapon">${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}</span>
       ${k.headshot ? '<span class="hs">HS</span>' : ''}
+      ${pfp(k.victim_avatar, k.victim_name, 20)}
       <span class="who v">${k.victim_name ? playerLink(k.victim_id, k.victim_name) : '?'}</span>
       <span class="meta">${timeAgo(k.ts)}</span>
     </div>`).join('') || `<p style="color:var(--ink-muted)">${t('stats.noKills')}</p>`;

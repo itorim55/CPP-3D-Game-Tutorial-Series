@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n-key="ach.title">Achievements</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpolygon points='0,0 50,0 64,14 64,64 0,64' fill='%23ff5b26'/%3E%3Ctext x='32' y='47' font-family='Arial,sans-serif' font-size='40' font-weight='900' text-anchor='middle' fill='%230b0d11'%3ER%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Stencil+One&family=Saira+Condensed:wght@500;600;700;800;900&family=Barlow:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header></header>
+
+<main>
+  <h2 class="section" style="margin-top:6px" data-i18n="ach.title">🏅 Achievements</h2>
+  <p style="color:var(--ink-muted);font-size:13px;margin-top:6px" data-i18n="ach.desc">
+    Every badge you can unlock on the server and who holds it. Wipe badges reset with the map;
+    the others are forever. Badges show up on your public profile automatically.
+  </p>
+
+  <div class="grid cols-3" id="badges" style="margin-top:18px" data-i18n="loading">loading…</div>
+</main>
+
+<footer></footer>
+
+<script src="/js/i18n.js"></script>
+<script src="/js/common.js"></script>
+<script>
+(async () => {
+  const { rows } = await api('/api/achievements');
+  const SHOW = 8; // avatares visíveis por badge
+
+  document.getElementById('badges').innerHTML = rows.map((b) => {
+    const shown = b.holders.slice(0, SHOW);
+    const extra = b.holders.length - shown.length;
+    return `
+    <div class="card ach">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="ach-ico">${b.icon}</span>
+        <div>
+          <h3 style="margin:0">${esc(b.name)}</h3>
+          <p style="color:var(--ink-2);font-size:13px;margin:2px 0 0">${esc(b.desc)}</p>
+        </div>
+      </div>
+      ${b.holders.length ? `
+        <div class="pfp-stack" style="margin-top:14px">
+          ${shown.map((h) => `<a href="/player?id=${encodeURIComponent(h.steamId)}"
+             title="${esc(h.name)}${h.detail ? ` — ${esc(h.detail)}` : ''}">${pfp(h.avatar, h.name, 30)}</a>`).join('')}
+          ${extra > 0 ? `<span class="pfp fallback" style="width:30px;height:30px;font-size:11px;font-family:var(--font-mono)">+${extra}</span>` : ''}
+        </div>
+        <p style="color:var(--ink-muted);font-size:12px;margin-top:8px;font-family:var(--font-mono)">
+          ${t('ach.holders', b.holders.length >= 24 ? '24+' : b.holders.length)}
+          ${b.holders[0] && b.holders[0].detail ? ` · ${t('ach.best', esc(b.holders[0].name), esc(b.holders[0].detail))}` : ''}</p>`
+      : `<p style="color:var(--ink-muted);font-size:13px;margin-top:14px">🔒 ${t('ach.none')}</p>`}
+    </div>`;
+  }).join('');
+})().catch(console.error);
+</script>
+</body>
+</html>

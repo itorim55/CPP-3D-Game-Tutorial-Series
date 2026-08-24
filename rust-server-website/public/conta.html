@@ -46,7 +46,7 @@
       <span style="color:var(--ink-muted);font-size:13px">SteamID ${esc(user.steamId)}</span>
       <a href="/auth/logout" style="margin-left:auto;font-size:13px;color:var(--ink-muted)">${t('account.logout')}</a>
     </div>
-    ${user.name ? '' : `<div class="notice err" style="margin-top:10px">${t('account.notSeenYet')}</div>`}
+    ${user.playtimeS ? '' : `<div class="notice err" style="margin-top:10px">${t('account.notSeenYet')}</div>`}
 
     <div class="grid cols-4" style="margin-top:18px">
       <div class="card tile"><div class="big" style="color:var(--gold)">${fmtNum(user.wallet.gems)}</div><div class="label">${t('account.gemsAvailable')}</div></div>

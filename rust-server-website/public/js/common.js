@@ -120,7 +120,8 @@ function renderChrome() {
   if (footer && !footer.innerHTML.trim()) {
     footer.innerHTML = `
       <span data-brand></span> · <a href="/regras">${t('footer.rules')}</a> · <a href="/staff">${t('footer.staff')}</a> ·
-      <a href="/candidatura">${t('footer.apply')}</a> · <a href="/novidades">${t('footer.news')}</a> ·
+      <a href="/candidatura">${t('footer.apply')}</a> · <a href="/conquistas">${t('footer.ach')}</a> ·
+      <a href="/novidades">${t('footer.news')}</a> ·
       <a href="/apelo">${t('footer.appeal')}</a>
       <br>${t('footer.disclaimer')}`;
   }
