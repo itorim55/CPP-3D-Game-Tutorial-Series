@@ -3,6 +3,12 @@
 As minhas opiniões sobre prioridades, com base na análise da concorrência
 (ver `ANALISE-CONCORRENCIA.md`). Organizado por fases realistas.
 
+> **Estado (atualização):** já implementado — login Steam (5), apelos no site (6),
+> moeda por tempo jogado + loja com entrega automática (9), votação de mapa com
+> influência ganha (10), arquivo de wipes (12), Overwatch comunitário (13),
+> mini-changelog (8). Falta: multi-servidor (7), pagamentos VIP (11),
+> torneios (14), canal de vídeo (15), integração BattleMetrics (16).
+
 ## Fase 0 — antes de abrir o servidor (essencial)
 
 1. **Escolhe a identidade.** "LusoRust" é um placeholder — muda o nome em

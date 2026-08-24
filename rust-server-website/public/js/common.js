@@ -1,5 +1,5 @@
 'use strict';
-// Utilitários partilhados por todas as páginas.
+// Utilitários partilhados por todas as páginas + navegação/rodapé injetados.
 
 async function api(path) {
   const r = await fetch(path);
@@ -35,18 +35,90 @@ function hours(seconds) {
   return `${Math.round((seconds || 0) / 3600)} h`;
 }
 
+function fmtDate(ts) {
+  return new Date(ts * 1000).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function gems(n) {
+  return `${(n || 0).toLocaleString('pt-PT')} 💎`;
+}
+
 function playerLink(steamId, name) {
   return `<a href="/player?id=${encodeURIComponent(steamId)}">${esc(name || steamId)}</a>`;
 }
 
-// Marca o link ativo na navegação.
-document.addEventListener('DOMContentLoaded', () => {
-  const path = location.pathname.replace(/\.html$/, '') || '/';
-  document.querySelectorAll('.nav .links a').forEach((a) => {
-    const href = a.getAttribute('href').replace(/\.html$/, '');
-    if (href === path || (href === '/' && path === '/index')) a.classList.add('active');
+// ---------- sessão ----------
+
+let _mePromise = null;
+function me() {
+  _mePromise ??= api('/api/me').catch(() => ({ loggedIn: false }));
+  return _mePromise;
+}
+
+let _statusPromise = null;
+function siteStatus() {
+  _statusPromise ??= api('/api/status').catch(() => null);
+  return _statusPromise;
+}
+
+// ---------- navegação e rodapé injetados ----------
+
+const NAV_LINKS = [
+  ['/', 'Início'],
+  ['/stats', 'Stats'],
+  ['/loja', 'Loja'],
+  ['/mapa', 'Mapa'],
+  ['/overwatch', 'Overwatch'],
+  ['/regras', 'Regras'],
+  ['/staff', 'Staff'],
+  ['/candidatura', 'Candidaturas'],
+];
+
+function renderChrome() {
+  const header = document.querySelector('header');
+  if (header && !header.innerHTML.trim()) {
+    const path = location.pathname.replace(/\.html$/, '') || '/';
+    header.innerHTML = `
+      <nav class="nav">
+        <a class="logo" href="/"><b>LUSO</b>RUST</a>
+        <div class="links">
+          ${NAV_LINKS.map(([href, label]) =>
+            `<a href="${href}" ${href === path || (href === '/' && path === '/index') ? 'class="active"' : ''}>${label}</a>`).join('')}
+          <a href="/auth/steam" id="nav-user" class="user-chip">Entrar</a>
+          <a class="cta" href="#" id="discord-link" target="_blank" rel="noopener">Discord</a>
+        </div>
+      </nav>`;
+  }
+
+  const footer = document.querySelector('footer');
+  if (footer && !footer.innerHTML.trim()) {
+    footer.innerHTML = `
+      LusoRust · <a href="/regras">Regras</a> · <a href="/staff">Staff &amp; Transparência</a> ·
+      <a href="/candidatura">Junta-te à equipa</a> · <a href="/novidades">Novidades</a> ·
+      <a href="/apelo">Apelar um ban</a>
+      <br>Este servidor não é afiliado à Facepunch Studios nem à Valve.`;
+  }
+
+  me().then((u) => {
+    const chip = document.getElementById('nav-user');
+    if (!chip) return;
+    if (u.loggedIn) {
+      chip.href = '/conta';
+      chip.innerHTML = `${esc(u.name || 'A minha conta')} · ${gems(u.wallet.gems)}`;
+      chip.title = 'A minha conta';
+    } else {
+      chip.href = '/auth/steam';
+      chip.textContent = 'Entrar com Steam';
+    }
   });
-});
+
+  siteStatus().then((s) => {
+    const d = document.getElementById('discord-link');
+    if (d && s?.info?.discord) d.href = s.info.discord;
+  });
+}
+
+document.addEventListener('DOMContentLoaded', renderChrome);
 
 // Countdown para a próxima wipe (elementos com [data-countdown]).
 function startCountdown(el, isoDate) {

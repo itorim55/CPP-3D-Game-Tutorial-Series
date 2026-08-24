@@ -1,0 +1,30 @@
+[
+  {
+    "id": "chat-color-7d",
+    "name": "Cor no chat (7 dias)",
+    "description": "O teu nome aparece colorido no chat do servidor durante 7 dias.",
+    "cost": 8000,
+    "command": "oxide.usergroup add {steamid} chatcolor"
+  },
+  {
+    "id": "queue-skip-24h",
+    "name": "Queue skip (24 h)",
+    "description": "Saltas a fila de entrada durante 24 horas. Sem vantagem in-game.",
+    "cost": 15000,
+    "command": "oxide.usergroup add {steamid} queueskip"
+  },
+  {
+    "id": "site-badge",
+    "name": "Badge 'Veterano' no site",
+    "description": "Distintivo permanente no teu perfil público do site.",
+    "cost": 5000,
+    "command": ""
+  },
+  {
+    "id": "skin-crate",
+    "name": "Caixa de skins cosméticas",
+    "description": "Um conjunto de skins aleatórias (só visual). Entregue in-game pela staff.",
+    "cost": 20000,
+    "command": ""
+  }
+]

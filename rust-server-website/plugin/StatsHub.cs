@@ -7,8 +7,8 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("StatsHub", "LusoRust", "1.0.0")]
-    [Description("Envia kills, sessões, farm e heartbeats para o site de estatísticas do servidor")]
+    [Info("StatsHub", "LusoRust", "1.1.0")]
+    [Description("Envia kills, sessões, farm e heartbeats para o site de estatísticas e entrega recompensas da loja")]
     public class StatsHub : RustPlugin
     {
         #region Configuração
@@ -29,8 +29,17 @@ namespace Oxide.Plugins
             [JsonProperty("Intervalo do heartbeat (segundos)")]
             public float HeartbeatInterval = 60f;
 
+            [JsonProperty("Intervalo de crédito de tempo de jogo (segundos)")]
+            public float CreditInterval = 300f;
+
             [JsonProperty("Registar farm de recursos")]
             public bool TrackGather = true;
+
+            [JsonProperty("Entregar recompensas da loja (executa comandos)")]
+            public bool ExecuteRedemptions = true;
+
+            [JsonProperty("Intervalo de verificação de recompensas (segundos)")]
+            public float RedemptionPollInterval = 60f;
         }
 
         protected override void LoadDefaultConfig() => _config = new PluginConfig();
@@ -50,9 +59,8 @@ namespace Oxide.Plugins
         #region Estado
 
         private readonly List<Dictionary<string, object>> _queue = new List<Dictionary<string, object>>();
-        private readonly Dictionary<ulong, float> _sessionStart = new Dictionary<ulong, float>();
+        private readonly Dictionary<ulong, float> _lastCredit = new Dictionary<ulong, float>();
         private readonly Dictionary<ulong, Dictionary<string, int>> _gather = new Dictionary<ulong, Dictionary<string, int>>();
-        private Timer _flushTimer, _heartbeatTimer;
 
         private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
@@ -66,17 +74,20 @@ namespace Oxide.Plugins
                 PrintWarning("Configura a chave de API em oxide/config/StatsHub.json!");
 
             foreach (var player in BasePlayer.activePlayerList)
-                _sessionStart[player.userID] = Time.realtimeSinceStartup;
+                _lastCredit[player.userID] = Time.realtimeSinceStartup;
 
-            _flushTimer = timer.Every(_config.FlushInterval, Flush);
-            _heartbeatTimer = timer.Every(_config.HeartbeatInterval, SendHeartbeat);
+            timer.Every(_config.FlushInterval, Flush);
+            timer.Every(_config.HeartbeatInterval, SendHeartbeat);
+            timer.Every(_config.CreditInterval, CreditPlaytime);
+            if (_config.ExecuteRedemptions)
+                timer.Every(_config.RedemptionPollInterval, PollRedemptions);
             SendHeartbeat();
         }
 
         private void Unload()
         {
-            foreach (var player in BasePlayer.activePlayerList)
-                CloseSession(player);
+            foreach (var player in BasePlayer.activePlayerList.ToList())
+                CreditPlayer(player);
             Flush();
         }
 
@@ -93,12 +104,47 @@ namespace Oxide.Plugins
 
         #endregion
 
+        #region Tempo de jogo (crédito periódico -> gemas quase em tempo real)
+
+        // Em vez de esperar pelo disconnect (perde-se tudo se o servidor crashar),
+        // creditamos o tempo em fatias regulares. Custo: iterar a lista de
+        // jogadores 1x a cada CreditInterval — desprezável.
+        private void CreditPlaytime()
+        {
+            foreach (var player in BasePlayer.activePlayerList)
+                CreditPlayer(player);
+        }
+
+        private void CreditPlayer(BasePlayer player)
+        {
+            if (player == null) return;
+            float last;
+            if (!_lastCredit.TryGetValue(player.userID, out last))
+            {
+                _lastCredit[player.userID] = Time.realtimeSinceStartup;
+                return;
+            }
+            var seconds = (int)(Time.realtimeSinceStartup - last);
+            _lastCredit[player.userID] = Time.realtimeSinceStartup;
+            if (seconds <= 0) return;
+            Enqueue(new Dictionary<string, object>
+            {
+                ["type"] = "session",
+                ["ts"] = Now(),
+                ["steamId"] = player.UserIDString,
+                ["name"] = player.displayName,
+                ["seconds"] = seconds,
+            });
+        }
+
+        #endregion
+
         #region Hooks de jogo
 
         private void OnPlayerConnected(BasePlayer player)
         {
             if (player == null) return;
-            _sessionStart[player.userID] = Time.realtimeSinceStartup;
+            _lastCredit[player.userID] = Time.realtimeSinceStartup;
             Enqueue(new Dictionary<string, object>
             {
                 ["type"] = "connect",
@@ -111,23 +157,8 @@ namespace Oxide.Plugins
         private void OnPlayerDisconnected(BasePlayer player, string reason)
         {
             if (player == null) return;
-            CloseSession(player);
-        }
-
-        private void CloseSession(BasePlayer player)
-        {
-            float start;
-            if (!_sessionStart.TryGetValue(player.userID, out start)) return;
-            _sessionStart.Remove(player.userID);
-            var seconds = (int)(Time.realtimeSinceStartup - start);
-            Enqueue(new Dictionary<string, object>
-            {
-                ["type"] = "session",
-                ["ts"] = Now(),
-                ["steamId"] = player.UserIDString,
-                ["name"] = player.displayName,
-                ["seconds"] = seconds,
-            });
+            CreditPlayer(player);
+            _lastCredit.Remove(player.userID);
         }
 
         private void OnPlayerDeath(BasePlayer victim, HitInfo info)
@@ -179,8 +210,7 @@ namespace Oxide.Plugins
         {
             if (info?.Initiator != null && info.Initiator != victim)
                 return info.Initiator.ShortPrefabName;
-            var major = victim.lastDamage;
-            return major.ToString();
+            return victim.lastDamage.ToString();
         }
 
         private void OnDispenserGathered(ResourceDispenser dispenser, BaseEntity entity, Item item)
@@ -206,6 +236,55 @@ namespace Oxide.Plugins
             int current;
             perPlayer.TryGetValue(resource, out current);
             perPlayer[resource] = current + amount;
+        }
+
+        #endregion
+
+        #region Recompensas da loja (site -> jogo)
+
+        private class RedemptionRow
+        {
+            [JsonProperty("id")] public int Id;
+            [JsonProperty("steam_id")] public string SteamId;
+            [JsonProperty("command")] public string Command;
+        }
+
+        private class RedemptionResponse
+        {
+            [JsonProperty("rows")] public List<RedemptionRow> Rows;
+        }
+
+        private void PollRedemptions()
+        {
+            var url = _config.SiteUrl.TrimEnd('/') + "/api/plugin/redemptions";
+            var headers = new Dictionary<string, string> { ["X-API-Key"] = _config.ApiKey };
+            webrequest.Enqueue(url, null, (code, response) =>
+            {
+                if (code < 200 || code >= 300 || string.IsNullOrEmpty(response)) return;
+                RedemptionResponse data;
+                try { data = JsonConvert.DeserializeObject<RedemptionResponse>(response); }
+                catch { return; }
+                if (data?.Rows == null) return;
+                foreach (var row in data.Rows)
+                {
+                    var ok = true;
+                    try
+                    {
+                        Puts($"Recompensa #{row.Id} para {row.SteamId}: {row.Command}");
+                        ConsoleSystem.Run(ConsoleSystem.Option.Server.Quiet(), row.Command);
+                    }
+                    catch (Exception ex)
+                    {
+                        ok = false;
+                        PrintWarning($"Recompensa #{row.Id} falhou: {ex.Message}");
+                    }
+                    Post("/api/plugin/redemptions/complete", new Dictionary<string, object>
+                    {
+                        ["id"] = row.Id,
+                        ["ok"] = ok,
+                    });
+                }
+            }, this, RequestMethod.GET, headers, 10f);
         }
 
         #endregion

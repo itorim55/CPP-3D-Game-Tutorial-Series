@@ -43,8 +43,8 @@ header {
   backdrop-filter: blur(6px);
 }
 .nav {
-  max-width: 1100px; margin: 0 auto; padding: 0 20px;
-  display: flex; align-items: center; gap: 18px; height: 60px;
+  max-width: 1100px; margin: 0 auto; padding: 8px 20px;
+  display: flex; align-items: center; gap: 14px; min-height: 60px; flex-wrap: wrap;
 }
 .nav .logo {
   font-family: var(--font-display);
@@ -52,10 +52,14 @@ header {
   display: flex; align-items: center; gap: 8px;
 }
 .nav .logo b { color: var(--accent); }
-.nav .links { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+.nav .links { display: flex; gap: 2px; margin-left: auto; flex-wrap: wrap; align-items: center; }
 .nav .links a {
-  color: var(--ink-2); padding: 8px 12px; border-radius: 6px;
-  font-size: 14px; font-weight: 500;
+  color: var(--ink-2); padding: 7px 9px; border-radius: 6px;
+  font-size: 13.5px; font-weight: 500;
+}
+.nav .links a.user-chip, .nav .links a.cta { margin-left: 4px; }
+.nav .links a.user-chip {
+  max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .nav .links a:hover { color: var(--ink); background: var(--surface-2); text-decoration: none; }
 .nav .links a.active { color: var(--accent); }
@@ -63,6 +67,10 @@ header {
   background: var(--accent); color: #fff; font-weight: 600;
 }
 .nav .links a.cta:hover { background: #f06437; }
+.nav .links a.user-chip {
+  border: 1px solid var(--border); color: var(--gold);
+}
+.nav .links a.user-chip:hover { border-color: var(--gold); background: transparent; color: var(--gold); }
 
 /* ---------- layout ---------- */
 
@@ -219,6 +227,51 @@ textarea { min-height: 96px; resize: vertical; }
 .prose ul, .prose ol { padding-left: 22px; margin: 8px 0; }
 .prose li { margin: 4px 0; }
 .prose b, .prose strong { color: var(--ink); }
+
+/* ---------- loja / gemas ---------- */
+
+.gem-balance {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--surface-2); border: 1px solid var(--gold);
+  color: var(--gold); border-radius: 999px; padding: 8px 18px;
+  font-weight: 700; font-size: 16px;
+}
+.store-item .cost { color: var(--gold); font-weight: 700; font-size: 18px; }
+.badge {
+  display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .5px;
+  border-radius: 4px; padding: 2px 8px; text-transform: uppercase;
+}
+.badge.pendente  { background: #3a3327; color: var(--gold); }
+.badge.enviado   { background: #2c3140; color: #9fb4e8; }
+.badge.entregue, .badge.aceite, .badge.aprovada { background: #22301f; color: var(--good); }
+.badge.falhou, .badge.recusado, .badge.recusada { background: #33201f; color: var(--bad); }
+.badge.aberto    { background: var(--accent-soft); color: var(--accent); }
+.badge.fechado   { background: #2a2a2a; color: var(--ink-muted); }
+
+/* ---------- votação de mapa ---------- */
+
+.vote-bar { background: var(--surface-2); border-radius: 6px; height: 10px; overflow: hidden; margin-top: 10px; }
+.vote-bar > div { background: var(--accent); height: 100%; border-radius: 6px; min-width: 2px; }
+.map-option.voted { border-color: var(--accent); }
+
+/* ---------- overwatch ---------- */
+
+.ow-votes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.ow-votes button {
+  flex: 1; min-width: 110px; padding: 9px 8px; border-radius: 8px; cursor: pointer;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--ink-2);
+  font-family: var(--font-body); font-size: 13.5px; font-weight: 600;
+}
+.ow-votes button:hover { border-color: var(--ink-muted); color: var(--ink); }
+.ow-votes button.sel-cheat  { border-color: var(--bad); color: var(--bad); }
+.ow-votes button.sel-clean  { border-color: var(--good); color: var(--good); }
+.ow-votes button.sel-unsure { border-color: var(--gold); color: var(--gold); }
+
+/* ---------- posts ---------- */
+
+.post h3 { font-size: 18px; margin-bottom: 4px; }
+.post .date { color: var(--ink-muted); font-size: 12.5px; margin-bottom: 10px; }
+.post p { color: var(--ink-2); font-size: 14.5px; white-space: pre-line; }
 
 footer {
   border-top: 1px solid var(--border); padding: 22px 20px; text-align: center;

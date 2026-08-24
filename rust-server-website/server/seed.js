@@ -101,6 +101,44 @@ function seed() {
   });
 
   store.setInfo('map', 'Procedural 3800');
+
+  console.log('[seed] Gemas, tempo por wipe, novidades, overwatch e votação de mapa...');
+  const wipeNow = store.currentWipe();
+  ids.forEach((id) => {
+    const secondsThisWipe = 3600 * (1 + rnd(60));
+    store.db.prepare(`
+      INSERT INTO playtime_wipe (wipe_id, steam_id, seconds) VALUES (?, ?, ?)
+      ON CONFLICT(wipe_id, steam_id) DO UPDATE SET seconds = excluded.seconds`)
+      .run(wipeNow.id, id, secondsThisWipe);
+    store.addGems(id, 1000 * (2 + rnd(80)));
+  });
+
+  store.addPost('Bem-vindos ao servidor!',
+    'Servidor novo, wipe fresca. Regras no site, staff no Discord. Boa sorte lá fora — e lembrem-se: os cheaters duram pouco por aqui.');
+  store.addPost('Wipe de 3 de setembro',
+    'Force wipe na quinta-feira às 19:00 UTC. Mapa novo escolhido pela comunidade na página de votação. Blueprints também dão wipe (force wipe mensal).');
+
+  store.addOwCase('Suspeito de ESP na zona do Launch Site', 'https://youtu.be/exemplo-clip-1');
+  store.addOwCase('Recoil perfeito com AK a 150m?', 'https://youtu.be/exemplo-clip-2');
+  store.db.prepare("UPDATE ow_cases SET status = 'fechado', verdict = 'cheater' WHERE id = 1").run();
+  ids.slice(0, 9).forEach((id, i) => {
+    store.db.prepare('INSERT OR IGNORE INTO ow_votes (case_id, steam_id, vote) VALUES (?, ?, ?)')
+      .run(1, id, i < 6 ? 'cheat' : i < 8 ? 'unsure' : 'clean');
+  });
+
+  store.mapAdmin('add', { label: 'Mapa A — clássico, 2 lagos', seed: '183456201', size: 3800 });
+  store.mapAdmin('add', { label: 'Mapa B — ilha grande + oceano', seed: '990122837', size: 4000 });
+  store.mapAdmin('add', { label: 'Mapa C — montanhoso, neve', seed: '447789123', size: 3600 });
+  store.mapAdmin('open', {});
+  const opts = store.db.prepare('SELECT id FROM map_options WHERE round = 1').all();
+  ids.slice(0, 12).forEach((id, i) => {
+    store.db.prepare('INSERT OR IGNORE INTO map_votes (round, steam_id, option_id, weight) VALUES (?, ?, ?, ?)')
+      .run(1, id, opts[i % opts.length].id, 1 + rnd(5));
+  });
+
+  store.addAppeal(ids[10], 'sofredor#0001',
+    'Fui banido por "associação a cheater" mas só joguei com ele duas vezes e não sabia de nada. Peço revisão — tenho 900 h de conta limpa.');
+
   console.log('[seed] Concluído.');
 }
 

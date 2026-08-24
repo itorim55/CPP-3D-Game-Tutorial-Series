@@ -1,10 +1,14 @@
 {
   "port": 8080,
   "host": "0.0.0.0",
+  "siteUrl": "http://localhost:8080",
   "serverName": "LusoRust | 2x Vanilla+ | PT/EN",
   "serverIp": "connect play.exemplo.pt:28015",
   "discord": "https://discord.gg/exemplo",
   "nextWipe": "2026-09-03T18:00:00Z",
+  "gemsPerHour": 1000,
+  "devLogin": false,
   "apiKey": "SUBSTITUIR-gerada-automaticamente-no-primeiro-arranque",
-  "adminKey": "SUBSTITUIR-gerada-automaticamente-no-primeiro-arranque"
+  "adminKey": "SUBSTITUIR-gerada-automaticamente-no-primeiro-arranque",
+  "sessionSecret": "SUBSTITUIR-gerada-automaticamente-no-primeiro-arranque"
 }

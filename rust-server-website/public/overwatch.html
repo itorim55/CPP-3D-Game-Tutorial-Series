@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overwatch Comunitário — LusoRust</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header></header>
+
+<main>
+  <h2 class="section" style="margin-top:6px">Overwatch Comunitário 🕵️</h2>
+
+  <div class="card">
+    <h3>A comunidade também caça cheaters</h3>
+    <p style="color:var(--ink-2);font-size:14px">
+      A staff publica aqui clips de jogadores suspeitos — <b>sempre anónimos</b>
+      (sem nomes, para não haver witch-hunts). Vê o clip e dá o teu veredicto.
+      Os votos da comunidade <b>não banem ninguém</b>: são mais um sinal para a
+      investigação da staff, que decide sempre com provas gravadas.
+      Precisas de <b>5 h+ de jogo</b> no servidor para votar — e só vês os
+      resultados depois de votares, para não seres influenciado.
+    </p>
+  </div>
+
+  <div id="login-hint"></div>
+  <div id="cases" class="grid cols-2" style="margin-top:18px">a carregar…</div>
+</main>
+
+<footer></footer>
+
+<script src="/js/common.js"></script>
+<script>
+const VOTE_LABELS = { cheat: '🚨 Cheater', unsure: '🤔 Não sei', clean: '✅ Limpo' };
+const VERDICT_LABELS = { cheater: '🚨 CONFIRMADO CHEATER — banido', inocente: '✅ Inocente', inconclusivo: '🤷 Inconclusivo' };
+
+async function load() {
+  const [data, user] = await Promise.all([api('/api/owcases'), me()]);
+
+  if (!user.loggedIn) {
+    document.getElementById('login-hint').innerHTML = `<div class="notice err">
+      🔑 <a href="/auth/steam">Inicia sessão com a Steam</a> para votares nos casos abertos.</div>`;
+  }
+
+  document.getElementById('cases').innerHTML = data.rows.map((c) => {
+    const tallyHtml = c.tally ? (() => {
+      const total = c.tally.cheat + c.tally.clean + c.tally.unsure || 1;
+      return `<div style="margin-top:12px;font-size:13px;color:var(--ink-2)">
+        Comunidade: <b style="color:var(--bad)">${Math.round(c.tally.cheat / total * 100)}% cheater</b> ·
+        ${Math.round(c.tally.unsure / total * 100)}% não sabe ·
+        <b style="color:var(--good)">${Math.round(c.tally.clean / total * 100)}% limpo</b>
+        <span style="color:var(--ink-muted)">(${total} votos)</span></div>`;
+    })() : '';
+
+    return `
+    <div class="card">
+      <div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap">
+        <b style="font-size:15.5px">${esc(c.title)}</b>
+        <span class="badge ${esc(c.status)}">${esc(c.status)}</span>
+        <span style="color:var(--ink-muted);font-size:12px;margin-left:auto">${timeAgo(c.ts)}</span>
+      </div>
+      <p style="margin:10px 0"><a href="${esc(c.clip_url)}" target="_blank" rel="noopener">🎬 Ver o clip ↗</a></p>
+      ${c.status === 'fechado'
+        ? `<p style="font-weight:700;margin-top:8px">${VERDICT_LABELS[c.verdict] || esc(c.verdict || '')}</p>${tallyHtml}`
+        : `<div class="ow-votes" data-case="${c.id}">
+            ${['cheat', 'unsure', 'clean'].map((v) => `
+              <button data-vote="${v}" class="${c.myVote === v ? 'sel-' + v : ''}">${VOTE_LABELS[v]}</button>`).join('')}
+          </div>${tallyHtml}`}
+    </div>`;
+  }).join('') || '<p style="color:var(--ink-muted)">Sem casos publicados — bom sinal. 🎉</p>';
+}
+
+document.getElementById('cases').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-vote]');
+  if (!b) return;
+  const caseId = parseInt(b.closest('.ow-votes').dataset.case, 10);
+  try {
+    await apiPost('/api/owcases/vote', { caseId, vote: b.dataset.vote });
+    load();
+  } catch (err) { alert('⚠️ ' + err.message); }
+});
+
+load().catch(console.error);
+</script>
+</body>
+</html>

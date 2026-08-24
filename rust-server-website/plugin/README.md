@@ -4,10 +4,16 @@ Plugin que liga o teu servidor de Rust ao site de estatísticas. Envia:
 
 - **Kills PVP** (arma, distância, headshot, parte do corpo) → killfeed e leaderboards
 - **Mortes PVE** (ursos, queda, scientists, heli…)
-- **Sessões** (tempo de jogo por jogador)
+- **Tempo de jogo** — creditado a cada 5 min (alimenta as gemas e o peso do voto de mapa)
 - **Farm** (madeira, pedra, minérios — agregado, sem spam)
 - **Heartbeat** a cada 60 s (jogadores online, fila, FPS do servidor, entidades, mapa)
 - **Wipes** — deteta um save novo e abre automaticamente uma wipe nova no site
+
+E recebe do site:
+
+- **Recompensas da loja** — a cada 60 s pergunta ao site se há resgates
+  pendentes e executa o comando de consola respetivo (ex.:
+  `oxide.usergroup add <steamid> queueskip`). Desativável na config.
 
 ## Instalação
 

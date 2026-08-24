@@ -11,19 +11,7 @@
 </head>
 <body>
 
-<header>
-  <nav class="nav">
-    <a class="logo" href="/"><b>LUSO</b>RUST</a>
-    <div class="links">
-      <a href="/">Início</a>
-      <a href="/stats">Estatísticas</a>
-      <a href="/regras">Regras</a>
-      <a href="/staff">Staff</a>
-      <a href="/candidatura">Candidaturas</a>
-      <a class="cta" href="#" id="discord-link" target="_blank" rel="noopener">Discord</a>
-    </div>
-  </nav>
-</header>
+<header></header>
 
 <main>
   <section class="hero">
@@ -93,10 +81,7 @@
   </div>
 </main>
 
-<footer>
-  LusoRust · <a href="/regras">Regras</a> · <a href="/staff">Staff &amp; Transparência</a> · <a href="/candidatura">Junta-te à equipa</a>
-  <br>Este servidor não é afiliado à Facepunch Studios.
-</footer>
+<footer></footer>
 
 <script src="/js/common.js"></script>
 <script>
@@ -104,7 +89,6 @@
   try {
     const s = await api('/api/status');
 
-    if (s.info.discord) document.getElementById('discord-link').href = s.info.discord;
     if (s.info.name) document.getElementById('server-tag').textContent = s.info.name;
 
     const dot = document.getElementById('status-dot');

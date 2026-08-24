@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gestão de candidaturas — LusoRust</title>
+<title>Administração — LusoRust</title>
 <meta name="robots" content="noindex,nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,64 +13,60 @@
 
 <header>
   <nav class="nav">
-    <a class="logo" href="/"><b>LUSO</b>RUST</a>
+    <a class="logo" href="/"><b>LUSO</b>RUST <span style="font-size:13px;color:var(--ink-muted);letter-spacing:0">admin</span></a>
     <div class="links"><a href="/">← voltar ao site</a></div>
   </nav>
 </header>
 
 <main>
-  <h2 class="section" style="margin-top:6px">Gestão de candidaturas <small>área da staff</small></h2>
-
-  <div class="card" id="login-card" style="max-width:420px">
+  <div class="card" id="login-card" style="max-width:420px;margin-top:6px">
     <h3>Chave de administração</h3>
     <input type="text" id="admin-key" placeholder="cola aqui a adminKey do config.json">
     <button class="btn" style="margin-top:12px" id="load-btn">Entrar</button>
     <p class="hint" style="color:var(--ink-muted);font-size:12px;margin-top:8px">A chave está em server/config.json (campo adminKey). Nunca a partilhes.</p>
   </div>
 
-  <div id="apps" style="display:none">
-    <div class="tabs" id="filter-tabs">
-      <button data-f="" class="active">Todas</button>
-      <button data-f="pendente">Pendentes</button>
-      <button data-f="em análise">Em análise</button>
-      <button data-f="entrevista">Entrevista</button>
-      <button data-f="aprovada">Aprovadas</button>
-      <button data-f="recusada">Recusadas</button>
+  <div id="panel" style="display:none">
+    <div class="tabs" id="section-tabs" style="margin-top:6px">
+      <button data-s="apps" class="active">Candidaturas</button>
+      <button data-s="appeals">Apelos</button>
+      <button data-s="redemptions">Loja / Entregas</button>
+      <button data-s="ow">Overwatch</button>
+      <button data-s="map">Votação de mapa</button>
+      <button data-s="posts">Novidades</button>
     </div>
-    <div id="app-list" class="grid" style="grid-template-columns:1fr"></div>
+    <div id="section-body" style="margin-top:14px"></div>
   </div>
 </main>
 
 <script src="/js/common.js"></script>
 <script>
 let KEY = sessionStorage.getItem('adminKey') || '';
-let ROWS = [];
-let FILTER = '';
+let SECTION = 'apps';
 
-const STATUSES = ['pendente', 'em análise', 'entrevista', 'aprovada', 'recusada'];
-const BADGE = { 'pendente': 'var(--ink-muted)', 'em análise': 'var(--gold)', 'entrevista': 'var(--accent)', 'aprovada': 'var(--good)', 'recusada': 'var(--bad)' };
+const H = () => ({ 'X-Admin-Key': KEY });
+const aGet = (p) => fetch(p, { headers: H() }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+const aPost = (p, b) => apiPost(p, b, H());
+const body = () => document.getElementById('section-body');
+const badge = (s) => `<span class="badge ${esc(s)}">${esc(s)}</span>`;
+const statusButtons = (kind, id, current, statuses) => `
+  <div class="tabs" style="margin:10px 0 0">
+    ${statuses.map((s) => `<button data-kind="${kind}" data-id="${id}" data-status="${s}" ${s === current ? 'class="active"' : ''}>${s}</button>`).join('')}
+  </div>`;
 
-async function load() {
-  const r = await fetch(`/api/admin/applications`, { headers: { 'X-Admin-Key': KEY } });
-  if (!r.ok) { alert('Chave inválida.'); return; }
-  sessionStorage.setItem('adminKey', KEY);
-  ROWS = (await r.json()).rows;
-  document.getElementById('login-card').style.display = 'none';
-  document.getElementById('apps').style.display = '';
-  render();
-}
+// ---------- secções ----------
 
-function render() {
-  const rows = FILTER ? ROWS.filter((a) => a.status === FILTER) : ROWS;
-  document.getElementById('app-list').innerHTML = rows.map((a) => `
-    <div class="card">
+async function renderApps() {
+  const { rows } = await aGet('/api/admin/applications');
+  body().innerHTML = rows.map((a) => `
+    <div class="card" style="margin-bottom:12px">
       <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
-        <b style="font-size:17px">${esc(a.name)}</b>
-        <span style="color:var(--ink-muted);font-size:13px">${esc(a.discord)} · SteamID ${esc(a.steam_id)} · ${a.age ?? '?'} anos · ${a.hours_played ?? '?'}h Rust · ${esc(a.timezone || '—')}</span>
-        <span style="margin-left:auto;font-size:12px;font-weight:700;color:${BADGE[a.status] || 'var(--ink-muted)'}">${esc(a.status).toUpperCase()}</span>
+        <b style="font-size:16px">${esc(a.name)}</b>
+        <span style="color:var(--ink-muted);font-size:13px">${esc(a.discord)} · ${esc(a.steam_id)} · ${a.age ?? '?'} anos · ${a.hours_played ?? '?'}h · ${esc(a.timezone || '—')}</span>
+        <span style="margin-left:auto">${badge(a.status)}</span>
       </div>
-      <div style="color:var(--ink-muted);font-size:12px;margin:4px 0 10px">${new Date(a.ts * 1000).toLocaleString('pt-PT')} · disponibilidade: ${esc(a.availability || '—')}</div>
-      <details><summary style="cursor:pointer;color:var(--accent);font-size:13px">ver respostas completas</summary>
+      <div style="color:var(--ink-muted);font-size:12px;margin:4px 0 8px">${new Date(a.ts * 1000).toLocaleString('pt-PT')} · disponibilidade: ${esc(a.availability || '—')}</div>
+      <details><summary style="cursor:pointer;color:var(--accent);font-size:13px">respostas completas</summary>
         <div class="prose" style="margin-top:10px;font-size:13.5px">
           <p><b>Experiência:</b> ${esc(a.experience || '—')}</p>
           <p><b>Motivação:</b> ${esc(a.motivation || '—')}</p>
@@ -79,33 +75,211 @@ function render() {
           <p><b>Cenário 3 (acusado de admin abuse):</b> ${esc(a.scenario3 || '—')}</p>
         </div>
       </details>
-      <div class="tabs" style="margin:12px 0 0">
-        ${STATUSES.map((s) => `<button data-id="${a.id}" data-status="${s}" ${a.status === s ? 'class="active"' : ''}>${s}</button>`).join('')}
-      </div>
-    </div>`).join('') || '<p style="color:var(--ink-muted)">Sem candidaturas neste filtro.</p>';
+      ${statusButtons('app', a.id, a.status, ['pendente', 'em análise', 'entrevista', 'aprovada', 'recusada'])}
+    </div>`).join('') || '<p style="color:var(--ink-muted)">Sem candidaturas.</p>';
 }
 
-document.getElementById('load-btn').addEventListener('click', () => {
+async function renderAppeals() {
+  const { rows } = await aGet('/api/admin/appeals');
+  body().innerHTML = rows.map((a) => `
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
+        <b>${esc(a.player_name || a.steam_id)}</b>
+        <span style="color:var(--ink-muted);font-size:13px">${esc(a.discord || 'sem discord')} · ${timeAgo(a.ts)}</span>
+        <span style="margin-left:auto">${badge(a.status)}</span>
+      </div>
+      <p style="color:var(--ink-2);font-size:13.5px;margin-top:8px">${esc(a.text)}</p>
+      ${a.response ? `<p style="margin-top:8px;font-size:13px"><b>Resposta:</b> ${esc(a.response)}</p>` : ''}
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input type="text" data-response-for="${a.id}" placeholder="resposta ao jogador…" style="flex:1;min-width:220px">
+      </div>
+      ${statusButtons('appeal', a.id, a.status, ['pendente', 'em análise', 'aceite', 'recusado'])}
+    </div>`).join('') || '<p style="color:var(--ink-muted)">Sem apelos.</p>';
+}
+
+async function renderRedemptions() {
+  const { rows } = await aGet('/api/admin/redemptions');
+  body().innerHTML = `
+    <p style="color:var(--ink-muted);font-size:13px;margin-bottom:10px">
+      Resgates com comando são entregues automaticamente pelo plugin ("enviado" → "entregue").
+      Os restantes entregam-se manualmente in-game e marcam-se aqui.</p>` +
+    (rows.map((r) => `
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
+        <b>${esc(r.item_name || r.item_id)}</b>
+        <span style="color:var(--ink-muted);font-size:13px">${esc(r.player_name || r.steam_id)} · ${r.cost.toLocaleString('pt-PT')} 💎 · ${timeAgo(r.ts)}</span>
+        <span style="margin-left:auto">${badge(r.status)}</span>
+      </div>
+      ${r.command ? `<code style="font-size:12px;color:var(--ink-muted)">${esc(r.command)}</code>` : '<span style="font-size:12px;color:var(--gold)">entrega manual</span>'}
+      ${statusButtons('redemption', r.id, r.status, ['pendente', 'enviado', 'entregue', 'falhou'])}
+    </div>`).join('') || '<p style="color:var(--ink-muted)">Sem resgates.</p>');
+}
+
+async function renderOw() {
+  const { rows } = await aGet('/api/admin/owcases');
+  body().innerHTML = `
+    <form id="ow-form" class="card" style="margin-bottom:14px">
+      <b>Novo caso</b>
+      <div class="form-grid" style="margin-top:10px">
+        <div class="field"><label>Título (sem nomes de jogadores!)</label><input name="title" required maxlength="120"></div>
+        <div class="field"><label>URL do clip (YouTube/Streamable)</label><input name="clipUrl" required maxlength="300"></div>
+      </div>
+      <button class="btn" style="margin-top:12px">Publicar caso</button>
+    </form>` +
+    rows.map((c) => `
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
+        <b>${esc(c.title)}</b> ${badge(c.status)}
+        <a href="${esc(c.clip_url)}" target="_blank" rel="noopener" style="font-size:13px">🎬 clip</a>
+        <span style="margin-left:auto;font-size:13px;color:var(--ink-2)">
+          🚨 ${c.tally.cheat} · 🤔 ${c.tally.unsure} · ✅ ${c.tally.clean}</span>
+      </div>
+      ${c.status === 'aberto' ? `
+        <div class="tabs" style="margin-top:10px">
+          ${['cheater', 'inocente', 'inconclusivo'].map((v) =>
+            `<button data-close-ow="${c.id}" data-verdict="${v}">fechar: ${v}</button>`).join('')}
+        </div>` : `<p style="font-size:13px;margin-top:6px">Veredicto: <b>${esc(c.verdict)}</b></p>`}
+    </div>`).join('');
+
+  document.getElementById('ow-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await aPost('/api/admin/owcases', Object.fromEntries(new FormData(e.target).entries()));
+    renderOw();
+  });
+}
+
+async function renderMap() {
+  const state = await api('/api/mapvote');
+  body().innerHTML = `
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <b>Ronda ${state.round}</b> ${badge(state.open ? 'aberto' : 'fechado')}
+        <button class="btn ghost" data-map-action="${state.open ? 'close' : 'open'}">${state.open ? 'Fechar votação' : 'Abrir votação'}</button>
+        <button class="btn ghost" data-map-action="new_round">Nova ronda (limpa opções)</button>
+      </div>
+    </div>
+    <form id="map-form" class="card" style="margin-bottom:14px">
+      <b>Adicionar mapa candidato</b>
+      <div class="form-grid" style="margin-top:10px">
+        <div class="field"><label>Nome/descrição</label><input name="label" required maxlength="80" placeholder="Mapa A — clássico, 2 lagos"></div>
+        <div class="field"><label>Seed</label><input name="seed" maxlength="20"></div>
+        <div class="field"><label>Tamanho</label><input name="size" type="number" min="1000" max="6000" placeholder="3800"></div>
+      </div>
+      <button class="btn" style="margin-top:12px">Adicionar</button>
+    </form>` +
+    state.options.map((o) => `
+      <div class="card" style="margin-bottom:8px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
+        <b>${esc(o.label)}</b>
+        <span style="color:var(--ink-muted);font-size:13px">seed ${esc(o.seed || '—')} · ${o.size || '—'}</span>
+        <span style="margin-left:auto;font-size:13px"><b>${o.votes}</b> pontos (${o.voters} votantes)</span>
+      </div>`).join('');
+
+  document.getElementById('map-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(e.target).entries());
+    await aPost('/api/admin/mapvote', { action: 'add', label: d.label, seed: d.seed, size: parseInt(d.size, 10) || null });
+    renderMap();
+  });
+}
+
+async function renderPosts() {
+  const { rows } = await api('/api/posts');
+  body().innerHTML = `
+    <form id="post-form" class="card" style="margin-bottom:14px">
+      <b>Nova publicação</b>
+      <div class="field" style="margin-top:10px"><label>Título</label><input name="title" required maxlength="120"></div>
+      <div class="field" style="margin-top:10px"><label>Texto</label><textarea name="body" required maxlength="8000"></textarea></div>
+      <button class="btn" style="margin-top:12px">Publicar</button>
+    </form>` +
+    rows.map((p) => `
+      <div class="card post" style="margin-bottom:10px">
+        <div style="display:flex;gap:10px;align-items:baseline">
+          <h3 style="margin:0">${esc(p.title)}</h3>
+          <span style="color:var(--ink-muted);font-size:12px">${fmtDate(p.ts)}</span>
+          <button class="btn ghost" data-del-post="${p.id}" style="margin-left:auto;padding:4px 12px;font-size:12px">apagar</button>
+        </div>
+        <p style="margin-top:8px">${esc(p.body)}</p>
+      </div>`).join('');
+
+  document.getElementById('post-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await aPost('/api/admin/posts', Object.fromEntries(new FormData(e.target).entries()));
+    renderPosts();
+  });
+}
+
+const SECTIONS = { apps: renderApps, appeals: renderAppeals, redemptions: renderRedemptions, ow: renderOw, map: renderMap, posts: renderPosts };
+
+async function show(section) {
+  SECTION = section;
+  document.querySelectorAll('#section-tabs button').forEach((x) => x.classList.toggle('active', x.dataset.s === section));
+  body().innerHTML = '<p style="color:var(--ink-muted)">a carregar…</p>';
+  try { await SECTIONS[section](); }
+  catch (e) { body().innerHTML = `<div class="notice err">Erro: ${esc(e.message)}</div>`; }
+}
+
+// ---------- eventos globais ----------
+
+document.getElementById('load-btn').addEventListener('click', async () => {
   KEY = document.getElementById('admin-key').value.trim();
-  if (KEY) load();
+  if (!KEY) return;
+  try {
+    await aGet('/api/admin/applications');
+    sessionStorage.setItem('adminKey', KEY);
+    document.getElementById('login-card').style.display = 'none';
+    document.getElementById('panel').style.display = '';
+    show('apps');
+  } catch { alert('Chave inválida.'); }
 });
 
-document.getElementById('filter-tabs').addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b) return;
-  FILTER = b.dataset.f;
-  document.querySelectorAll('#filter-tabs button').forEach((x) => x.classList.toggle('active', x === b));
-  render();
+document.getElementById('section-tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-s]');
+  if (b) show(b.dataset.s);
 });
 
-document.getElementById('app-list').addEventListener('click', async (e) => {
-  const b = e.target.closest('button[data-status]'); if (!b) return;
-  await apiPost('/api/admin/applications', { id: parseInt(b.dataset.id, 10), status: b.dataset.status }, { 'X-Admin-Key': KEY });
-  const row = ROWS.find((x) => x.id === parseInt(b.dataset.id, 10));
-  if (row) row.status = b.dataset.status;
-  render();
+document.getElementById('section-body').addEventListener('click', async (e) => {
+  const st = e.target.closest('button[data-status]');
+  if (st) {
+    e.preventDefault();
+    const { kind, id, status } = st.dataset;
+    const url = { app: '/api/admin/applications', appeal: '/api/admin/appeals', redemption: '/api/admin/redemptions' }[kind];
+    const payload = { id: parseInt(id, 10), status };
+    if (kind === 'appeal') {
+      const resp = document.querySelector(`input[data-response-for="${id}"]`);
+      if (resp && resp.value.trim()) payload.response = resp.value.trim();
+    }
+    await aPost(url, payload);
+    show(SECTION);
+    return;
+  }
+  const ow = e.target.closest('button[data-close-ow]');
+  if (ow) {
+    e.preventDefault();
+    await aPost('/api/admin/owcases/close', { id: parseInt(ow.dataset.closeOw, 10), verdict: ow.dataset.verdict });
+    show(SECTION);
+    return;
+  }
+  const ma = e.target.closest('button[data-map-action]');
+  if (ma) {
+    e.preventDefault();
+    if (ma.dataset.mapAction === 'new_round' && !confirm('Nova ronda apaga as opções e votos atuais da vista pública. Continuar?')) return;
+    await aPost('/api/admin/mapvote', { action: ma.dataset.mapAction });
+    show(SECTION);
+    return;
+  }
+  const dp = e.target.closest('button[data-del-post]');
+  if (dp) {
+    e.preventDefault();
+    if (!confirm('Apagar esta publicação?')) return;
+    await aPost('/api/admin/posts/delete', { id: parseInt(dp.dataset.delPost, 10) });
+    show(SECTION);
+  }
 });
 
-if (KEY) { document.getElementById('admin-key').value = KEY; load(); }
+if (KEY) {
+  document.getElementById('admin-key').value = KEY;
+  document.getElementById('load-btn').click();
+}
 </script>
 </body>
 </html>

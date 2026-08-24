@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Votação de Mapa — LusoRust</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header></header>
+
+<main>
+  <h2 class="section" style="margin-top:6px">Votação do próximo mapa</h2>
+
+  <div class="card">
+    <h3>Como funciona</h3>
+    <p style="color:var(--ink-2);font-size:14px">
+      Antes de cada wipe, a comunidade escolhe o mapa. O teu voto vale mais se
+      jogares mais: <b style="color:var(--accent)">1 voto base + 1 por cada 10 horas jogadas
+      na wipe anterior (máximo 5)</b>. Quem constrói o servidor decide o servidor.
+      Podes mudar o teu voto enquanto a votação estiver aberta.
+    </p>
+  </div>
+
+  <div id="state-banner"></div>
+  <div class="grid cols-3" id="options" style="margin-top:16px">a carregar…</div>
+</main>
+
+<footer></footer>
+
+<script src="/js/common.js"></script>
+<script>
+async function load() {
+  const [state, user] = await Promise.all([api('/api/mapvote'), me()]);
+  const banner = document.getElementById('state-banner');
+
+  if (!state.open) {
+    banner.innerHTML = `<div class="notice err" style="margin-top:16px">
+      🔒 A votação está fechada de momento. Abre normalmente 36 h antes da wipe — fica atento ao Discord.</div>`;
+  } else if (!user.loggedIn) {
+    banner.innerHTML = `<div class="notice err" style="margin-top:16px">
+      🔑 <a href="/auth/steam">Inicia sessão com a Steam</a> para votares.</div>`;
+  } else {
+    banner.innerHTML = `<div class="notice ok" style="margin-top:16px">
+      🗳️ Votação aberta! O teu voto vale <b>×${state.myWeight}</b>
+      ${state.myWeight > 1 ? '(obrigado por jogares connosco!)' : '(joga 10 h+ numa wipe para valer mais)'}.
+      ${state.myVote ? 'Já votaste — podes mudar o voto.' : ''}</div>`;
+  }
+
+  const total = state.options.reduce((s, o) => s + o.votes, 0) || 1;
+  document.getElementById('options').innerHTML = state.options.map((o) => `
+    <div class="card map-option ${state.myVote === o.id ? 'voted' : ''}">
+      <b style="font-size:15.5px">${esc(o.label)}</b>
+      <p style="color:var(--ink-muted);font-size:12.5px;margin:4px 0 2px">
+        ${o.seed ? `seed ${esc(o.seed)}` : ''} ${o.size ? `· ${o.size}` : ''}
+        ${o.seed && o.size ? `· <a href="https://rustmaps.com/map/${o.size}_${esc(o.seed)}" target="_blank" rel="noopener">ver no RustMaps ↗</a>` : ''}
+      </p>
+      <div class="vote-bar"><div style="width:${Math.round((o.votes / total) * 100)}%"></div></div>
+      <p style="color:var(--ink-2);font-size:13px;margin:6px 0 12px">
+        <b>${o.votes}</b> pontos · ${o.voters} votante${o.voters === 1 ? '' : 's'}
+      </p>
+      ${state.open ? `<button class="btn ${state.myVote === o.id ? '' : 'ghost'}" data-id="${o.id}">
+        ${state.myVote === o.id ? '✓ O teu voto' : 'Votar neste'}</button>` : ''}
+    </div>`).join('') ||
+    '<p style="color:var(--ink-muted)">Ainda não há mapas candidatos para esta ronda.</p>';
+}
+
+document.getElementById('options').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-id]');
+  if (!b) return;
+  try {
+    await apiPost('/api/mapvote/vote', { optionId: parseInt(b.dataset.id, 10) });
+    load();
+  } catch (err) { alert('⚠️ ' + err.message); }
+});
+
+load().catch(console.error);
+</script>
+</body>
+</html>

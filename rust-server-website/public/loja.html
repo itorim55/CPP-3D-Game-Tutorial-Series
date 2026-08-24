@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loja de Gemas — LusoRust</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header></header>
+
+<main>
+  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px">
+    <h2 class="section" style="margin:0">Loja de Gemas</h2>
+    <span class="gem-balance" id="balance">— 💎</span>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>Como funciona</h3>
+    <p style="color:var(--ink-2);font-size:14px">
+      Ganhas <b style="color:var(--gold)" id="rate">1 000 gemas por cada hora jogada</b> no servidor —
+      automaticamente, sem fazer nada. As gemas trocam-se aqui por recompensas
+      <b>100% cosméticas</b>: nada do que está na loja dá vantagem in-game.
+      Inicia sessão com a Steam para veres o teu saldo e resgatar.
+    </p>
+  </div>
+
+  <div id="login-hint" class="notice err" style="display:none">
+    🔒 <a href="/auth/steam">Inicia sessão com a Steam</a> para resgatares recompensas.
+  </div>
+
+  <h2 class="section">Recompensas</h2>
+  <div class="grid cols-2" id="items">a carregar…</div>
+
+  <div id="my-redemptions" style="display:none">
+    <h2 class="section">Os meus resgates</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Quando</th><th>Item</th><th class="num">Custo</th><th>Estado</th></tr></thead>
+        <tbody id="redemption-rows"></tbody>
+      </table>
+    </div>
+    <p style="color:var(--ink-muted);font-size:12.5px;margin-top:8px">
+      Resgates automáticos são entregues in-game em ~1 minuto (se estiveres online).
+      Itens marcados como entrega manual são tratados pela staff em 24 h.
+    </p>
+  </div>
+</main>
+
+<footer></footer>
+
+<script src="/js/common.js"></script>
+<script>
+let USER = null;
+
+async function load() {
+  const [storeData, user] = await Promise.all([api('/api/store'), me()]);
+  USER = user;
+
+  document.getElementById('rate').textContent =
+    `${storeData.gemsPerHour.toLocaleString('pt-PT')} gemas por cada hora jogada`;
+
+  if (user.loggedIn) {
+    document.getElementById('balance').textContent = gems(user.wallet.gems);
+    if (user.redemptions.length) {
+      document.getElementById('my-redemptions').style.display = '';
+      document.getElementById('redemption-rows').innerHTML = user.redemptions.map((r) => `
+        <tr><td>${timeAgo(r.ts)}</td><td>${esc(r.name || '?')}</td>
+        <td class="num">${r.cost.toLocaleString('pt-PT')} 💎</td>
+        <td><span class="badge ${esc(r.status)}">${esc(r.status)}</span></td></tr>`).join('');
+    }
+  } else {
+    document.getElementById('balance').textContent = 'entra para ver 💎';
+    document.getElementById('login-hint').style.display = '';
+  }
+
+  document.getElementById('items').innerHTML = storeData.items.map((it) => {
+    const canAfford = user.loggedIn && user.wallet.gems >= it.cost;
+    return `
+    <div class="card store-item">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
+        <b style="font-size:16px">${esc(it.name)}</b>
+        <span class="cost">${it.cost.toLocaleString('pt-PT')} 💎</span>
+      </div>
+      <p style="color:var(--ink-2);font-size:13.5px;margin:8px 0 14px">${esc(it.description || '')}</p>
+      <button class="btn" data-id="${esc(it.id)}" ${canAfford ? '' : 'disabled style="opacity:.45;cursor:not-allowed"'}>
+        ${user.loggedIn ? (canAfford ? 'Resgatar' : 'Gemas insuficientes') : 'Entra para resgatar'}
+      </button>
+    </div>`;
+  }).join('') || '<p style="color:var(--ink-muted)">Loja vazia.</p>';
+}
+
+document.getElementById('items').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-id]');
+  if (!b || b.disabled) return;
+  b.disabled = true; b.textContent = 'a resgatar…';
+  try {
+    const r = await apiPost('/api/redeem', { itemId: b.dataset.id });
+    b.textContent = r.auto ? '✅ Resgatado — entrega em ~1 min' : '✅ Resgatado — entrega manual em 24 h';
+    _mePromise = null; // refrescar saldo
+    setTimeout(load, 1500);
+  } catch (err) {
+    b.disabled = false; b.textContent = 'Resgatar';
+    alert('⚠️ ' + err.message);
+  }
+});
+
+load().catch(console.error);
+</script>
+</body>
+</html>
