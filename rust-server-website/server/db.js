@@ -232,6 +232,18 @@ CREATE TABLE IF NOT EXISTS elo (
   PRIMARY KEY (wipe_id, steam_id)
 );
 
+-- eventos do mapa: Patrol Heli / Bradley abatidos, crates hackeadas
+CREATE TABLE IF NOT EXISTS map_events (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts       INTEGER NOT NULL,
+  wipe_id  INTEGER NOT NULL,
+  kind     TEXT NOT NULL,          -- heli | bradley | crate
+  steam_id TEXT NOT NULL,
+  pos_x    REAL,
+  pos_z    REAL
+);
+CREATE INDEX IF NOT EXISTS idx_map_events_wipe ON map_events(wipe_id, kind);
+
 -- eventos de raid: estruturas/portas destruídas por jogadores
 CREATE TABLE IF NOT EXISTS raid_events (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -633,6 +645,11 @@ function achievements(steamId, wipeId) {
   const demolished = raidStats(steamId, wipeId);
   if (demolished >= 50) add('🧨', 'Demolidor', `${demolished} estruturas destruídas nesta wipe`);
 
+  const me = playerMapEvents(steamId, wipeId);
+  if ((me.heli || 0) >= 3) add('🚁', 'Caça-Helis', `${me.heli} Patrol Helis abatidos nesta wipe`);
+  if ((me.bradley || 0) >= 3) add('🛡️', 'Anti-Tanque', `${me.bradley} Bradleys destruídos nesta wipe`);
+  if ((me.crate || 0) >= 5) add('📦', 'Mãos Rápidas', `${me.crate} crates hackeadas nesta wipe`);
+
   const streak = playerStreak(steamId, wipeId);
   if (streak >= 10) add('⚡', 'Rampage', `${streak} kills sem morrer (em curso!)`);
 
@@ -680,12 +697,15 @@ function wipeSummary(wipeId) {
     SELECT p.name, p.steam_id, pw.seconds FROM playtime_wipe pw JOIN players p ON p.steam_id = pw.steam_id
     WHERE pw.wipe_id = ? ORDER BY pw.seconds DESC LIMIT 1`, wipeId);
   const topElo = eloLeaderboard(wipeId, 1)[0] || null;
+  const topHeli = one(`
+    SELECT p.name, m.steam_id, COUNT(*) n FROM map_events m JOIN players p ON p.steam_id = m.steam_id
+    WHERE m.wipe_id = ? AND m.kind = 'heli' GROUP BY m.steam_id ORDER BY n DESC LIMIT 1`, wipeId);
   const totals = one(`
     SELECT COUNT(*) kills, COUNT(DISTINCT attacker_id) killers FROM kills WHERE wipe_id = ?`, wipeId);
 
   return {
     wipe: { id: wipe.id, label: wipe.label, startedAt: wipe.started_at, mapSeed: wipe.map_seed, mapSize: wipe.map_size },
-    totals, topKiller, longestKill, topHeadshots, topDeaths, topFarmer, topHours, topElo,
+    totals, topKiller, longestKill, topHeadshots, topDeaths, topFarmer, topHours, topElo, topHeli,
   };
 }
 
@@ -787,6 +807,38 @@ function raidList(wipeId, limit = 20) {
 function raidStats(steamId, wipeId) {
   return db.prepare('SELECT COUNT(*) n FROM raid_events WHERE attacker_id = ? AND wipe_id = ?')
     .get(steamId, wipeId).n;
+}
+
+// ---------- eventos do mapa (heli/bradley/crates) ----------
+
+const MAP_EVENT_KINDS = ['heli', 'bradley', 'crate'];
+
+function recordMapEvent(e, wipeId) {
+  if (!MAP_EVENT_KINDS.includes(e.kind)) return;
+  recordMapEvent.stmt ??= db.prepare(`
+    INSERT INTO map_events (ts, wipe_id, kind, steam_id, pos_x, pos_z) VALUES (?, ?, ?, ?, ?, ?)`);
+  recordMapEvent.stmt.run(e.ts, wipeId, e.kind, e.steamId, e.posX ?? null, e.posZ ?? null);
+}
+
+function mapEventLeaders(wipeId, limit = 5) {
+  const out = { totals: {} };
+  for (const kind of MAP_EVENT_KINDS) {
+    out[kind] = db.prepare(`
+      SELECT m.steam_id, p.name, COUNT(*) n FROM map_events m
+      LEFT JOIN players p ON p.steam_id = m.steam_id
+      WHERE m.wipe_id = ? AND m.kind = ?
+      GROUP BY m.steam_id ORDER BY n DESC LIMIT ?`).all(wipeId, kind, limit);
+    out.totals[kind] = db.prepare(
+      'SELECT COUNT(*) n FROM map_events WHERE wipe_id = ? AND kind = ?').get(wipeId, kind).n;
+  }
+  return out;
+}
+
+function playerMapEvents(steamId, wipeId) {
+  const rows = db.prepare(`
+    SELECT kind, COUNT(*) n FROM map_events WHERE steam_id = ? AND wipe_id = ? GROUP BY kind`)
+    .all(steamId, wipeId);
+  return Object.fromEntries(rows.map((r) => [r.kind, r.n]));
 }
 
 // ---------- kill streaks ----------
@@ -1215,7 +1267,8 @@ module.exports = {
   eloLeaderboard, eloGet, eloTier,
   achievements, deathHeatmap,
   addBan, deleteBan, listBansAdmin,
-  // raids, streaks, comparador
+  // raids, streaks, comparador, eventos do mapa
   recordRaidEvent, raidList, raidStats,
   currentStreaks, playerStreak, comparePlayers,
+  recordMapEvent, mapEventLeaders, playerMapEvents,
 };

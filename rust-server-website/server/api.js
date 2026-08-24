@@ -61,6 +61,17 @@ function handleIngest(body, config) {
         accepted++;
         break;
       }
+      case 'mapevent': {
+        if (!e.steamId || !e.kind) break;
+        store.upsertPlayer(String(e.steamId), clean(e.name, 64), ts);
+        store.recordMapEvent({
+          ts, kind: clean(e.kind, 12), steamId: String(e.steamId),
+          posX: Number.isFinite(e.posX) ? e.posX : null,
+          posZ: Number.isFinite(e.posZ) ? e.posZ : null,
+        }, wipe.id);
+        accepted++;
+        break;
+      }
       case 'pve_death': {
         if (!e.victimId) break;
         store.upsertPlayer(String(e.victimId), clean(e.victimName, 64), ts);
@@ -267,6 +278,10 @@ function route(req, res, url, body, config, session) {
       }
       case '/api/streaks':
         json(res, 200, { rows: store.currentStreaks(store.currentWipe().id) }); return true;
+      case '/api/mapevents': {
+        const wid = parseInt(url.searchParams.get('wipeId') || '', 10) || store.currentWipe().id;
+        json(res, 200, store.mapEventLeaders(wid)); return true;
+      }
       case '/api/compare': {
         const a = url.searchParams.get('a'), b = url.searchParams.get('b');
         if (!a || !b) { json(res, 400, { error: 'Faltam os parâmetros a e b' }); return true; }

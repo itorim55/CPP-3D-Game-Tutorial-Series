@@ -76,6 +76,16 @@ sozinhos. Antes de te comprometeres com um nome: pesquisa-o no BattleMetrics
 (evita colisões com servidores existentes) e verifica o domínio (.gg/.pt) num
 registrador tipo Namecheap/Porkbun.
 
+## Embeds bonitos ao partilhar links (Open Graph)
+
+O servidor injeta meta tags Open Graph **dinâmicas** em cada página HTML:
+partilhar o link de um perfil no Discord mostra um cartão com o nome, kills,
+K/D e tier Elo desse jogador ao vivo; o resumo da wipe mostra os highlights;
+o /vs mostra o frente-a-frente. A imagem de marca está em `public/img/og.png`
+(1200×630 — substitui-a se mudares o nome do servidor) e a barra lateral do
+embed usa o laranja da marca (`theme-color`). Nota: os crawlers só veem o URL
+público, por isso define `siteUrl` no config.json.
+
 ## Alertas de anomalia (deteção de cheaters)
 
 Com `anomalyKillsPerHour` definido (padrão 15) e o webhook `staff` configurado,
@@ -129,6 +139,7 @@ Instalação do plugin: ver `plugin/README.md`.
 | `GET /api/raids` | maiores raids da wipe (estruturas destruídas, agrupadas) |
 | `GET /api/streaks` | kill streaks atuais |
 | `GET /api/compare?a=ID&b=ID` | comparador 1v1 + frente-a-frente |
+| `GET /api/mapevents` | caçadores de Heli/Bradley/crates da wipe |
 | `GET /api/killfeed?limit=50` | últimas kills |
 | `GET /api/player?id=<steamid64>` | perfil completo |
 | `GET /api/search?q=nome` | pesquisa de jogadores |

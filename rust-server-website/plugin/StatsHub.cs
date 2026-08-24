@@ -220,14 +220,31 @@ namespace Oxide.Plugins
             return victim.lastDamage.ToString();
         }
 
-        // Estruturas/portas destruídas por jogadores -> registo de raids no site
+        // Estruturas destruídas (raids) e eventos do mapa (Heli/Bradley abatidos)
         private void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
         {
-            if (!_config.TrackRaids || entity == null) return;
-            if (!(entity is BuildingBlock) && !(entity is Door)) return;
-
+            if (entity == null) return;
             var attacker = info?.InitiatorPlayer;
             if (attacker == null || attacker.IsNpc) return;
+
+            // Patrol Helicopter / Bradley APC abatidos -> "caçadores" no site
+            if (entity is PatrolHelicopter || entity is BradleyAPC)
+            {
+                Enqueue(new Dictionary<string, object>
+                {
+                    ["type"] = "mapevent",
+                    ["ts"] = Now(),
+                    ["kind"] = entity is PatrolHelicopter ? "heli" : "bradley",
+                    ["steamId"] = attacker.UserIDString,
+                    ["name"] = attacker.displayName,
+                    ["posX"] = Math.Round(entity.transform.position.x, 1),
+                    ["posZ"] = Math.Round(entity.transform.position.z, 1),
+                });
+                return;
+            }
+
+            if (!_config.TrackRaids) return;
+            if (!(entity is BuildingBlock) && !(entity is Door)) return;
 
             var block = entity as BuildingBlock;
             Enqueue(new Dictionary<string, object>
@@ -241,6 +258,24 @@ namespace Oxide.Plugins
                 ["weapon"] = info.WeaponPrefab != null ? info.WeaponPrefab.ShortPrefabName : GetWeaponName(info),
                 ["posX"] = Math.Round(entity.transform.position.x, 1),
                 ["posZ"] = Math.Round(entity.transform.position.z, 1),
+            });
+        }
+
+        // Crate hackeada (Oil Rig / Cargo) -> "Mãos Rápidas" no site
+        private void OnCrateHackEnd(HackableLockedCrate crate)
+        {
+            if (crate == null) return;
+            var hacker = BasePlayer.FindByID(crate.originalHackerPlayerId);
+            if (hacker == null || hacker.IsNpc) return;
+            Enqueue(new Dictionary<string, object>
+            {
+                ["type"] = "mapevent",
+                ["ts"] = Now(),
+                ["kind"] = "crate",
+                ["steamId"] = hacker.UserIDString,
+                ["name"] = hacker.displayName,
+                ["posX"] = Math.Round(crate.transform.position.x, 1),
+                ["posZ"] = Math.Round(crate.transform.position.z, 1),
             });
         }
 

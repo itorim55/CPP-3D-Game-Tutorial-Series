@@ -147,6 +147,20 @@ function seed() {
   // e marcar toda a gente como vista nas últimas ~20 h (para streaks/atividade)
   store.db.prepare(`UPDATE players SET last_seen = ? - ABS(RANDOM() % 72000)`).run(now);
 
+  console.log('[seed] Eventos do mapa...');
+  const eventKinds = [['heli', 9], ['bradley', 14], ['crate', 30]];
+  for (const [kind, count] of eventKinds) {
+    for (let i = 0; i < count; i++) {
+      store.recordMapEvent({
+        ts: now - rnd(10 * 86400),
+        kind,
+        steamId: pick(ids.slice(0, 10)),
+        posX: (Math.random() - 0.5) * 3000,
+        posZ: (Math.random() - 0.5) * 3000,
+      }, wipeNow.id);
+    }
+  }
+
   console.log('[seed] Equipas...');
   store.updateTeams(wipeNow.id, [
     { id: '1001', leader: ids[0], members: [ids[0], ids[1], ids[7]] },

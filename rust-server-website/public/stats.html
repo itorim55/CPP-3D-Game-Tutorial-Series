@@ -64,6 +64,9 @@
     </table>
   </div>
 
+  <h2 class="section">Eventos do mapa <small>esta wipe — quem manda nos monumentos</small></h2>
+  <div class="grid cols-3" id="map-events">a carregar…</div>
+
   <h2 class="section">Maiores raids da wipe <small>agrupados por zona e hora</small></h2>
   <div class="table-wrap">
     <table>
@@ -188,6 +191,25 @@ async function loadTeams() {
     '<tr><td colspan="6">Ainda sem equipas registadas nesta wipe (o plugin envia as equipas nativas a cada 5 min).</td></tr>';
 }
 
+async function loadMapEvents() {
+  const m = await api('/api/mapevents');
+  const block = (icon, title, rows, total, unit) => `
+    <div class="card">
+      <h3>${icon} ${title} <span style="color:var(--ink-muted);font-weight:400">· ${total} esta wipe</span></h3>
+      ${rows.length ? rows.map((r, i) => `
+        <div style="display:flex;gap:8px;align-items:baseline;font-size:14px;padding:3px 0">
+          <span class="rank ${i === 0 ? 'top' : ''}" style="width:20px">${i + 1}</span>
+          ${playerLink(r.steam_id, r.name || r.steam_id)}
+          <b style="margin-left:auto">${r.n}</b>
+        </div>`).join('')
+        : `<p style="color:var(--ink-muted);font-size:13px">Ainda ninguém. ${unit} à solta!</p>`}
+    </div>`;
+  document.getElementById('map-events').innerHTML =
+    block('🚁', 'Caça-Helis', m.heli, m.totals.heli, 'Patrol Heli') +
+    block('🛡️', 'Anti-Tanque', m.bradley, m.totals.bradley, 'Bradley') +
+    block('📦', 'Mãos Rápidas', m.crate, m.totals.crate, 'Crates');
+}
+
 async function loadRaids() {
   const r = await api('/api/raids');
   document.getElementById('raids-body').innerHTML = r.rows.map((raid) => `
@@ -206,6 +228,7 @@ async function loadRaids() {
   await loadBoard();
   loadTeams().catch(console.error);
   loadRaids().catch(console.error);
+  loadMapEvents().catch(console.error);
   const kf = await api('/api/killfeed?limit=50');
   document.getElementById('killfeed').innerHTML = kf.rows.map((k) => `
     <div class="row">

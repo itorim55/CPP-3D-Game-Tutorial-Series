@@ -50,6 +50,7 @@ async function load(wipeId) {
     card('🌾', 'Maior farmer', s.topFarmer, `${(s.topFarmer?.n || 0).toLocaleString('pt-PT')} recursos`),
     card('⏱️', 'Mais horas', s.topHours, `${Math.round((s.topHours?.seconds || 0) / 3600)} horas`),
     card('🧲', 'Saco de pancada', s.topDeaths, `${s.topDeaths?.n} mortes (um herói)`),
+    card('🚁', 'Caça-Helis', s.topHeli, `${s.topHeli?.n} Patrol Helis abatidos`),
   ].filter(Boolean).join('') ||
   '<p style="color:var(--ink-muted)">Ainda não há dados suficientes nesta wipe.</p>';
 }

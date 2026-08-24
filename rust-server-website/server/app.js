@@ -10,6 +10,7 @@ const crypto = require('node:crypto');
 
 const api = require('./api');
 const auth = require('./auth');
+const og = require('./og');
 
 // ---------- configuração ----------
 
@@ -73,9 +74,17 @@ function serveStatic(req, res, url) {
       res.end('<h1>404</h1><p>Página não encontrada. <a href="/">Voltar ao início</a></p>');
       return;
     }
+    const isHtml = file.endsWith('.html');
+    if (isHtml) {
+      // injetar Open Graph dinâmico (perfil com stats ao vivo, resumo com
+      // highlights...) para os embeds do Discord/WhatsApp ficarem bonitos
+      const route = url.pathname === '/' ? '/' : url.pathname.replace(/\.html$/, '');
+      const tags = og.tagsFor(route, url.searchParams, SITE_URL);
+      data = data.toString('utf-8').replace('</head>', `${tags}\n</head>`);
+    }
     res.writeHead(200, {
       'Content-Type': MIME[path.extname(file)] || 'application/octet-stream',
-      'Cache-Control': file.endsWith('.html') ? 'no-cache' : 'public, max-age=300',
+      'Cache-Control': isHtml ? 'no-cache' : 'public, max-age=300',
     });
     res.end(data);
   });
