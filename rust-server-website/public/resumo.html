@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resumo da Wipe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header></header>
+
+<main>
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:6px">
+    <h2 class="section" style="margin:0">🏁 Resumo da wipe</h2>
+    <select id="wipe-select" style="width:auto;border-radius:999px;padding:7px 14px;font-size:13px"></select>
+  </div>
+  <p style="color:var(--ink-muted);font-size:13px;margin-top:6px" id="wipe-meta"></p>
+
+  <div class="grid cols-3" id="highlights" style="margin-top:18px">a carregar…</div>
+</main>
+
+<footer></footer>
+
+<script src="/js/common.js"></script>
+<script>
+async function load(wipeId) {
+  const s = await api(`/api/wipesummary${wipeId ? `?wipe=${wipeId}` : ''}`);
+
+  document.getElementById('wipe-meta').textContent =
+    `${s.wipe.label || 'Wipe'} · começou a ${fmtDate(s.wipe.startedAt)}` +
+    `${s.wipe.mapSeed ? ` · seed ${s.wipe.mapSeed}` : ''}${s.wipe.mapSize ? ` · mapa ${s.wipe.mapSize}` : ''}` +
+    ` · ${(s.totals?.kills || 0).toLocaleString('pt-PT')} kills por ${s.totals?.killers || 0} jogadores`;
+
+  const card = (icon, title, who, detail) => who ? `
+    <div class="card" style="text-align:center;padding:26px">
+      <div style="font-size:34px">${icon}</div>
+      <div style="color:var(--ink-muted);font-size:12.5px;text-transform:uppercase;letter-spacing:.5px;margin:6px 0">${title}</div>
+      <div style="font-size:18px;font-weight:700">${playerLink(who.steam_id, who.name)}</div>
+      <div style="color:var(--accent);font-size:14px;margin-top:4px">${detail}</div>
+    </div>` : '';
+
+  document.getElementById('highlights').innerHTML = [
+    card('⚔️', 'Top killer', s.topKiller, `${s.topKiller?.n} kills`),
+    card('🦅', 'Melhor Elo', s.topElo, `${s.topElo?.rating} (${esc(s.topElo?.tier || '')})`),
+    card('🎯', 'Kill mais longa', s.longestKill, `${Math.round(s.longestKill?.distance || 0)} m · ${esc(s.longestKill?.weapon || '')}`),
+    card('🎖️', 'Mais headshots', s.topHeadshots, `${s.topHeadshots?.n} headshots`),
+    card('🌾', 'Maior farmer', s.topFarmer, `${(s.topFarmer?.n || 0).toLocaleString('pt-PT')} recursos`),
+    card('⏱️', 'Mais horas', s.topHours, `${Math.round((s.topHours?.seconds || 0) / 3600)} horas`),
+    card('🧲', 'Saco de pancada', s.topDeaths, `${s.topDeaths?.n} mortes (um herói)`),
+  ].filter(Boolean).join('') ||
+  '<p style="color:var(--ink-muted)">Ainda não há dados suficientes nesta wipe.</p>';
+}
+
+(async () => {
+  const data = await api('/api/wipes');
+  const sel = document.getElementById('wipe-select');
+  for (const w of data.rows) {
+    const opt = document.createElement('option');
+    opt.value = w.id;
+    const date = new Date(w.started_at * 1000).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
+    opt.textContent = `${w.label || 'Wipe'} (${date})${w.id === data.current ? ' — atual' : ''}`;
+    sel.appendChild(opt);
+  }
+  const urlWipe = new URLSearchParams(location.search).get('wipe');
+  sel.value = urlWipe || data.current;
+  sel.addEventListener('change', () => load(sel.value));
+  await load(sel.value);
+})().catch(console.error);
+</script>
+</body>
+</html>

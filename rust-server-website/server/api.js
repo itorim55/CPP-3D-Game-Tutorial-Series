@@ -3,6 +3,7 @@
 // públicos, endpoints autenticados por sessão Steam, e administração.
 
 const store = require('./db');
+const discord = require('./discord');
 
 function json(res, code, obj) {
   const body = JSON.stringify(obj);
@@ -23,6 +24,7 @@ function clean(s, max = 200) {
 function handleIngest(body, config) {
   const wipe = store.currentWipe();
   const gemsPerHour = config.gemsPerHour ?? 1000;
+  const killLines = [];
   let accepted = 0;
   for (const e of (Array.isArray(body.events) ? body.events : []).slice(0, 500)) {
     const ts = Number.isFinite(e.ts) ? e.ts : store.now();
@@ -35,8 +37,16 @@ function handleIngest(body, config) {
           ts, attackerId: String(e.attackerId), victimId: String(e.victimId),
           weapon: clean(e.weapon, 64), distance: Number.isFinite(e.distance) ? e.distance : null,
           headshot: !!e.headshot, bodypart: clean(e.bodypart, 32),
+          posX: Number.isFinite(e.posX) ? e.posX : null,
+          posZ: Number.isFinite(e.posZ) ? e.posZ : null,
         }, wipe.id);
+        killLines.push(`⚔️ **${clean(e.attackerName, 32) || '?'}** matou **${clean(e.victimName, 32) || '?'}**` +
+          ` (${clean(e.weapon, 32) || '?'}${Number.isFinite(e.distance) ? `, ${Math.round(e.distance)}m` : ''}${e.headshot ? ', HS 🎯' : ''})`);
         accepted++;
+        break;
+      }
+      case 'teams': {
+        if (Array.isArray(e.teams)) { store.updateTeams(wipe.id, e.teams); accepted++; }
         break;
       }
       case 'pve_death': {
@@ -70,6 +80,7 @@ function handleIngest(body, config) {
       }
     }
   }
+  if (killLines.length) discord.killfeed(config.discordWebhooks?.killfeed, killLines);
   return { ok: true, accepted };
 }
 
@@ -88,7 +99,7 @@ function handleHeartbeat(body) {
 
 const REQUIRED_APP_FIELDS = ['name', 'steamId', 'discord', 'motivation', 'scenario1', 'scenario2'];
 
-function handleApplication(body, ip) {
+function handleApplication(body, ip, config) {
   for (const f of REQUIRED_APP_FIELDS) {
     if (!clean(body[f], 4000)) return { error: `Campo obrigatório em falta: ${f}`, code: 400 };
   }
@@ -107,8 +118,13 @@ function handleApplication(body, ip) {
     scenario1: clean(body.scenario1, 4000), scenario2: clean(body.scenario2, 4000),
     scenario3: clean(body.scenario3, 4000),
   }, ip);
+  discord.newApplication(config.discordWebhooks?.staff, {
+    name: clean(body.name, 64), discord: clean(body.discord, 64), steamId: String(body.steamId).trim(),
+  });
   return { ok: true };
 }
+
+const WINDOWS = { '1h': 3600, '24h': 86400, '7d': 7 * 86400, '30d': 30 * 86400 };
 
 // ---------- router ----------
 
@@ -138,7 +154,32 @@ function route(req, res, url, body, config, session) {
 
     if (p === '/api/ingest') json(res, 200, handleIngest(body, config));
     else if (p === '/api/heartbeat') json(res, 200, handleHeartbeat(body));
-    else if (p === '/api/wipe') json(res, 200, { ok: true, wipe: store.startWipe(body) });
+    else if (p === '/api/wipe') {
+      // antes de abrir a wipe nova: gerar o resumo da wipe que termina
+      const oldWipe = store.currentWipe();
+      const newWipe = store.startWipe(body);
+      if (newWipe.id !== oldWipe.id) {
+        const summary = store.wipeSummary(oldWipe.id);
+        if (summary && summary.totals?.kills > 0) {
+          store.addPost(
+            `🏁 Fim da ${oldWipe.label || 'wipe'} — os highlights`,
+            [
+              summary.topKiller && `⚔️ Top killer: ${summary.topKiller.name} (${summary.topKiller.n} kills)`,
+              summary.topElo && `🦅 Melhor Elo: ${summary.topElo.name} (${summary.topElo.rating})`,
+              summary.longestKill && `🎯 Kill mais longa: ${summary.longestKill.name} — ${Math.round(summary.longestKill.distance)} m (${summary.longestKill.weapon})`,
+              summary.topHeadshots && `🎖️ Mais headshots: ${summary.topHeadshots.name} (${summary.topHeadshots.n})`,
+              summary.topFarmer && `🌾 Maior farmer: ${summary.topFarmer.name}`,
+              summary.topHours && `⏱️ Mais horas: ${summary.topHours.name} (${Math.round(summary.topHours.seconds / 3600)} h)`,
+              summary.topDeaths && `🧲 Saco de pancada: ${summary.topDeaths.name} (${summary.topDeaths.n} mortes)`,
+              ``,
+              `Resumo completo: /resumo?wipe=${oldWipe.id}`,
+            ].filter((x) => x !== null && x !== undefined).join('\n'));
+          discord.wipeSummaryPost(config.discordWebhooks?.announcements, summary,
+            (config.siteUrl || '').replace(/\/$/, ''));
+        }
+      }
+      json(res, 200, { ok: true, wipe: newWipe });
+    }
     else if (p === '/api/plugin/redemptions/complete') {
       store.completeRedemption(body.id, body.ok !== false);
       json(res, 200, { ok: true });
@@ -156,10 +197,39 @@ function route(req, res, url, body, config, session) {
         const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 100);
         const period = url.searchParams.get('period');
         const wipeParam = url.searchParams.get('wipeId');
-        let wipeId; // undefined = wipe atual
-        if (period === 'all') wipeId = null;
-        else if (wipeParam) wipeId = parseInt(wipeParam, 10) || undefined;
-        json(res, 200, { by, rows: store.leaderboard(by, wipeId, limit) });
+        const windowParam = url.searchParams.get('window');
+
+        if (by === 'elo') {
+          // Elo é sazonal: sempre relativo a uma wipe
+          const wid = wipeParam ? (parseInt(wipeParam, 10) || store.currentWipe().id) : store.currentWipe().id;
+          json(res, 200, { by, rows: store.eloLeaderboard(wid, limit) });
+          return true;
+        }
+
+        let scope = null; // null = wipe atual
+        if (windowParam && WINDOWS[windowParam]) {
+          scope = { type: 'window', since: store.now() - WINDOWS[windowParam] };
+        } else if (period === 'all') {
+          scope = { type: 'all' };
+        } else if (wipeParam) {
+          const wid = parseInt(wipeParam, 10);
+          if (wid) scope = { type: 'wipe', wipeId: wid };
+        }
+        json(res, 200, { by, rows: store.leaderboard(by, scope, limit) });
+        return true;
+      }
+      case '/api/teams':
+        json(res, 200, { rows: store.teamLeaderboard(store.currentWipe().id) }); return true;
+      case '/api/heatmap': {
+        const wid = parseInt(url.searchParams.get('wipeId') || '', 10) || store.currentWipe().id;
+        json(res, 200, { ...store.deathHeatmap(wid), mapImage: store.getInfo('map_image') || null });
+        return true;
+      }
+      case '/api/wipesummary': {
+        const wid = parseInt(url.searchParams.get('wipe') || '', 10) || store.currentWipe().id;
+        const s = store.wipeSummary(wid);
+        if (!s) { json(res, 404, { error: 'Wipe não encontrada' }); return true; }
+        json(res, 200, s);
         return true;
       }
       case '/api/killfeed':
@@ -229,7 +299,7 @@ function route(req, res, url, body, config, session) {
   // --- candidaturas (público, com rate-limit) ---
   if (p === '/api/applications' && req.method === 'POST') {
     if (!body) { json(res, 400, { error: 'JSON inválido' }); return true; }
-    const r = handleApplication(body, ip);
+    const r = handleApplication(body, ip, config);
     if (r.error) json(res, r.code, { error: r.error });
     else json(res, 200, r);
     return true;
@@ -246,6 +316,7 @@ function route(req, res, url, body, config, session) {
         case '/api/admin/appeals': json(res, 200, { rows: store.listAppeals() }); return true;
         case '/api/admin/redemptions': json(res, 200, { rows: store.listRedemptions() }); return true;
         case '/api/admin/owcases': json(res, 200, { rows: store.listOwCasesAdmin() }); return true;
+        case '/api/admin/bans': json(res, 200, { rows: store.listBansAdmin() }); return true;
       }
     }
 
@@ -289,6 +360,19 @@ function route(req, res, url, body, config, session) {
         }
         case '/api/admin/mapvote':
           json(res, 200, store.mapAdmin(clean(body.action, 20), body)); return true;
+        case '/api/admin/bans': {
+          if (body.action === 'delete') { store.deleteBan(body.id); json(res, 200, { ok: true }); return true; }
+          const ban = {
+            steamName: clean(body.steamName, 64), reason: clean(body.reason, 300),
+            staffName: clean(body.staffName, 64), evidence: clean(body.evidence, 300),
+          };
+          if (!ban.steamName || !ban.reason || !ban.staffName) {
+            json(res, 400, { error: 'Jogador, motivo e admin são obrigatórios' }); return true;
+          }
+          store.addBan(ban);
+          discord.banAnnounce(config.discordWebhooks?.bans, ban);
+          json(res, 200, { ok: true }); return true;
+        }
       }
     }
     json(res, 400, { error: 'Pedido inválido' }); return true;

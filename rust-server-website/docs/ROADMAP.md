@@ -3,11 +3,15 @@
 As minhas opiniões sobre prioridades, com base na análise da concorrência
 (ver `ANALISE-CONCORRENCIA.md`). Organizado por fases realistas.
 
-> **Estado (atualização):** já implementado — login Steam (5), apelos no site (6),
-> moeda por tempo jogado + loja com entrega automática (9), votação de mapa com
-> influência ganha (10), arquivo de wipes (12), Overwatch comunitário (13),
-> mini-changelog (8). Falta: multi-servidor (7), pagamentos VIP (11),
-> torneios (14), canal de vídeo (15), integração BattleMetrics (16).
+> **Estado (atualização 2):** já implementado — login Steam (5), apelos no site (6),
+> moeda por tempo jogado + loja com entrega automática (9), votação de mapa (10),
+> arquivo de wipes (12), Overwatch comunitário (13), mini-changelog (8), e ainda:
+> stats de equipas, conquistas/badges, resumo automático de fim de wipe,
+> webhooks do Discord (killfeed/bans/candidaturas/resumos), ranking Elo sazonal,
+> heatmap de mortes, leaderboards por janela (hora/dia/semana/mês) com kills,
+> mortes e horas jogadas, e gestão de bans no /admin.
+> Falta: multi-servidor (7), pagamentos VIP (11), torneios (14), canal de
+> vídeo (15), sincronização de ban lists via BattleMetrics (16).
 
 ## Fase 0 — antes de abrir o servidor (essencial)
 

@@ -17,16 +17,26 @@
 
   <div class="tabs" id="metric-tabs">
     <button data-by="kills" class="active">Kills</button>
+    <button data-by="deaths">Mortes</button>
     <button data-by="kd">K/D</button>
+    <button data-by="elo">Elo 🦅</button>
     <button data-by="headshots">Headshots</button>
-    <button data-by="distance">Kill mais longa</button>
-    <button data-by="playtime">Tempo de jogo</button>
+    <button data-by="distance">Kill + longa</button>
+    <button data-by="playtime">Horas jogadas</button>
     <span class="spacer"></span>
     <select id="wipe-select" style="width:auto;border-radius:999px;padding:7px 14px;font-size:13px">
-      <option value="">Esta wipe</option>
+      <option value="w:1h">⏱️ Última hora</option>
+      <option value="w:24h">Hoje (24 h)</option>
+      <option value="w:7d">Últimos 7 dias</option>
+      <option value="w:30d">Últimos 30 dias</option>
+      <option value="" selected>Esta wipe</option>
       <option value="all">Sempre (todas as wipes)</option>
     </select>
   </div>
+  <p style="color:var(--ink-muted);font-size:12.5px;margin:-6px 0 12px">
+    💡 As janelas curtas (hora/dia) também servem para a comunidade detetar picos suspeitos —
+    um jogador com kills anormais na última hora merece um F7. O Elo é sazonal (reset a cada wipe, mínimo 5 combates).
+  </p>
 
   <div style="margin:12px 0;max-width:360px">
     <input type="text" id="search" placeholder="🔍 procurar jogador…" autocomplete="off">
@@ -35,7 +45,7 @@
 
   <div class="table-wrap">
     <table>
-      <thead>
+      <thead id="lb-head">
         <tr>
           <th>#</th><th>Jogador</th>
           <th class="num">Kills</th><th class="num">Mortes</th><th class="num">K/D</th>
@@ -44,6 +54,19 @@
       </thead>
       <tbody id="lb-body"><tr><td colspan="8">a carregar…</td></tr></tbody>
     </table>
+  </div>
+
+  <h2 class="section">Top equipas <small>esta wipe · equipas nativas do Rust</small></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Equipa</th><th>Membros</th><th class="num">Kills</th><th class="num">Mortes</th><th class="num">K/D</th></tr></thead>
+      <tbody id="teams-body"><tr><td colspan="6">a carregar…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap">
+    <a class="btn ghost" href="/heatmap">🗺️ Heatmap de mortes</a>
+    <a class="btn ghost" href="/resumo">🏁 Resumo da wipe</a>
   </div>
 
   <h2 class="section">Killfeed completo</h2>
@@ -59,6 +82,7 @@ let by = 'kills';
 function periodQuery() {
   const v = document.getElementById('wipe-select').value;
   if (v === 'all') return 'period=all';
+  if (v.startsWith('w:')) return `window=${v.slice(2)}`;
   if (v) return `wipeId=${v}`;
   return '';
 }
@@ -80,8 +104,28 @@ async function loadWipes() {
 
 async function loadBoard() {
   const body = document.getElementById('lb-body');
+  const head = document.getElementById('lb-head');
   body.innerHTML = '<tr><td colspan="8">a carregar…</td></tr>';
   const lb = await api(`/api/leaderboard?by=${by}&${periodQuery()}&limit=100`);
+
+  if (by === 'elo') {
+    head.innerHTML = '<tr><th>#</th><th>Jogador</th><th>Tier</th><th class="num">Rating</th><th class="num">Combates</th></tr>';
+    body.innerHTML = lb.rows.map((r, i) => `
+      <tr>
+        <td><span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
+        <td>${playerLink(r.steam_id, r.name)}</td>
+        <td>${esc(r.tier)}</td>
+        <td class="num">${r.rating}</td>
+        <td class="num">${r.games}</td>
+      </tr>`).join('') || '<tr><td colspan="5">Ainda ninguém com 5+ combates nesta wipe.</td></tr>';
+    return;
+  }
+
+  head.innerHTML = `<tr>
+    <th>#</th><th>Jogador</th>
+    <th class="num">Kills</th><th class="num">Mortes</th><th class="num">K/D</th>
+    <th class="num">Headshots</th><th class="num">Kill + longa</th><th class="num">Horas</th>
+  </tr>`;
   body.innerHTML = lb.rows.map((r, i) => `
     <tr>
       <td><span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
@@ -91,7 +135,7 @@ async function loadBoard() {
       <td class="num">${r.kd.toFixed(2)}</td>
       <td class="num">${r.headshots}</td>
       <td class="num">${r.best_distance ? Math.round(r.best_distance) + 'm' : '—'}</td>
-      <td class="num">${Math.round(r.playtime_s / 3600)}</td>
+      <td class="num">${Math.round(r.playtime_s / 3600 * 10) / 10}</td>
     </tr>`).join('') || '<tr><td colspan="8">Sem dados para este período.</td></tr>';
 }
 
@@ -121,9 +165,24 @@ document.getElementById('search').addEventListener('input', (e) => {
   }, 250);
 });
 
+async function loadTeams() {
+  const t = await api('/api/teams');
+  document.getElementById('teams-body').innerHTML = t.rows.map((team, i) => `
+    <tr>
+      <td><span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
+      <td><b>Equipa ${esc(team.leader)}</b> <span style="color:var(--ink-muted)">(${team.size})</span></td>
+      <td style="white-space:normal">${team.members.map((m) => playerLink(m.steamId, m.name)).join(', ')}</td>
+      <td class="num">${team.kills}</td>
+      <td class="num">${team.deaths}</td>
+      <td class="num">${team.kd.toFixed(2)}</td>
+    </tr>`).join('') ||
+    '<tr><td colspan="6">Ainda sem equipas registadas nesta wipe (o plugin envia as equipas nativas a cada 5 min).</td></tr>';
+}
+
 (async () => {
   await loadWipes();
   await loadBoard();
+  loadTeams().catch(console.error);
   const kf = await api('/api/killfeed?limit=50');
   document.getElementById('killfeed').innerHTML = kf.rows.map((k) => `
     <div class="row">

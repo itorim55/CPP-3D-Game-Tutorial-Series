@@ -35,7 +35,10 @@ rust-server-website/
 │   └── config.json    criado no 1º arranque (NÃO comitar)
 ├── public/            frontend (HTML/CSS/JS puro)
 │   ├── index.html     home: status ao vivo, countdown de wipe, população, killfeed
-│   ├── stats.html     leaderboards + arquivo de wipes antigas
+│   ├── stats.html     leaderboards (janelas: hora/dia/semana/mês/wipe/sempre,
+│   │                  kills/mortes/K-D/Elo/horas) + equipas + arquivo de wipes
+│   ├── resumo.html    highlights de fim de wipe (gerado automaticamente)
+│   ├── heatmap.html   heatmap de mortes sobre o mapa
 │   ├── player.html    perfil público por SteamID
 │   ├── conta.html     a minha conta: gemas, resgates, apelos (login Steam)
 │   ├── loja.html      loja de gemas (moeda ganha por hora jogada)
@@ -47,7 +50,7 @@ rust-server-website/
 │   ├── candidatura.html  formulário de candidatura a moderador
 │   ├── regras.html    regras do servidor
 │   └── admin.html     painel da staff: candidaturas, apelos, entregas,
-│                      overwatch, votação de mapa, novidades (adminKey)
+│                      overwatch, bans, votação de mapa, novidades (adminKey)
 ├── plugin/
 │   └── StatsHub.cs    plugin Oxide/uMod: stats para o site + entrega de recompensas
 └── docs/
@@ -71,6 +74,14 @@ Reinicia o site e o logo, o hero, o rodapé e os títulos das páginas atualizam
 sozinhos. Antes de te comprometeres com um nome: pesquisa-o no BattleMetrics
 (evita colisões com servidores existentes) e verifica o domínio (.gg/.pt) num
 registrador tipo Namecheap/Porkbun.
+
+## Integração com o Discord (webhooks)
+
+Em `config.json` → `discordWebhooks` podes definir 4 canais (cria os webhooks
+em Discord → Editar canal → Integrações): `killfeed` (digest de kills a cada
+lote de 30 s), `bans` (anúncio de cada banimento registado no /admin), `staff`
+(nova candidatura recebida) e `announcements` (resumo automático de fim de
+wipe). Deixa vazio o que não quiseres.
 
 ## Login Steam
 
@@ -102,7 +113,11 @@ Instalação do plugin: ver `plugin/README.md`.
 | Endpoint | Descrição |
 |---|---|
 | `GET /api/status` | estado ao vivo + histórico de população 48 h |
-| `GET /api/leaderboard?by=…&period=all` ou `&wipeId=N` | leaderboards (wipe atual, arquivo, ou sempre) |
+| `GET /api/leaderboard?by=kills\|deaths\|kd\|elo\|headshots\|distance\|playtime` | leaderboards |
+| … `&window=1h\|24h\|7d\|30d` ou `&period=all` ou `&wipeId=N` | janelas de tempo, sempre, ou arquivo de wipe |
+| `GET /api/teams` | leaderboard de equipas (equipas nativas do Rust) |
+| `GET /api/heatmap?wipeId=N` | pontos de morte para o heatmap |
+| `GET /api/wipesummary?wipe=N` | highlights de fim de wipe |
 | `GET /api/killfeed?limit=50` | últimas kills |
 | `GET /api/player?id=<steamid64>` | perfil completo |
 | `GET /api/search?q=nome` | pesquisa de jogadores |

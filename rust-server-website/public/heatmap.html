@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heatmap de Mortes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header></header>
+
+<main>
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:6px">
+    <h2 class="section" style="margin:0">🗺️ Heatmap de mortes</h2>
+    <select id="wipe-select" style="width:auto;border-radius:999px;padding:7px 14px;font-size:13px"></select>
+  </div>
+  <p style="color:var(--ink-muted);font-size:13px;margin-top:6px">
+    Onde se morre neste mapa. Quanto mais quente (laranja→branco), mais mortes na zona.
+    Norte para cima; coordenadas do jogo normalizadas ao tamanho do mapa.
+  </p>
+
+  <div class="card" style="margin-top:16px;max-width:820px">
+    <div style="position:relative">
+      <canvas id="map" style="width:100%;display:block;border-radius:8px;background:#100d0a"></canvas>
+    </div>
+    <p id="meta" style="color:var(--ink-muted);font-size:12.5px;margin-top:10px"></p>
+  </div>
+</main>
+
+<footer></footer>
+
+<script src="/js/common.js"></script>
+<script>
+const SIZE = 760; // resolução interna do canvas
+
+async function load(wipeId) {
+  const data = await api(`/api/heatmap${wipeId ? `?wipeId=${wipeId}` : ''}`);
+  const canvas = document.getElementById('map');
+  canvas.width = SIZE; canvas.height = SIZE;
+  const ctx = canvas.getContext('2d');
+
+  // fundo: imagem do mapa se configurada, senão grelha estilizada
+  const drawBase = () => new Promise((resolve) => {
+    ctx.fillStyle = '#151109';
+    ctx.fillRect(0, 0, SIZE, SIZE);
+    if (data.mapImage) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => { ctx.globalAlpha = 0.55; ctx.drawImage(img, 0, 0, SIZE, SIZE); ctx.globalAlpha = 1; resolve(); };
+      img.onerror = () => resolve();
+      img.src = data.mapImage;
+    } else {
+      ctx.strokeStyle = '#2a221b'; ctx.lineWidth = 1;
+      const grid = SIZE / 10;
+      ctx.font = '10px Inter, sans-serif'; ctx.fillStyle = '#4a3f34';
+      const letters = 'ABCDEFGHIJ';
+      for (let i = 0; i <= 10; i++) {
+        ctx.beginPath(); ctx.moveTo(i * grid, 0); ctx.lineTo(i * grid, SIZE); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i * grid); ctx.lineTo(SIZE, i * grid); ctx.stroke();
+        if (i < 10) { ctx.fillText(letters[i], i * grid + grid / 2 - 3, 12); ctx.fillText(String(i), 4, i * grid + grid / 2 + 3); }
+      }
+      resolve();
+    }
+  });
+
+  await drawBase();
+
+  const mapSize = data.mapSize || 3800;
+  const half = mapSize / 2;
+  // x do jogo -> este; z do jogo -> norte (canvas y invertido)
+  const toCanvas = (p) => [
+    ((p.x + half) / mapSize) * SIZE,
+    SIZE - ((p.z + half) / mapSize) * SIZE,
+  ];
+
+  // camada de calor aditiva
+  const heat = document.createElement('canvas');
+  heat.width = SIZE; heat.height = SIZE;
+  const hctx = heat.getContext('2d');
+  hctx.globalCompositeOperation = 'lighter';
+  const R = 26;
+  for (const p of data.points) {
+    const [cx, cy] = toCanvas(p);
+    if (cx < -R || cy < -R || cx > SIZE + R || cy > SIZE + R) continue;
+    const g = hctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+    g.addColorStop(0, 'rgba(224, 85, 46, 0.28)');
+    g.addColorStop(0.5, 'rgba(224, 85, 46, 0.10)');
+    g.addColorStop(1, 'rgba(224, 85, 46, 0)');
+    hctx.fillStyle = g;
+    hctx.beginPath(); hctx.arc(cx, cy, R, 0, Math.PI * 2); hctx.fill();
+  }
+  ctx.drawImage(heat, 0, 0);
+
+  document.getElementById('meta').textContent =
+    `${data.points.length.toLocaleString('pt-PT')} mortes PVP com posição registada` +
+    ` · mapa ${mapSize}` +
+    (data.mapImage ? '' : ' · dica: define "map_image" na config do site para sobrepor a imagem real do mapa (RustMaps)');
+}
+
+(async () => {
+  const data = await api('/api/wipes');
+  const sel = document.getElementById('wipe-select');
+  for (const w of data.rows) {
+    const opt = document.createElement('option');
+    opt.value = w.id;
+    const date = new Date(w.started_at * 1000).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
+    opt.textContent = `${w.label || 'Wipe'} (${date})${w.id === data.current ? ' — atual' : ''}`;
+    sel.appendChild(opt);
+  }
+  sel.value = data.current;
+  sel.addEventListener('change', () => load(sel.value));
+  await load(sel.value);
+})().catch(console.error);
+</script>
+</body>
+</html>

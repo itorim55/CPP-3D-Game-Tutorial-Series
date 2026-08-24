@@ -79,6 +79,7 @@ namespace Oxide.Plugins
             timer.Every(_config.FlushInterval, Flush);
             timer.Every(_config.HeartbeatInterval, SendHeartbeat);
             timer.Every(_config.CreditInterval, CreditPlaytime);
+            timer.Every(_config.CreditInterval, SendTeams);
             if (_config.ExecuteRedemptions)
                 timer.Every(_config.RedemptionPollInterval, PollRedemptions);
             SendHeartbeat();
@@ -183,6 +184,9 @@ namespace Oxide.Plugins
                     ["distance"] = Math.Round(Vector3.Distance(attacker.transform.position, victim.transform.position), 1),
                     ["headshot"] = info.isHeadshot,
                     ["bodypart"] = info.boneName ?? "",
+                    // posição da vítima -> heatmap de mortes no site
+                    ["posX"] = Math.Round(victim.transform.position.x, 1),
+                    ["posZ"] = Math.Round(victim.transform.position.z, 1),
                 });
                 return;
             }
@@ -236,6 +240,34 @@ namespace Oxide.Plugins
             int current;
             perPlayer.TryGetValue(resource, out current);
             perPlayer[resource] = current + amount;
+        }
+
+        // Snapshot das equipas nativas do Rust (vanilla) -> leaderboard de equipas
+        private void SendTeams()
+        {
+            var mgr = RelationshipManager.ServerInstance;
+            if (mgr == null || mgr.teams == null || mgr.teams.Count == 0) return;
+
+            var teams = new List<Dictionary<string, object>>();
+            foreach (var kv in mgr.teams)
+            {
+                var team = kv.Value;
+                if (team?.members == null || team.members.Count < 2) continue;
+                teams.Add(new Dictionary<string, object>
+                {
+                    ["id"] = team.teamID.ToString(),
+                    ["leader"] = team.teamLeader.ToString(),
+                    ["members"] = team.members.Select(m => m.ToString()).ToList(),
+                });
+                if (teams.Count >= 200) break;
+            }
+            if (teams.Count == 0) return;
+            Enqueue(new Dictionary<string, object>
+            {
+                ["type"] = "teams",
+                ["ts"] = Now(),
+                ["teams"] = teams,
+            });
         }
 
         #endregion

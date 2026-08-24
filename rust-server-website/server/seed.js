@@ -39,11 +39,14 @@ function seed() {
   });
 
   console.log('[seed] A gerar kills...');
+  // alguns "hotspots" no mapa para o heatmap ficar interessante
+  const hotspots = [[-800, 600], [400, -900], [1200, 1100], [0, 0], [-1400, -400]];
   for (let k = 0; k < 900; k++) {
     let a = rnd(ids.length), v = rnd(ids.length);
     // dar personalidade: primeiros nomes matam mais
     if (Math.random() < 0.5) a = rnd(6);
     if (a === v) continue;
+    const [hx, hz] = pick(hotspots);
     store.recordKill({
       ts: now - rnd(10 * 86400),
       attackerId: ids[a], victimId: ids[v],
@@ -51,6 +54,8 @@ function seed() {
       distance: Math.round(Math.random() * (Math.random() < 0.1 ? 350 : 120) * 10) / 10,
       headshot: Math.random() < 0.35,
       bodypart: pick(['head', 'chest', 'stomach', 'arm', 'leg']),
+      posX: hx + (Math.random() - 0.5) * 600,
+      posZ: hz + (Math.random() - 0.5) * 600,
     }, wipe.id);
   }
 
@@ -135,6 +140,20 @@ function seed() {
     store.db.prepare('INSERT OR IGNORE INTO map_votes (round, steam_id, option_id, weight) VALUES (?, ?, ?, ?)')
       .run(1, id, opts[i % opts.length].id, 1 + rnd(5));
   });
+
+  // espalhar o registo de tempo de jogo pelos últimos 10 dias
+  // (o addPlaytime regista tudo "agora"; em produção chega de 5 em 5 min)
+  store.db.prepare(`UPDATE playtime_log SET ts = ? - ABS(RANDOM() % ?)`).run(now, 10 * 86400);
+
+  console.log('[seed] Equipas...');
+  store.updateTeams(wipeNow.id, [
+    { id: '1001', leader: ids[0], members: [ids[0], ids[1], ids[7]] },
+    { id: '1002', leader: ids[2], members: [ids[2], ids[4]] },
+    { id: '1003', leader: ids[13], members: [ids[13], ids[8], ids[9], ids[17]] },
+  ]);
+
+  // wipe atualiza o tamanho do mapa (para o heatmap normalizar coordenadas)
+  store.db.prepare('UPDATE wipes SET map_size = 3800 WHERE id = ?').run(wipeNow.id);
 
   store.addAppeal(ids[10], 'sofredor#0001',
     'Fui banido por "associação a cheater" mas só joguei com ele duas vezes e não sabia de nada. Peço revisão — tenho 900 h de conta limpa.');

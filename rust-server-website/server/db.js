@@ -203,7 +203,41 @@ CREATE TABLE IF NOT EXISTS map_votes (
   weight    INTEGER NOT NULL,
   PRIMARY KEY (round, steam_id)
 );
+
+-- registo de tempo de jogo com timestamp (para leaderboards por janela: hora/dia/semana/mês)
+CREATE TABLE IF NOT EXISTS playtime_log (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts       INTEGER NOT NULL,
+  steam_id TEXT NOT NULL,
+  seconds  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_playtime_log_ts ON playtime_log(ts);
+
+-- equipas nativas do Rust (snapshot enviado pelo plugin)
+CREATE TABLE IF NOT EXISTS teams (
+  wipe_id    INTEGER NOT NULL,
+  team_id    TEXT NOT NULL,
+  leader_id  TEXT NOT NULL,
+  members    TEXT NOT NULL,        -- JSON: ["7656...", ...]
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (wipe_id, team_id)
+);
+
+-- ranking Elo sazonal (reset por wipe)
+CREATE TABLE IF NOT EXISTS elo (
+  wipe_id  INTEGER NOT NULL,
+  steam_id TEXT NOT NULL,
+  rating   REAL NOT NULL DEFAULT 1000,
+  games    INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (wipe_id, steam_id)
+);
 `);
+
+// migrações idempotentes para bases de dados já existentes
+for (const sql of [
+  'ALTER TABLE kills ADD COLUMN pos_x REAL',
+  'ALTER TABLE kills ADD COLUMN pos_z REAL',
+]) { try { db.exec(sql); } catch { /* coluna já existe */ } }
 
 // ---------- helpers ----------
 
@@ -228,6 +262,7 @@ function upsertPlayer(steamId, name, ts) {
 
 function addPlaytime(steamId, seconds, wipeId = null) {
   const s = Math.max(0, seconds | 0);
+  if (!s) return;
   db.prepare('UPDATE players SET playtime_s = playtime_s + ? WHERE steam_id = ?').run(s, steamId);
   if (wipeId) {
     db.prepare(`
@@ -235,6 +270,9 @@ function addPlaytime(steamId, seconds, wipeId = null) {
       ON CONFLICT(wipe_id, steam_id) DO UPDATE SET seconds = seconds + excluded.seconds
     `).run(wipeId, steamId, s);
   }
+  db.prepare('INSERT INTO playtime_log (ts, steam_id, seconds) VALUES (?, ?, ?)').run(now(), steamId, s);
+  // manter 90 dias de registo detalhado (as janelas máximas são 30 dias)
+  if (Math.random() < 0.01) db.prepare('DELETE FROM playtime_log WHERE ts < ?').run(now() - 90 * 86400);
 }
 
 // ---------- gemas (moeda por tempo jogado) ----------
@@ -482,6 +520,170 @@ function mapAdmin(action, data) {
   }
 }
 
+// ---------- equipas (nativas do Rust, snapshot do plugin) ----------
+
+function updateTeams(wipeId, teamsArr) {
+  const up = db.prepare(`
+    INSERT INTO teams (wipe_id, team_id, leader_id, members, updated_at) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(wipe_id, team_id) DO UPDATE SET
+      leader_id = excluded.leader_id, members = excluded.members, updated_at = excluded.updated_at
+  `);
+  for (const t of teamsArr.slice(0, 200)) {
+    if (!t.id || !Array.isArray(t.members) || t.members.length < 2) continue;
+    up.run(wipeId, String(t.id), String(t.leader || t.members[0]),
+           JSON.stringify(t.members.map(String).slice(0, 12)), now());
+  }
+}
+
+function teamLeaderboard(wipeId, limit = 25) {
+  const teams = db.prepare('SELECT * FROM teams WHERE wipe_id = ? AND updated_at > ?')
+    .all(wipeId, now() - 7 * 86400);
+  if (!teams.length) return [];
+
+  const kills = new Map(), deaths = new Map();
+  for (const r of db.prepare('SELECT attacker_id id, COUNT(*) n FROM kills WHERE wipe_id = ? GROUP BY attacker_id').all(wipeId))
+    kills.set(r.id, r.n);
+  for (const r of db.prepare('SELECT victim_id id, COUNT(*) n FROM kills WHERE wipe_id = ? GROUP BY victim_id').all(wipeId))
+    deaths.set(r.id, r.n);
+  const names = new Map();
+  for (const r of db.prepare('SELECT steam_id, name FROM players').all()) names.set(r.steam_id, r.name);
+
+  return teams.map((t) => {
+    const members = JSON.parse(t.members);
+    const k = members.reduce((s, m) => s + (kills.get(m) || 0), 0);
+    const d = members.reduce((s, m) => s + (deaths.get(m) || 0), 0);
+    return {
+      teamId: t.team_id,
+      leader: names.get(t.leader_id) || t.leader_id,
+      members: members.map((m) => ({ steamId: m, name: names.get(m) || m })),
+      size: members.length,
+      kills: k, deaths: d,
+      kd: Math.round((k / Math.max(d, 1)) * 100) / 100,
+    };
+  }).filter((t) => t.kills + t.deaths > 0)
+    .sort((a, b) => b.kills - a.kills)
+    .slice(0, limit);
+}
+
+function playerTeam(wipeId, steamId) {
+  const teams = db.prepare('SELECT * FROM teams WHERE wipe_id = ?').all(wipeId);
+  for (const t of teams) {
+    const members = JSON.parse(t.members);
+    if (members.includes(steamId)) {
+      const names = members.map((m) =>
+        db.prepare('SELECT name FROM players WHERE steam_id = ?').get(m)?.name || m);
+      return { leaderId: t.leader_id, members, names };
+    }
+  }
+  return null;
+}
+
+// ---------- conquistas / badges ----------
+
+function achievements(steamId, wipeId) {
+  const out = [];
+  const add = (icon, name, desc) => out.push({ icon, name, desc });
+
+  const w = db.prepare(`
+    SELECT COUNT(*) kills, COALESCE(SUM(headshot),0) hs, COALESCE(MAX(distance),0) dist
+    FROM kills WHERE attacker_id = ? AND wipe_id = ?`).get(steamId, wipeId);
+  const wd = db.prepare('SELECT COUNT(*) n FROM kills WHERE victim_id = ? AND wipe_id = ?').get(steamId, wipeId);
+  const all = db.prepare('SELECT COUNT(*) kills, COALESCE(MAX(distance),0) dist FROM kills WHERE attacker_id = ?').get(steamId);
+  const p = db.prepare('SELECT playtime_s FROM players WHERE steam_id = ?').get(steamId);
+  const pw = db.prepare('SELECT seconds FROM playtime_wipe WHERE wipe_id = ? AND steam_id = ?').get(wipeId, steamId);
+
+  if (all.kills >= 1) add('🩸', 'Primeira Kill', 'Fez a primeira kill no servidor');
+  if (all.dist >= 300) add('🎯', 'Sniper de Elite', `Kill a ${Math.round(all.dist)} m`);
+  if (w.kills >= 100) add('💀', 'Máquina', '100+ kills numa wipe');
+  if (w.hs >= 50) add('🎖️', 'Headhunter', '50+ headshots numa wipe');
+  if (wd.n >= 100) add('🧲', 'Íman de Balas', '100+ mortes numa wipe (herói)');
+
+  const burst = db.prepare(`
+    SELECT COUNT(*) n FROM kills WHERE attacker_id = ?
+    GROUP BY ts / 3600 ORDER BY n DESC LIMIT 1`).get(steamId);
+  if (burst && burst.n >= 5) add('🔥', 'Em Chamas', `${burst.n} kills numa só hora`);
+
+  const night = db.prepare(`
+    SELECT COUNT(*) n FROM kills WHERE attacker_id = ? AND ((ts % 86400) / 3600) BETWEEN 0 AND 5`).get(steamId);
+  if (night.n >= 10) add('🦉', 'Noturno', '10+ kills de madrugada');
+
+  const gatherRows = db.prepare('SELECT resource, amount FROM gather WHERE steam_id = ? AND wipe_id = ?').all(steamId, wipeId);
+  const g = Object.fromEntries(gatherRows.map((r) => [r.resource, r.amount]));
+  if ((g['wood'] || 0) >= 100000) add('🌲', 'Lenhador', '100k+ madeira numa wipe');
+  if ((g['stone'] || 0) >= 100000) add('⛏️', 'Mineiro', '100k+ pedra numa wipe');
+  if ((g['sulfur.ore'] || 0) >= 50000) add('💥', 'Rei do Sulfur', '50k+ sulfur numa wipe');
+
+  if ((p?.playtime_s || 0) >= 100 * 3600) add('🏆', 'Veterano', '100+ horas no servidor');
+  if ((pw?.seconds || 0) >= 10 * 3600 && wd.n === 0) add('👻', 'Intocável', '10h+ nesta wipe sem morrer em PVP');
+
+  const supporter = db.prepare(`
+    SELECT COUNT(*) n FROM redemptions WHERE steam_id = ? AND item_id = 'site-badge'
+    AND status IN ('pendente','enviado','entregue')`).get(steamId);
+  if (supporter.n > 0) add('💎', 'Apoiante', 'Resgatou o badge de apoiante na loja');
+
+  return out;
+}
+
+// ---------- heatmap de mortes ----------
+
+function deathHeatmap(wipeId, limit = 5000) {
+  const wipe = db.prepare('SELECT map_size FROM wipes WHERE id = ?').get(wipeId);
+  const points = db.prepare(`
+    SELECT pos_x x, pos_z z FROM kills
+    WHERE wipe_id = ? AND pos_x IS NOT NULL ORDER BY ts DESC LIMIT ?`).all(wipeId, limit);
+  return { mapSize: wipe?.map_size || null, points };
+}
+
+// ---------- resumo de fim de wipe ----------
+
+function wipeSummary(wipeId) {
+  const wipe = db.prepare('SELECT * FROM wipes WHERE id = ?').get(wipeId);
+  if (!wipe) return null;
+  const one = (sql, ...args) => db.prepare(sql).get(...args) || null;
+
+  const topKiller = one(`
+    SELECT p.name, p.steam_id, COUNT(*) n FROM kills k JOIN players p ON p.steam_id = k.attacker_id
+    WHERE k.wipe_id = ? GROUP BY k.attacker_id ORDER BY n DESC LIMIT 1`, wipeId);
+  const longestKill = one(`
+    SELECT p.name, p.steam_id, k.distance, k.weapon FROM kills k JOIN players p ON p.steam_id = k.attacker_id
+    WHERE k.wipe_id = ? AND k.distance IS NOT NULL ORDER BY k.distance DESC LIMIT 1`, wipeId);
+  const topHeadshots = one(`
+    SELECT p.name, p.steam_id, SUM(headshot) n FROM kills k JOIN players p ON p.steam_id = k.attacker_id
+    WHERE k.wipe_id = ? GROUP BY k.attacker_id ORDER BY n DESC LIMIT 1`, wipeId);
+  const topDeaths = one(`
+    SELECT p.name, p.steam_id, COUNT(*) n FROM kills k JOIN players p ON p.steam_id = k.victim_id
+    WHERE k.wipe_id = ? GROUP BY k.victim_id ORDER BY n DESC LIMIT 1`, wipeId);
+  const topFarmer = one(`
+    SELECT p.name, p.steam_id, SUM(g.amount) n FROM gather g JOIN players p ON p.steam_id = g.steam_id
+    WHERE g.wipe_id = ? GROUP BY g.steam_id ORDER BY n DESC LIMIT 1`, wipeId);
+  const topHours = one(`
+    SELECT p.name, p.steam_id, pw.seconds FROM playtime_wipe pw JOIN players p ON p.steam_id = pw.steam_id
+    WHERE pw.wipe_id = ? ORDER BY pw.seconds DESC LIMIT 1`, wipeId);
+  const topElo = eloLeaderboard(wipeId, 1)[0] || null;
+  const totals = one(`
+    SELECT COUNT(*) kills, COUNT(DISTINCT attacker_id) killers FROM kills WHERE wipe_id = ?`, wipeId);
+
+  return {
+    wipe: { id: wipe.id, label: wipe.label, startedAt: wipe.started_at, mapSeed: wipe.map_seed, mapSize: wipe.map_size },
+    totals, topKiller, longestKill, topHeadshots, topDeaths, topFarmer, topHours, topElo,
+  };
+}
+
+// ---------- bans (gestão pelo admin) ----------
+
+function addBan({ steamName, reason, staffName, evidence }) {
+  db.prepare('INSERT INTO bans (ts, steam_name, reason, staff_name, evidence) VALUES (?, ?, ?, ?, ?)')
+    .run(now(), steamName, reason, staffName, evidence || null);
+}
+
+function deleteBan(id) {
+  db.prepare('DELETE FROM bans WHERE id = ?').run(id | 0);
+}
+
+function listBansAdmin() {
+  return db.prepare('SELECT * FROM bans ORDER BY ts DESC LIMIT 200').all();
+}
+
 // ---------- wipes ----------
 
 function listWipes() {
@@ -490,11 +692,55 @@ function listWipes() {
 
 function recordKill(e, wipeId) {
   recordKill.stmt ??= db.prepare(`
-    INSERT INTO kills (ts, wipe_id, attacker_id, victim_id, weapon, distance, headshot, bodypart)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO kills (ts, wipe_id, attacker_id, victim_id, weapon, distance, headshot, bodypart, pos_x, pos_z)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   recordKill.stmt.run(e.ts, wipeId, e.attackerId, e.victimId,
-    e.weapon || null, e.distance ?? null, e.headshot ? 1 : 0, e.bodypart || null);
+    e.weapon || null, e.distance ?? null, e.headshot ? 1 : 0, e.bodypart || null,
+    e.posX ?? null, e.posZ ?? null);
+  updateElo(wipeId, e.attackerId, e.victimId);
+}
+
+// ---------- Elo sazonal ----------
+// Cada kill é um "jogo": o atacante ganha, a vítima perde. K=32, início 1000.
+
+const ELO_K = 32;
+
+function eloGet(wipeId, steamId) {
+  const r = db.prepare('SELECT rating, games FROM elo WHERE wipe_id = ? AND steam_id = ?').get(wipeId, steamId);
+  return r || { rating: 1000, games: 0 };
+}
+
+function updateElo(wipeId, attackerId, victimId) {
+  const a = eloGet(wipeId, attackerId);
+  const v = eloGet(wipeId, victimId);
+  const expectedA = 1 / (1 + Math.pow(10, (v.rating - a.rating) / 400));
+  const newA = a.rating + ELO_K * (1 - expectedA);
+  const newV = v.rating - ELO_K * (1 - expectedA);
+  updateElo.stmt ??= db.prepare(`
+    INSERT INTO elo (wipe_id, steam_id, rating, games) VALUES (?, ?, ?, 1)
+    ON CONFLICT(wipe_id, steam_id) DO UPDATE SET rating = excluded.rating, games = games + 1
+  `);
+  updateElo.stmt.run(wipeId, attackerId, newA);
+  updateElo.stmt.run(wipeId, victimId, newV);
+}
+
+const ELO_TIERS = [
+  [1300, 'Predador 🦅'], [1150, 'Diamante 💠'], [1050, 'Ouro 🥇'],
+  [950, 'Prata 🥈'], [0, 'Bronze 🥉'],
+];
+
+function eloTier(rating) {
+  return ELO_TIERS.find(([min]) => rating >= min)[1];
+}
+
+function eloLeaderboard(wipeId, limit = 50) {
+  return db.prepare(`
+    SELECT p.steam_id, p.name, ROUND(e.rating) AS rating, e.games
+    FROM elo e JOIN players p ON p.steam_id = e.steam_id
+    WHERE e.wipe_id = ? AND e.games >= 5
+    ORDER BY e.rating DESC LIMIT ?
+  `).all(wipeId, limit).map((r) => ({ ...r, tier: eloTier(r.rating) }));
 }
 
 function recordPveDeath(e, wipeId) {
@@ -544,18 +790,38 @@ const LEADERBOARD_SORTS = {
   playtime:  'playtime_s DESC',
 };
 
-/** wipeId: número = essa wipe; null = todas as wipes (sempre). */
-function leaderboard(by = 'kills', wipeId = undefined, limit = 50) {
+/**
+ * scope:
+ *   { type: 'wipe', wipeId }   — uma wipe (por omissão a atual)
+ *   { type: 'all' }            — desde sempre
+ *   { type: 'window', since }  — janela temporal (última hora/dia/semana/mês),
+ *                                útil também para detetar picos suspeitos de kills
+ */
+function leaderboard(by = 'kills', scope = null, limit = 50) {
   const order = LEADERBOARD_SORTS[by] || LEADERBOARD_SORTS.kills;
-  if (wipeId === undefined) wipeId = currentWipe().id;
-  // Numa wipe específica, as horas mostradas e o filtro de atividade são DESSA
-  // wipe (senão a leaderboard de uma wipe nova mostrava toda a gente antiga).
-  const filter = wipeId ? 'AND k.wipe_id = ?' : '';
-  const playtimeCol = wipeId ? 'COALESCE(pw.seconds, 0)' : 'p.playtime_s';
-  const playtimeJoin = wipeId
-    ? 'LEFT JOIN playtime_wipe pw ON pw.steam_id = p.steam_id AND pw.wipe_id = ?'
-    : '';
-  const params = wipeId ? [wipeId, wipeId, wipeId, limit] : [limit];
+  scope = scope || { type: 'wipe', wipeId: currentWipe().id };
+
+  let filter, playtimeCol, playtimeJoin, params;
+  if (scope.type === 'window') {
+    filter = 'AND k.ts >= ?';
+    playtimeCol = 'COALESCE(pl.secs, 0)';
+    playtimeJoin = `LEFT JOIN (
+      SELECT steam_id, SUM(seconds) secs FROM playtime_log WHERE ts >= ? GROUP BY steam_id
+    ) pl ON pl.steam_id = p.steam_id`;
+    params = [scope.since, scope.since, scope.since, limit];
+  } else if (scope.type === 'wipe') {
+    // Numa wipe específica, as horas mostradas e o filtro de atividade são DESSA wipe
+    filter = 'AND k.wipe_id = ?';
+    playtimeCol = 'COALESCE(pw.seconds, 0)';
+    playtimeJoin = 'LEFT JOIN playtime_wipe pw ON pw.steam_id = p.steam_id AND pw.wipe_id = ?';
+    params = [scope.wipeId, scope.wipeId, scope.wipeId, limit];
+  } else {
+    filter = '';
+    playtimeCol = 'p.playtime_s';
+    playtimeJoin = '';
+    params = [limit];
+  }
+
   return db.prepare(`
     SELECT p.steam_id, p.name, ${playtimeCol} AS playtime_s,
       COALESCE(ka.kills, 0)  AS kills,
@@ -633,11 +899,18 @@ function playerProfile(steamId) {
     WHERE k.attacker_id = ? OR k.victim_id = ?
     ORDER BY k.ts DESC LIMIT 20`).all(steamId, steamId);
 
+  const eloRow = eloGet(wipe.id, steamId);
+
   return {
     steamId: p.steam_id, name: p.name,
     firstSeen: p.first_seen, lastSeen: p.last_seen, playtimeS: p.playtime_s,
     wipe: agg(wipe.id), allTime: agg(null),
     weapons, victims, nemesis, gather: gatherRows, recent,
+    elo: eloRow.games >= 5
+      ? { rating: Math.round(eloRow.rating), games: eloRow.games, tier: eloTier(eloRow.rating) }
+      : null,
+    badges: achievements(steamId, wipe.id),
+    team: playerTeam(wipe.id, steamId),
   };
 }
 
@@ -749,5 +1022,10 @@ module.exports = {
   // votação de mapa
   mapState, castMapVote, mapAdmin, voteWeight,
   // wipes
-  listWipes, previousWipeId,
+  listWipes, previousWipeId, wipeSummary,
+  // equipas, elo, conquistas, heatmap, bans admin
+  updateTeams, teamLeaderboard, playerTeam,
+  eloLeaderboard, eloGet, eloTier,
+  achievements, deathHeatmap,
+  addBan, deleteBan, listBansAdmin,
 };

@@ -9,6 +9,12 @@
   "discord": "https://discord.gg/exemplo",
   "nextWipe": "2026-09-03T18:00:00Z",
   "gemsPerHour": 1000,
+  "discordWebhooks": {
+    "killfeed": "",
+    "bans": "",
+    "staff": "",
+    "announcements": ""
+  },
   "devLogin": false,
   "apiKey": "SUBSTITUIR-gerada-automaticamente-no-primeiro-arranque",
   "adminKey": "SUBSTITUIR-gerada-automaticamente-no-primeiro-arranque",

@@ -32,6 +32,7 @@
       <button data-s="appeals">Apelos</button>
       <button data-s="redemptions">Loja / Entregas</button>
       <button data-s="ow">Overwatch</button>
+      <button data-s="bans">Bans</button>
       <button data-s="map">Votação de mapa</button>
       <button data-s="posts">Novidades</button>
     </div>
@@ -148,6 +149,38 @@ async function renderOw() {
   });
 }
 
+async function renderBans() {
+  const { rows } = await aGet('/api/admin/bans');
+  body().innerHTML = `
+    <p style="color:var(--ink-muted);font-size:13px;margin-bottom:10px">
+      Esta lista alimenta a página pública de transparência e o webhook do Discord.
+      Publica só o nome de jogo — nunca dados pessoais.</p>
+    <form id="ban-form" class="card" style="margin-bottom:14px">
+      <b>Registar banimento</b>
+      <div class="form-grid" style="margin-top:10px">
+        <div class="field"><label>Nome do jogador *</label><input name="steamName" required maxlength="64"></div>
+        <div class="field"><label>Admin responsável *</label><input name="staffName" required maxlength="64"></div>
+        <div class="field full"><label>Motivo *</label><input name="reason" required maxlength="300" placeholder="ex.: Aimbot confirmado (gravação publicada)"></div>
+        <div class="field full"><label>Link das provas (opcional)</label><input name="evidence" maxlength="300" placeholder="https://youtu.be/…"></div>
+      </div>
+      <button class="btn" style="margin-top:12px">Registar ban</button>
+    </form>` +
+    rows.map((b) => `
+      <div class="card" style="margin-bottom:8px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
+        <b>${esc(b.steam_name)}</b>
+        <span style="color:var(--ink-2);font-size:13.5px">${esc(b.reason)}</span>
+        <span style="color:var(--ink-muted);font-size:12.5px">${esc(b.staff_name)} · ${timeAgo(b.ts)}</span>
+        ${b.evidence ? `<a href="${esc(b.evidence)}" target="_blank" rel="noopener" style="font-size:13px">🎬 provas</a>` : ''}
+        <button class="btn ghost" data-del-ban="${b.id}" style="margin-left:auto;padding:4px 12px;font-size:12px">remover</button>
+      </div>`).join('');
+
+  document.getElementById('ban-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await aPost('/api/admin/bans', Object.fromEntries(new FormData(e.target).entries()));
+    renderBans();
+  });
+}
+
 async function renderMap() {
   const state = await api('/api/mapvote');
   body().innerHTML = `
@@ -208,7 +241,7 @@ async function renderPosts() {
   });
 }
 
-const SECTIONS = { apps: renderApps, appeals: renderAppeals, redemptions: renderRedemptions, ow: renderOw, map: renderMap, posts: renderPosts };
+const SECTIONS = { apps: renderApps, appeals: renderAppeals, redemptions: renderRedemptions, ow: renderOw, bans: renderBans, map: renderMap, posts: renderPosts };
 
 async function show(section) {
   SECTION = section;
@@ -272,6 +305,14 @@ document.getElementById('section-body').addEventListener('click', async (e) => {
     e.preventDefault();
     if (!confirm('Apagar esta publicação?')) return;
     await aPost('/api/admin/posts/delete', { id: parseInt(dp.dataset.delPost, 10) });
+    show(SECTION);
+    return;
+  }
+  const db = e.target.closest('button[data-del-ban]');
+  if (db) {
+    e.preventDefault();
+    if (!confirm('Remover este ban da lista pública?')) return;
+    await aPost('/api/admin/bans', { action: 'delete', id: parseInt(db.dataset.delBan, 10) });
     show(SECTION);
   }
 });
