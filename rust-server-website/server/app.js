@@ -35,7 +35,9 @@ const store = require('./db');
 for (const [k, v] of Object.entries({
   server_name: config.serverName, server_ip: config.serverIp,
   discord: config.discord, next_wipe: config.nextWipe,
-})) if (v) store.setInfo(k, v);
+  brand_accent: config.brandAccent || 'EOKA', brand_rest: config.brandRest || '',
+})) if (v !== undefined && v !== null && v !== '') store.setInfo(k, v);
+if (!config.brandRest) store.setInfo('brand_rest', '');
 
 // sincroniza os itens da loja a partir de store-items.json (editável pelo dono)
 try {

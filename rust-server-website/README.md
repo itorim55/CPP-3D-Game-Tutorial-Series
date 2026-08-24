@@ -1,4 +1,4 @@
-# LusoRust — Site de estatísticas para servidor de Rust
+# EOKA — Site de estatísticas para servidor de Rust
 
 Site completo para um servidor de Rust (o jogo da Facepunch) com estatísticas ao
 vivo, killfeed, leaderboards por wipe (com arquivo navegável), perfis de jogador,
@@ -56,6 +56,21 @@ rust-server-website/
     ├── SISTEMA-DE-GEMAS.md       como funciona a moeda + análise de performance
     └── ROADMAP.md                opiniões e próximos passos por fases
 ```
+
+## Mudar o nome do servidor
+
+O nome/marca vive na configuração, não no código. Em `server/config.json`:
+
+```json
+"brandAccent": "EOKA",   // a parte a laranja do logo
+"brandRest": "",         // a parte a branco (ex.: accent "DOOR" + rest "CAMP")
+"serverName": "EOKA | 2x Vanilla+ | EU"
+```
+
+Reinicia o site e o logo, o hero, o rodapé e os títulos das páginas atualizam
+sozinhos. Antes de te comprometeres com um nome: pesquisa-o no BattleMetrics
+(evita colisões com servidores existentes) e verifica o domínio (.gg/.pt) num
+registrador tipo Namecheap/Porkbun.
 
 ## Login Steam
 

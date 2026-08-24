@@ -80,7 +80,7 @@ function renderChrome() {
     const path = location.pathname.replace(/\.html$/, '') || '/';
     header.innerHTML = `
       <nav class="nav">
-        <a class="logo" href="/"><b>LUSO</b>RUST</a>
+        <a class="logo" href="/" id="nav-logo"><b></b></a>
         <div class="links">
           ${NAV_LINKS.map(([href, label]) =>
             `<a href="${href}" ${href === path || (href === '/' && path === '/index') ? 'class="active"' : ''}>${label}</a>`).join('')}
@@ -93,7 +93,7 @@ function renderChrome() {
   const footer = document.querySelector('footer');
   if (footer && !footer.innerHTML.trim()) {
     footer.innerHTML = `
-      LusoRust · <a href="/regras">Regras</a> · <a href="/staff">Staff &amp; Transparência</a> ·
+      <span data-brand></span> · <a href="/regras">Regras</a> · <a href="/staff">Staff &amp; Transparência</a> ·
       <a href="/candidatura">Junta-te à equipa</a> · <a href="/novidades">Novidades</a> ·
       <a href="/apelo">Apelar um ban</a>
       <br>Este servidor não é afiliado à Facepunch Studios nem à Valve.`;
@@ -115,7 +115,28 @@ function renderChrome() {
   siteStatus().then((s) => {
     const d = document.getElementById('discord-link');
     if (d && s?.info?.discord) d.href = s.info.discord;
+    applyBrand(s);
   });
+}
+
+// A marca (nome do servidor) vem da configuração do site — muda em
+// server/config.json (brandAccent/brandRest) e todo o site atualiza.
+function applyBrand(s) {
+  const accent = s?.info?.brandAccent || 'EOKA';
+  const rest = s?.info?.brandRest || '';
+  const full = accent + rest;
+
+  const logo = document.getElementById('nav-logo');
+  if (logo) logo.innerHTML = `<b>${esc(accent)}</b>${esc(rest)}`;
+
+  document.querySelectorAll('[data-brand]').forEach((el) => { el.textContent = full; });
+  document.querySelectorAll('[data-brand-hero]').forEach((el) => {
+    el.innerHTML = `<span>${esc(accent)}</span>${esc(rest)}`;
+  });
+
+  if (!document.title.includes(full)) {
+    document.title = `${document.title.split(' — ')[0]} — ${full}`;
+  }
 }
 
 document.addEventListener('DOMContentLoaded', renderChrome);
