@@ -231,6 +231,20 @@ CREATE TABLE IF NOT EXISTS elo (
   games    INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (wipe_id, steam_id)
 );
+
+-- eventos de raid: estruturas/portas destruídas por jogadores
+CREATE TABLE IF NOT EXISTS raid_events (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts          INTEGER NOT NULL,
+  wipe_id     INTEGER NOT NULL,
+  attacker_id TEXT NOT NULL,
+  entity      TEXT,
+  grade       TEXT,
+  weapon      TEXT,
+  pos_x       REAL,
+  pos_z       REAL
+);
+CREATE INDEX IF NOT EXISTS idx_raid_events_wipe ON raid_events(wipe_id, ts);
 `);
 
 // migrações idempotentes para bases de dados já existentes
@@ -616,6 +630,12 @@ function achievements(steamId, wipeId) {
   if ((p?.playtime_s || 0) >= 100 * 3600) add('🏆', 'Veterano', '100+ horas no servidor');
   if ((pw?.seconds || 0) >= 10 * 3600 && wd.n === 0) add('👻', 'Intocável', '10h+ nesta wipe sem morrer em PVP');
 
+  const demolished = raidStats(steamId, wipeId);
+  if (demolished >= 50) add('🧨', 'Demolidor', `${demolished} estruturas destruídas nesta wipe`);
+
+  const streak = playerStreak(steamId, wipeId);
+  if (streak >= 10) add('⚡', 'Rampage', `${streak} kills sem morrer (em curso!)`);
+
   const supporter = db.prepare(`
     SELECT COUNT(*) n FROM redemptions WHERE steam_id = ? AND item_id = 'site-badge'
     AND status IN ('pendente','enviado','entregue')`).get(steamId);
@@ -682,6 +702,171 @@ function deleteBan(id) {
 
 function listBansAdmin() {
   return db.prepare('SELECT * FROM bans ORDER BY ts DESC LIMIT 200').all();
+}
+
+// ---------- raids ----------
+
+function recordRaidEvent(e, wipeId) {
+  recordRaidEvent.stmt ??= db.prepare(`
+    INSERT INTO raid_events (ts, wipe_id, attacker_id, entity, grade, weapon, pos_x, pos_z)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+  recordRaidEvent.stmt.run(e.ts, wipeId, e.attackerId, e.entity || null, e.grade || null,
+    e.weapon || null, e.posX ?? null, e.posZ ?? null);
+}
+
+const GRID_CELL = 146.3; // tamanho de um quadrado da grelha do Rust, em metros
+
+function gridLabel(x, z, mapSize) {
+  if (x == null || z == null || !mapSize) return null;
+  const half = mapSize / 2;
+  const col = Math.floor((x + half) / GRID_CELL);
+  const row = Math.floor((half - z) / GRID_CELL);
+  if (col < 0 || row < 0) return null;
+  // colunas: A..Z, AA, AB... (como no jogo)
+  const letters = col < 26 ? String.fromCharCode(65 + col)
+    : String.fromCharCode(64 + Math.floor(col / 26)) + String.fromCharCode(65 + (col % 26));
+  return `${letters}${row}`;
+}
+
+/**
+ * Agrupa eventos de raid em "raids": eventos a menos de 15 min e ~100 m
+ * uns dos outros pertencem ao mesmo raid. Devolve os maiores raids da wipe.
+ */
+function raidList(wipeId, limit = 20) {
+  const wipe = db.prepare('SELECT map_size FROM wipes WHERE id = ?').get(wipeId);
+  const events = db.prepare(`
+    SELECT ts, attacker_id, entity, weapon, pos_x, pos_z FROM raid_events
+    WHERE wipe_id = ? ORDER BY ts LIMIT 20000`).all(wipeId);
+  if (!events.length) return [];
+
+  const clusters = [];
+  for (const e of events) {
+    let target = null;
+    for (const c of clusters) {
+      if (e.ts - c.lastTs > 15 * 60) continue;
+      if (e.pos_x != null && c.cx != null) {
+        const dx = e.pos_x - c.cx, dz = e.pos_z - c.cz;
+        if (dx * dx + dz * dz > 100 * 100) continue;
+      }
+      target = c;
+      break;
+    }
+    if (!target) {
+      target = { firstTs: e.ts, lastTs: e.ts, cx: e.pos_x, cz: e.pos_z, count: 0, attackers: new Map(), weapons: new Map() };
+      clusters.push(target);
+    }
+    target.lastTs = e.ts;
+    target.count++;
+    if (e.pos_x != null) {
+      // centróide incremental
+      target.cx = target.cx == null ? e.pos_x : target.cx + (e.pos_x - target.cx) / target.count;
+      target.cz = target.cz == null ? e.pos_z : target.cz + (e.pos_z - target.cz) / target.count;
+    }
+    target.attackers.set(e.attacker_id, (target.attackers.get(e.attacker_id) || 0) + 1);
+    if (e.weapon) target.weapons.set(e.weapon, (target.weapons.get(e.weapon) || 0) + 1);
+  }
+
+  const names = new Map();
+  for (const r of db.prepare('SELECT steam_id, name FROM players').all()) names.set(r.steam_id, r.name);
+
+  return clusters
+    .filter((c) => c.count >= 3) // 1-2 paredes não é um raid, é vandalismo
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
+    .map((c) => ({
+      ts: c.firstTs,
+      durationS: c.lastTs - c.firstTs,
+      destroyed: c.count,
+      grid: gridLabel(c.cx, c.cz, wipe?.map_size),
+      raiders: [...c.attackers.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6)
+        .map(([id, n]) => ({ steamId: id, name: names.get(id) || id, destroyed: n })),
+      weapons: [...c.weapons.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([w]) => w),
+    }));
+}
+
+function raidStats(steamId, wipeId) {
+  return db.prepare('SELECT COUNT(*) n FROM raid_events WHERE attacker_id = ? AND wipe_id = ?')
+    .get(steamId, wipeId).n;
+}
+
+// ---------- kill streaks ----------
+
+/** Streaks atuais (kills desde a última morte PVP), jogadores vistos nas últimas 24 h. */
+function currentStreaks(wipeId, min = 3, limit = 10) {
+  return db.prepare(`
+    SELECT k.attacker_id AS steam_id, p.name, COUNT(*) AS streak, MAX(k.ts) AS last_kill
+    FROM kills k
+    JOIN players p ON p.steam_id = k.attacker_id
+    WHERE k.wipe_id = ?
+      AND p.last_seen > ?
+      AND k.ts > COALESCE(
+        (SELECT MAX(d.ts) FROM kills d WHERE d.victim_id = k.attacker_id AND d.wipe_id = k.wipe_id), 0)
+    GROUP BY k.attacker_id
+    HAVING streak >= ?
+    ORDER BY streak DESC
+    LIMIT ?
+  `).all(wipeId, now() - 86400, min, limit);
+}
+
+function playerStreak(steamId, wipeId) {
+  const r = db.prepare(`
+    SELECT COUNT(*) n FROM kills k
+    WHERE k.wipe_id = ? AND k.attacker_id = ?
+      AND k.ts > COALESCE(
+        (SELECT MAX(d.ts) FROM kills d WHERE d.victim_id = ? AND d.wipe_id = ?), 0)
+  `).get(wipeId, steamId, steamId, wipeId);
+  return r.n;
+}
+
+// ---------- comparador de jogadores ----------
+
+function comparePlayers(idA, idB) {
+  const wipe = currentWipe();
+  const side = (steamId) => {
+    const p = db.prepare('SELECT * FROM players WHERE steam_id = ?').get(steamId);
+    if (!p) return null;
+    const k = db.prepare(`
+      SELECT COUNT(*) kills, COALESCE(SUM(headshot),0) hs, COALESCE(MAX(distance),0) dist
+      FROM kills WHERE attacker_id = ? AND wipe_id = ?`).get(steamId, wipe.id);
+    const d = db.prepare('SELECT COUNT(*) n FROM kills WHERE victim_id = ? AND wipe_id = ?').get(steamId, wipe.id);
+    const ka = db.prepare('SELECT COUNT(*) n FROM kills WHERE attacker_id = ?').get(steamId);
+    const da = db.prepare('SELECT COUNT(*) n FROM kills WHERE victim_id = ?').get(steamId);
+    const pw = db.prepare('SELECT seconds FROM playtime_wipe WHERE wipe_id = ? AND steam_id = ?').get(wipe.id, steamId);
+    const eloRow = eloGet(wipe.id, steamId);
+    return {
+      steamId, name: p.name, lastSeen: p.last_seen,
+      wipe: {
+        kills: k.kills, deaths: d.n,
+        kd: Math.round((k.kills / Math.max(d.n, 1)) * 100) / 100,
+        headshots: k.hs, hsRate: k.kills ? Math.round((k.hs / k.kills) * 100) : 0,
+        bestDistance: Math.round(k.dist),
+        hours: Math.round((pw?.seconds || 0) / 3600),
+        structuresDestroyed: raidStats(steamId, wipe.id),
+        streak: playerStreak(steamId, wipe.id),
+      },
+      allTime: {
+        kills: ka.n, deaths: da.n,
+        kd: Math.round((ka.n / Math.max(da.n, 1)) * 100) / 100,
+        hours: Math.round(p.playtime_s / 3600),
+      },
+      elo: eloRow.games >= 5
+        ? { rating: Math.round(eloRow.rating), tier: eloTier(eloRow.rating) } : null,
+    };
+  };
+
+  const a = side(idA), b = side(idB);
+  if (!a || !b) return null;
+
+  const h2h = {
+    aKilledB: db.prepare('SELECT COUNT(*) n FROM kills WHERE attacker_id = ? AND victim_id = ?').get(idA, idB).n,
+    bKilledA: db.prepare('SELECT COUNT(*) n FROM kills WHERE attacker_id = ? AND victim_id = ?').get(idB, idA).n,
+    recent: db.prepare(`
+      SELECT ts, attacker_id, weapon, distance, headshot FROM kills
+      WHERE (attacker_id = ? AND victim_id = ?) OR (attacker_id = ? AND victim_id = ?)
+      ORDER BY ts DESC LIMIT 10`).all(idA, idB, idB, idA),
+  };
+
+  return { a, b, h2h };
 }
 
 // ---------- wipes ----------
@@ -911,6 +1096,8 @@ function playerProfile(steamId) {
       : null,
     badges: achievements(steamId, wipe.id),
     team: playerTeam(wipe.id, steamId),
+    streak: playerStreak(steamId, wipe.id),
+    structuresDestroyed: raidStats(steamId, wipe.id),
   };
 }
 
@@ -1028,4 +1215,7 @@ module.exports = {
   eloLeaderboard, eloGet, eloTier,
   achievements, deathHeatmap,
   addBan, deleteBan, listBansAdmin,
+  // raids, streaks, comparador
+  recordRaidEvent, raidList, raidStats,
+  currentStreaks, playerStreak, comparePlayers,
 };

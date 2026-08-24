@@ -49,6 +49,18 @@ function handleIngest(body, config) {
         if (Array.isArray(e.teams)) { store.updateTeams(wipe.id, e.teams); accepted++; }
         break;
       }
+      case 'raid': {
+        if (!e.attackerId) break;
+        store.upsertPlayer(String(e.attackerId), clean(e.attackerName, 64), ts);
+        store.recordRaidEvent({
+          ts, attackerId: String(e.attackerId),
+          entity: clean(e.entity, 48), grade: clean(e.grade, 24), weapon: clean(e.weapon, 48),
+          posX: Number.isFinite(e.posX) ? e.posX : null,
+          posZ: Number.isFinite(e.posZ) ? e.posZ : null,
+        }, wipe.id);
+        accepted++;
+        break;
+      }
       case 'pve_death': {
         if (!e.victimId) break;
         store.upsertPlayer(String(e.victimId), clean(e.victimName, 64), ts);
@@ -81,7 +93,36 @@ function handleIngest(body, config) {
     }
   }
   if (killLines.length) discord.killfeed(config.discordWebhooks?.killfeed, killLines);
+  if (killLines.length) checkKillAnomalies(config);
   return { ok: true, accepted };
+}
+
+// ---------- alerta automático de anomalias ----------
+// Se alguém exceder o limite de kills na última hora, avisa a staff no Discord.
+// (Não bane ninguém — é um sinal para investigar, como um F7 automático.)
+
+const _anomalyAlerted = new Map(); // steamId -> ts do último alerta
+
+function checkKillAnomalies(config) {
+  const threshold = config.anomalyKillsPerHour ?? 15;
+  const url = config.discordWebhooks?.staff;
+  if (!threshold || !url) return;
+  const rows = store.leaderboard('kills', { type: 'window', since: store.now() - 3600 }, 5);
+  for (const r of rows) {
+    if (r.kills < threshold) continue;
+    const last = _anomalyAlerted.get(r.steam_id) || 0;
+    if (store.now() - last < 6 * 3600) continue; // no máx. 1 alerta por jogador a cada 6 h
+    _anomalyAlerted.set(r.steam_id, store.now());
+    discord.send(url, {
+      embeds: [{
+        color: 0xd8a94e,
+        title: '⚠️ Pico de kills detetado',
+        description: `**${r.name}** tem **${r.kills} kills na última hora** ` +
+          `(K/D ${r.kd}). Pode ser um jogador em grande noite — ou não. ` +
+          `Vale a pena espectar.\nPerfil: /player?id=${r.steam_id}`,
+      }],
+    });
+  }
 }
 
 function handleHeartbeat(body) {
@@ -220,6 +261,19 @@ function route(req, res, url, body, config, session) {
       }
       case '/api/teams':
         json(res, 200, { rows: store.teamLeaderboard(store.currentWipe().id) }); return true;
+      case '/api/raids': {
+        const wid = parseInt(url.searchParams.get('wipeId') || '', 10) || store.currentWipe().id;
+        json(res, 200, { rows: store.raidList(wid) }); return true;
+      }
+      case '/api/streaks':
+        json(res, 200, { rows: store.currentStreaks(store.currentWipe().id) }); return true;
+      case '/api/compare': {
+        const a = url.searchParams.get('a'), b = url.searchParams.get('b');
+        if (!a || !b) { json(res, 400, { error: 'Faltam os parâmetros a e b' }); return true; }
+        const r = store.comparePlayers(a, b);
+        if (!r) { json(res, 404, { error: 'Jogador não encontrado' }); return true; }
+        json(res, 200, r); return true;
+      }
       case '/api/heatmap': {
         const wid = parseInt(url.searchParams.get('wipeId') || '', 10) || store.currentWipe().id;
         json(res, 200, { ...store.deathHeatmap(wid), mapImage: store.getInfo('map_image') || null });

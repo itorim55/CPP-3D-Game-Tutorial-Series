@@ -59,8 +59,13 @@
       ${statTile(w.kd.toFixed(2), 'K/D')}
       ${statTile(w.hsRate + '%', 'taxa de headshot')}
       ${statTile(Math.round(w.bestDistance) + 'm', 'kill mais longa')}
-      ${statTile(w.pveDeaths, 'mortes PVE')}
+      ${statTile(p.streak ? '🔥 ' + p.streak : '0', 'streak atual (sem morrer)')}
+      ${statTile('💥 ' + p.structuresDestroyed, 'estruturas destruídas')}
       ${statTile(hours(p.playtimeS), 'tempo de jogo (total)')}
+    </div>
+
+    <div style="margin-top:14px">
+      <a class="btn ghost" href="/vs?a=${encodeURIComponent(p.steamId)}">⚔️ Comparar com outro jogador</a>
     </div>
 
     <h2 class="section">Todas as wipes</h2>

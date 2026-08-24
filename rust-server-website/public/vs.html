@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1 vs 1 — Comparador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+.vs-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; }
+.vs-name { font-family: var(--font-display); font-size: clamp(22px, 4vw, 38px); letter-spacing: 1px; text-align: center; }
+.vs-badge-mid { font-family: var(--font-display); font-size: 30px; color: var(--accent); text-align: center; }
+.cmp-row { display: grid; grid-template-columns: 1fr 160px 1fr; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid #2a221b; font-size: 15px; }
+.cmp-row:last-child { border-bottom: 0; }
+.cmp-row .metric { text-align: center; color: var(--ink-muted); font-size: 12.5px; text-transform: uppercase; letter-spacing: .5px; }
+.cmp-row .val { text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; }
+.cmp-row .val.win { color: var(--good); font-weight: 800; }
+.h2h-banner { text-align: center; padding: 22px; }
+.h2h-banner .score { font-family: var(--font-display); font-size: 54px; letter-spacing: 3px; }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<main>
+  <h2 class="section" style="margin-top:6px">⚔️ 1 vs 1 — Comparador de jogadores</h2>
+  <p style="color:var(--ink-muted);font-size:13px">Escolhe dois jogadores e vê quem manda. Inclui o histórico direto entre os dois.</p>
+
+  <div class="grid cols-2" style="margin-top:14px;max-width:760px">
+    <div>
+      <input type="text" id="search-a" placeholder="🔍 jogador A…" autocomplete="off">
+      <div id="results-a" class="feed" style="margin-top:6px"></div>
+    </div>
+    <div>
+      <input type="text" id="search-b" placeholder="🔍 jogador B…" autocomplete="off">
+      <div id="results-b" class="feed" style="margin-top:6px"></div>
+    </div>
+  </div>
+
+  <div id="comparison" style="margin-top:24px"></div>
+</main>
+
+<footer></footer>
+
+<script src="/js/common.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+let A = params.get('a'), B = params.get('b');
+
+function attachSearch(input, results, assign) {
+  let timer = null;
+  document.getElementById(input).addEventListener('input', (e) => {
+    clearTimeout(timer);
+    const q = e.target.value.trim();
+    const out = document.getElementById(results);
+    if (q.length < 2) { out.innerHTML = ''; return; }
+    timer = setTimeout(async () => {
+      const r = await api(`/api/search?q=${encodeURIComponent(q)}`);
+      out.innerHTML = r.rows.map((p) => `
+        <div class="row" style="cursor:pointer" data-pick="${esc(p.steam_id)}" data-name="${esc(p.name)}">
+          <b>${esc(p.name)}</b><span class="meta">${hours(p.playtime_s)}</span>
+        </div>`).join('') || '<p style="color:var(--ink-muted);font-size:13px">Nada encontrado.</p>';
+      out.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('click', () => {
+        assign(el.dataset.pick);
+        document.getElementById(input).value = el.dataset.name;
+        out.innerHTML = '';
+        maybeLoad();
+      }));
+    }, 250);
+  });
+}
+
+attachSearch('search-a', 'results-a', (id) => { A = id; });
+attachSearch('search-b', 'results-b', (id) => { B = id; });
+
+function maybeLoad() {
+  if (!A || !B) return;
+  if (A === B) { document.getElementById('comparison').innerHTML = '<div class="notice err">Escolhe dois jogadores diferentes. 😄</div>'; return; }
+  history.replaceState(null, '', `/vs?a=${encodeURIComponent(A)}&b=${encodeURIComponent(B)}`);
+  load();
+}
+
+async function load() {
+  const el = document.getElementById('comparison');
+  el.innerHTML = '<p style="color:var(--ink-muted)">a carregar…</p>';
+  let c;
+  try { c = await api(`/api/compare?a=${encodeURIComponent(A)}&b=${encodeURIComponent(B)}`); }
+  catch (e) { el.innerHTML = `<div class="notice err">⚠️ ${esc(e.message)}</div>`; return; }
+
+  const row = (label, va, vb, fmt = (x) => x, higherWins = true) => {
+    const winA = higherWins ? va > vb : va < vb;
+    const winB = higherWins ? vb > va : vb < va;
+    return `<div class="cmp-row">
+      <div class="val ${winA ? 'win' : ''}">${fmt(va)}</div>
+      <div class="metric">${label}</div>
+      <div class="val ${winB ? 'win' : ''}">${fmt(vb)}</div>
+    </div>`;
+  };
+
+  const total = c.h2h.aKilledB + c.h2h.bKilledA;
+  const leader = c.h2h.aKilledB > c.h2h.bKilledA ? c.a.name
+    : c.h2h.bKilledA > c.h2h.aKilledB ? c.b.name : null;
+
+  el.innerHTML = `
+    <div class="vs-grid">
+      <div class="vs-name">${playerLink(c.a.steamId, c.a.name)}<br>
+        <span style="font-size:14px;color:var(--gold);font-family:var(--font-body)">${c.a.elo ? `${esc(c.a.elo.tier)} · ${c.a.elo.rating}` : '—'}</span></div>
+      <div class="vs-badge-mid">VS</div>
+      <div class="vs-name">${playerLink(c.b.steamId, c.b.name)}<br>
+        <span style="font-size:14px;color:var(--gold);font-family:var(--font-body)">${c.b.elo ? `${esc(c.b.elo.tier)} · ${c.b.elo.rating}` : '—'}</span></div>
+    </div>
+
+    <div class="card h2h-banner" style="margin-top:18px">
+      <div style="color:var(--ink-muted);font-size:12.5px;text-transform:uppercase;letter-spacing:.5px">Frente a frente (todas as wipes)</div>
+      <div class="score">${c.h2h.aKilledB} — ${c.h2h.bKilledA}</div>
+      <div style="color:var(--ink-2);font-size:14px">
+        ${total === 0 ? 'Ainda nunca se cruzaram. Alguém que trate disso.'
+          : leader ? `<b style="color:var(--accent)">${esc(leader)}</b> domina esta rivalidade.` : 'Empate perfeito. 🍿'}
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h3>Esta wipe</h3>
+      ${row('Kills', c.a.wipe.kills, c.b.wipe.kills)}
+      ${row('Mortes', c.a.wipe.deaths, c.b.wipe.deaths, (x) => x, false)}
+      ${row('K/D', c.a.wipe.kd, c.b.wipe.kd, (x) => x.toFixed(2))}
+      ${row('Headshots', c.a.wipe.headshots, c.b.wipe.headshots)}
+      ${row('% headshot', c.a.wipe.hsRate, c.b.wipe.hsRate, (x) => x + '%')}
+      ${row('Kill + longa', c.a.wipe.bestDistance, c.b.wipe.bestDistance, (x) => x + ' m')}
+      ${row('Streak atual', c.a.wipe.streak, c.b.wipe.streak, (x) => x ? '🔥 ' + x : '0')}
+      ${row('Estruturas destruídas', c.a.wipe.structuresDestroyed, c.b.wipe.structuresDestroyed)}
+      ${row('Horas', c.a.wipe.hours, c.b.wipe.hours)}
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h3>Todas as wipes</h3>
+      ${row('Kills', c.a.allTime.kills, c.b.allTime.kills)}
+      ${row('K/D', c.a.allTime.kd, c.b.allTime.kd, (x) => x.toFixed(2))}
+      ${row('Horas', c.a.allTime.hours, c.b.allTime.hours)}
+    </div>
+
+    ${c.h2h.recent.length ? `
+    <div class="card" style="margin-top:14px">
+      <h3>Últimos confrontos</h3>
+      <div class="feed">
+        ${c.h2h.recent.map((k) => `
+          <div class="row">
+            <span class="who k">${esc(k.attacker_id === c.a.steamId ? c.a.name : c.b.name)}</span>
+            <span class="weapon">${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}</span>
+            ${k.headshot ? '<span class="hs">HS</span>' : ''}
+            <span class="who v">${esc(k.attacker_id === c.a.steamId ? c.b.name : c.a.name)}</span>
+            <span class="meta">${timeAgo(k.ts)}</span>
+          </div>`).join('')}
+      </div>
+    </div>` : ''}`;
+}
+
+if (A && B) load();
+</script>
+</body>
+</html>

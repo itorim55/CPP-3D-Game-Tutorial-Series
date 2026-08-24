@@ -64,7 +64,16 @@
     </table>
   </div>
 
+  <h2 class="section">Maiores raids da wipe <small>agrupados por zona e hora</small></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Quando</th><th>Zona</th><th class="num">Estruturas</th><th>Raiders</th><th>Armas</th></tr></thead>
+      <tbody id="raids-body"><tr><td colspan="5">a carregar…</td></tr></tbody>
+    </table>
+  </div>
+
   <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap">
+    <a class="btn ghost" href="/vs">⚔️ Comparador 1v1</a>
     <a class="btn ghost" href="/heatmap">🗺️ Heatmap de mortes</a>
     <a class="btn ghost" href="/resumo">🏁 Resumo da wipe</a>
   </div>
@@ -179,10 +188,24 @@ async function loadTeams() {
     '<tr><td colspan="6">Ainda sem equipas registadas nesta wipe (o plugin envia as equipas nativas a cada 5 min).</td></tr>';
 }
 
+async function loadRaids() {
+  const r = await api('/api/raids');
+  document.getElementById('raids-body').innerHTML = r.rows.map((raid) => `
+    <tr>
+      <td>${timeAgo(raid.ts)}${raid.durationS > 60 ? ` <span style="color:var(--ink-muted)">(${Math.round(raid.durationS / 60)} min)</span>` : ''}</td>
+      <td><b>${esc(raid.grid || '?')}</b></td>
+      <td class="num">💥 ${raid.destroyed}</td>
+      <td style="white-space:normal">${raid.raiders.map((p) => playerLink(p.steamId, p.name)).join(', ')}</td>
+      <td style="color:var(--ink-muted);font-size:13px">${raid.weapons.map(esc).join(', ') || '—'}</td>
+    </tr>`).join('') ||
+    '<tr><td colspan="5">Ainda sem raids registados nesta wipe. As bases agradecem. 🏠</td></tr>';
+}
+
 (async () => {
   await loadWipes();
   await loadBoard();
   loadTeams().catch(console.error);
+  loadRaids().catch(console.error);
   const kf = await api('/api/killfeed?limit=50');
   document.getElementById('killfeed').innerHTML = kf.rows.map((k) => `
     <div class="row">

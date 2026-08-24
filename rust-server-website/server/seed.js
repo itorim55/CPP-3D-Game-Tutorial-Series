@@ -144,6 +144,8 @@ function seed() {
   // espalhar o registo de tempo de jogo pelos últimos 10 dias
   // (o addPlaytime regista tudo "agora"; em produção chega de 5 em 5 min)
   store.db.prepare(`UPDATE playtime_log SET ts = ? - ABS(RANDOM() % ?)`).run(now, 10 * 86400);
+  // e marcar toda a gente como vista nas últimas ~20 h (para streaks/atividade)
+  store.db.prepare(`UPDATE players SET last_seen = ? - ABS(RANDOM() % 72000)`).run(now);
 
   console.log('[seed] Equipas...');
   store.updateTeams(wipeNow.id, [
@@ -154,6 +156,28 @@ function seed() {
 
   // wipe atualiza o tamanho do mapa (para o heatmap normalizar coordenadas)
   store.db.prepare('UPDATE wipes SET map_size = 3800 WHERE id = ?').run(wipeNow.id);
+
+  console.log('[seed] Raids...');
+  const raidWeapons = ['rocket_basic', 'explosive.timed.deployed', 'explosive.satchel.deployed'];
+  const raids = [
+    { at: now - 2 * 86400, x: -900, z: 700, size: 38, raiders: [ids[0], ids[1], ids[7]] },
+    { at: now - 5 * 86400, x: 1100, z: -300, size: 21, raiders: [ids[2], ids[4]] },
+    { at: now - 86400, x: 300, z: 1400, size: 12, raiders: [ids[13], ids[8]] },
+    { at: now - 3 * 3600, x: -400, z: -1100, size: 7, raiders: [ids[5]] },
+  ];
+  for (const r of raids) {
+    for (let i = 0; i < r.size; i++) {
+      store.recordRaidEvent({
+        ts: r.at + rnd(600),
+        attackerId: pick(r.raiders),
+        entity: pick(['wall', 'wall.doorway', 'foundation', 'door.hinged.toptier']),
+        grade: pick(['Stone', 'Metal', 'TopTier']),
+        weapon: pick(raidWeapons),
+        posX: r.x + (Math.random() - 0.5) * 40,
+        posZ: r.z + (Math.random() - 0.5) * 40,
+      }, wipeNow.id);
+    }
+  }
 
   store.addAppeal(ids[10], 'sofredor#0001',
     'Fui banido por "associação a cheater" mas só joguei com ele duas vezes e não sabia de nada. Peço revisão — tenho 900 h de conta limpa.');

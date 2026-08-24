@@ -61,6 +61,10 @@
     <div>
       <h2 class="section" style="margin-top:0">Killfeed ao vivo</h2>
       <div class="feed" id="killfeed">a carregar…</div>
+      <div id="streaks-card" style="display:none;margin-top:14px" class="card">
+        <h3>🔥 Em fogo agora</h3>
+        <div id="streaks" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
     </div>
   </div>
 
@@ -122,6 +126,16 @@
         <td class="num">${r.kills}</td>
         <td class="num">${r.kd.toFixed(2)}</td>
       </tr>`).join('') || '<tr><td colspan="4">Sem dados ainda.</td></tr>';
+
+    api('/api/streaks').then((st) => {
+      if (!st.rows.length) return;
+      document.getElementById('streaks-card').style.display = '';
+      document.getElementById('streaks').innerHTML = st.rows.slice(0, 5).map((s) => `
+        <div style="display:flex;gap:8px;align-items:baseline;font-size:14px">
+          <b>🔥 ${s.streak}</b> ${playerLink(s.steam_id, s.name)}
+          <span style="color:var(--ink-muted);font-size:12px;margin-left:auto">kills sem morrer</span>
+        </div>`).join('');
+    }).catch(() => {});
 
     const kf = await api('/api/killfeed?limit=8');
     document.getElementById('killfeed').innerHTML = kf.rows.map((k) => `

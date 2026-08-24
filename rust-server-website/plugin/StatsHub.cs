@@ -35,6 +35,9 @@ namespace Oxide.Plugins
             [JsonProperty("Registar farm de recursos")]
             public bool TrackGather = true;
 
+            [JsonProperty("Registar raids (estruturas destruídas)")]
+            public bool TrackRaids = true;
+
             [JsonProperty("Entregar recompensas da loja (executa comandos)")]
             public bool ExecuteRedemptions = true;
 
@@ -215,6 +218,30 @@ namespace Oxide.Plugins
             if (info?.Initiator != null && info.Initiator != victim)
                 return info.Initiator.ShortPrefabName;
             return victim.lastDamage.ToString();
+        }
+
+        // Estruturas/portas destruídas por jogadores -> registo de raids no site
+        private void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
+        {
+            if (!_config.TrackRaids || entity == null) return;
+            if (!(entity is BuildingBlock) && !(entity is Door)) return;
+
+            var attacker = info?.InitiatorPlayer;
+            if (attacker == null || attacker.IsNpc) return;
+
+            var block = entity as BuildingBlock;
+            Enqueue(new Dictionary<string, object>
+            {
+                ["type"] = "raid",
+                ["ts"] = Now(),
+                ["attackerId"] = attacker.UserIDString,
+                ["attackerName"] = attacker.displayName,
+                ["entity"] = entity.ShortPrefabName,
+                ["grade"] = block != null ? block.grade.ToString() : "door",
+                ["weapon"] = info.WeaponPrefab != null ? info.WeaponPrefab.ShortPrefabName : GetWeaponName(info),
+                ["posX"] = Math.Round(entity.transform.position.x, 1),
+                ["posZ"] = Math.Round(entity.transform.position.z, 1),
+            });
         }
 
         private void OnDispenserGathered(ResourceDispenser dispenser, BaseEntity entity, Item item)

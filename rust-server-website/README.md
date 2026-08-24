@@ -39,6 +39,7 @@ rust-server-website/
 │   │                  kills/mortes/K-D/Elo/horas) + equipas + arquivo de wipes
 │   ├── resumo.html    highlights de fim de wipe (gerado automaticamente)
 │   ├── heatmap.html   heatmap de mortes sobre o mapa
+│   ├── vs.html        comparador 1v1 com histórico frente-a-frente
 │   ├── player.html    perfil público por SteamID
 │   ├── conta.html     a minha conta: gemas, resgates, apelos (login Steam)
 │   ├── loja.html      loja de gemas (moeda ganha por hora jogada)
@@ -74,6 +75,13 @@ Reinicia o site e o logo, o hero, o rodapé e os títulos das páginas atualizam
 sozinhos. Antes de te comprometeres com um nome: pesquisa-o no BattleMetrics
 (evita colisões com servidores existentes) e verifica o domínio (.gg/.pt) num
 registrador tipo Namecheap/Porkbun.
+
+## Alertas de anomalia (deteção de cheaters)
+
+Com `anomalyKillsPerHour` definido (padrão 15) e o webhook `staff` configurado,
+o site avisa automaticamente a equipa no Discord quando um jogador excede esse
+número de kills na última hora — com débito de 1 alerta por jogador a cada 6 h.
+Não bane ninguém: é um F7 automático para a staff ir espectar.
 
 ## Integração com o Discord (webhooks)
 
@@ -118,6 +126,9 @@ Instalação do plugin: ver `plugin/README.md`.
 | `GET /api/teams` | leaderboard de equipas (equipas nativas do Rust) |
 | `GET /api/heatmap?wipeId=N` | pontos de morte para o heatmap |
 | `GET /api/wipesummary?wipe=N` | highlights de fim de wipe |
+| `GET /api/raids` | maiores raids da wipe (estruturas destruídas, agrupadas) |
+| `GET /api/streaks` | kill streaks atuais |
+| `GET /api/compare?a=ID&b=ID` | comparador 1v1 + frente-a-frente |
 | `GET /api/killfeed?limit=50` | últimas kills |
 | `GET /api/player?id=<steamid64>` | perfil completo |
 | `GET /api/search?q=nome` | pesquisa de jogadores |
