@@ -207,6 +207,14 @@ process.on('unhandledRejection', (e) => console.error('[unhandledRejection]', e)
 
 const PORT = config.port || 8080;
 const HOST = config.host || '0.0.0.0';
+server.on('error', (e) => {
+  if (e.code === 'EADDRINUSE') {
+    console.error(`\n⚠️  Port ${PORT} is already in use — the site is probably already running in another window.`);
+    console.error('   Close it there (Ctrl+C) or kill it with:  taskkill /F /IM node.exe  (Windows) / pkill -x node (Linux)\n');
+    process.exit(1);
+  }
+  console.error('[server error]', e);
+});
 server.listen(PORT, HOST, () => {
   console.log(`Site running at http://${HOST}:${PORT} (public URL: ${SITE_URL})`);
   console.log(`Plugin API key (X-API-Key): ${config.apiKey}`);
