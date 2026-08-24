@@ -50,6 +50,7 @@ const EN_JS = {
   'home.copied': 'copied! paste in F1 console', 'home.copy': 'copy',
   'home.noData': 'No data yet.', 'home.noKills': 'No kills recorded yet.',
   'home.streakUnit': 'kills without dying',
+  'home.playersTracked': 'survivors tracked',
 
   // stats
   'stats.noPeriod': 'No data for this period.', 'stats.noPlayers': 'No players found.',
@@ -188,6 +189,7 @@ const I18N = {
     'home.copied': 'copiado! cola na consola F1', 'home.copy': 'copiar',
     'home.noData': 'Sem dados ainda.', 'home.noKills': 'Sem kills registadas ainda.',
     'home.streakUnit': 'kills sem morrer',
+    'home.playersTracked': 'sobreviventes registados',
     // home (HTML)
     'home.tagline': 'Live stats · transparent staff · zero pay-to-win.',
     'home.playersOnline': 'jogadores online', 'home.untilWipe': 'até à próxima wipe',

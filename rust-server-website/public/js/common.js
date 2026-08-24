@@ -151,7 +151,8 @@ function applyBrand(s) {
 
 document.addEventListener('DOMContentLoaded', renderChrome);
 
-// Countdown para a próxima wipe (elementos com [data-countdown]).
+// Countdown para a próxima wipe — tique ao segundo (sensação "ao vivo").
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function startCountdown(el, isoDate) {
   const target = new Date(isoDate).getTime();
   if (Number.isNaN(target)) { el.textContent = '—'; return; }
@@ -160,11 +161,28 @@ function startCountdown(el, isoDate) {
     if (ms <= 0) { el.textContent = t('countdown.wipe'); return; }
     const d = Math.floor(ms / 86400000); ms -= d * 86400000;
     const h = Math.floor(ms / 3600000); ms -= h * 3600000;
-    const m = Math.floor(ms / 60000);
-    el.textContent = d > 0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m`;
-    setTimeout(tick, 30000);
+    const m = Math.floor(ms / 60000); ms -= m * 60000;
+    const s = Math.floor(ms / 1000);
+    const pad = (n) => String(n).padStart(2, '0');
+    el.textContent = d > 0 ? `${d}d ${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(h)}:${pad(m)}:${pad(s)}`;
+    setTimeout(tick, 1000);
   };
   tick();
+}
+
+// Anima um número de 0 até target (efeito de contador a subir).
+function countUp(el, target, { duration = 900, suffix = '', prefix = '' } = {}) {
+  target = Number(target) || 0;
+  if (reduceMotion) { el.textContent = prefix + fmtNum(target) + suffix; return; }
+  const start = performance.now();
+  const from = 0;
+  const step = (now) => {
+    const p = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+    el.textContent = prefix + fmtNum(Math.round(from + (target - from) * eased)) + suffix;
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 
 // ---- gráfico de área (série única) com crosshair + tooltip ----
