@@ -102,6 +102,7 @@ function renderChrome() {
     header.innerHTML = `
       <nav class="nav">
         <a class="logo" href="/" id="nav-logo"><b></b></a>
+        <span class="nav-live" id="nav-live" style="display:none"><span class="pulse"></span><b></b></span>
         <div class="links">
           ${NAV_LINKS.map(([href, key]) =>
             `<a href="${href}" ${href === path || (href === '/' && path === '/index') ? 'class="active"' : ''}>${t(key)}</a>`).join('')}
@@ -145,6 +146,13 @@ function renderChrome() {
   siteStatus().then((s) => {
     const d = document.getElementById('discord-link');
     if (d && s?.info?.discord) d.href = s.info.discord;
+    // LED ao vivo na nav: nº de jogadores online em todas as páginas
+    const led = document.getElementById('nav-live');
+    if (led && s?.online && s.heartbeat) {
+      led.style.display = '';
+      led.querySelector('b').textContent = s.heartbeat.players;
+      led.title = `${s.heartbeat.players}/${s.heartbeat.max_players} online`;
+    }
     applyBrand(s);
   });
 }

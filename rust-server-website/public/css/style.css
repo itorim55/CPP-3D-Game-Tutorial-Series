@@ -102,9 +102,16 @@ header::after { /* fio de perigo sob a nav */
   color: var(--ink-2); padding: 8px 11px;
   font-family: var(--font-display); font-weight: 600;
   font-size: 14.5px; letter-spacing: 1.2px; text-transform: uppercase;
-  border-bottom: 2px solid transparent;
+  position: relative; border-bottom: 2px solid transparent;
+}
+.nav .links a::after {
+  content: ""; position: absolute; left: 11px; right: 11px; bottom: -2px; height: 2px;
+  background: var(--accent); transform: scaleX(0); transform-origin: left;
+  transition: transform .18s ease;
 }
 .nav .links a:hover { color: var(--ink); }
+.nav .links a:hover::after { transform: scaleX(1); }
+.nav .links a.cta::after, .nav .links a.user-chip::after { display: none; }
 .nav .links a.active { color: var(--accent); border-bottom-color: var(--accent); }
 .nav .links a.cta {
   background: var(--accent); color: #0b0d11; font-weight: 700; margin-left: 8px;
@@ -125,6 +132,18 @@ header::after { /* fio de perigo sob a nav */
 }
 .nav .lang-switch a.active { color: #0b0d11; background: var(--accent); }
 .nav .sep { width: 1px; height: 20px; background: var(--line-2); margin: 0 6px; }
+
+/* LED de jogadores online, colado ao logótipo */
+.nav-live {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+  color: var(--live); border: 1px solid rgba(74, 222, 128, .35);
+  background: rgba(74, 222, 128, .07); padding: 3px 10px;
+}
+.nav-live .pulse {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--live);
+  animation: pulse 1.8s infinite;
+}
 
 /* chip de conta com avatar */
 .nav .links a.user-chip.logged {
@@ -352,6 +371,24 @@ h2.section + * { margin-top: 14px; }
   .hero-band { grid-template-columns: 1fr; }
   .hero-band .side { align-items: flex-start; }
 }
+
+/* spotlight rotativo no lado do hero */
+.spotlight {
+  min-height: 52px; margin-top: 14px; text-align: right; overflow: hidden;
+}
+.spotlight .spot { animation: spotin .45s cubic-bezier(.2, .7, .2, 1); }
+@keyframes spotin { from { opacity: 0; transform: translateY(12px); } }
+.spotlight .s-lbl {
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 1.5px;
+}
+.spotlight .s-val {
+  font-family: var(--font-display); font-weight: 800; font-size: 21px;
+  letter-spacing: .5px; color: var(--ink); margin-top: 2px;
+  display: flex; align-items: center; gap: 8px; justify-content: flex-end;
+}
+.spotlight .s-val a { color: var(--ink); }
+.spotlight .s-val a:hover { color: var(--accent); }
 
 /* badge LIVE */
 .live-badge {

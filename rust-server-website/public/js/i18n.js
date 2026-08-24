@@ -70,6 +70,11 @@ const EN_JS = {
   'player.progressHint': 'Cumulative K/D, day by day — the story of your wipe.',
   'sum.myWrapped': 'My Wipe Wrapped',
 
+  // spotlight do hero (JS)
+  'spot.leader': 'wipe leader',
+  'spot.longest': 'longest kill',
+  'spot.onFire': 'on fire right now',
+
   // wipe wrapped (JS)
   'wr.eyebrow': 'Wipe Wrapped — $1 · $2',
   'wr.rank': '#$1 of $2 killers this wipe',
@@ -243,6 +248,9 @@ const I18N = {
     'player.progressHint': 'K/D acumulado, dia a dia — a história da tua wipe.',
     'stats.achLink': '🏅 Conquistas',
     'sum.myWrapped': 'O meu Wipe Wrapped',
+    'spot.leader': 'líder da wipe',
+    'spot.longest': 'kill mais longa',
+    'spot.onFire': 'em fogo agora',
     'wr.title': 'Wipe Wrapped',
     'wr.eyebrow': 'Wipe Wrapped — $1 · $2',
     'wr.rank': '#$1 de $2 killers nesta wipe',

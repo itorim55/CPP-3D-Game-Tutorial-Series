@@ -38,6 +38,7 @@
       <div style="text-align:right">
         <div class="stat-hero" style="font-family:var(--font-display);font-size:64px;line-height:1;letter-spacing:1px;font-variant-numeric:tabular-nums" id="players-now">—</div>
         <div style="color:var(--ink-muted);font-size:12.5px;text-transform:uppercase;letter-spacing:.6px" data-i18n="home.playersOnline">players online</div>
+        <div class="spotlight" id="spotlight"></div>
       </div>
     </div>
   </section>
@@ -226,6 +227,20 @@ async function refreshStreaks() {
   } catch {}
 }
 
+// ---------- spotlight: destaques a rodar no hero ----------
+function startSpotlight(items) {
+  const el = document.getElementById('spotlight');
+  if (!el || !items.length) return;
+  let i = 0;
+  const show = () => {
+    const s = items[i % items.length];
+    el.innerHTML = `<div class="spot"><div class="s-lbl">${s.lbl}</div><div class="s-val">${s.val}</div></div>`;
+    i++;
+  };
+  show();
+  if (!reduceMotion) setInterval(show, 5000);
+}
+
 (async () => {
   startEmbers(document.getElementById('embers'));
   await refreshStatus(true);
@@ -240,6 +255,18 @@ async function refreshStreaks() {
       <td class="n">${r.kills}</td>
       <td class="kd">${r.kd.toFixed(2)} K/D</td>
     </tr>`).join('') || `<tr><td>${t('home.noData')}</td></tr>`;
+
+  // spotlight com os dados já em mãos + a kill mais longa da wipe
+  try {
+    const spots = [];
+    const top = lb.rows[0];
+    if (top) spots.push({ lbl: t('spot.leader'), val: `${pfp(top.avatar, top.name, 22)} ${playerLink(top.steam_id, top.name)} · ${top.kills}` });
+    const far = (await api('/api/leaderboard?by=distance&limit=1').catch(() => null))?.rows?.[0];
+    if (far && far.best_distance) spots.push({ lbl: t('spot.longest'), val: `${playerLink(far.steam_id, far.name)} · ${Math.round(far.best_distance)}m` });
+    const st = (await api('/api/streaks').catch(() => null))?.rows?.[0];
+    if (st) spots.push({ lbl: t('spot.onFire'), val: `🔥 ${playerLink(st.steam_id, st.name)} · ${st.streak}` });
+    startSpotlight(spots);
+  } catch {}
 
   // ciclos ao vivo
   setInterval(() => refreshKillfeed(false), 8000);

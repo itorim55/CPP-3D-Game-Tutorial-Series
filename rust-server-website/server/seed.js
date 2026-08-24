@@ -38,6 +38,14 @@ function seed() {
     store.addPlaytime(ids[i], 3600 * (2 + rnd(120)));
   });
 
+  // O dono do site entra na demo com o SteamID real. O nome fica 'Unknown'
+  // até ao primeiro login Steam — aí o nome e o avatar verdadeiros colam-se
+  // sozinhos (ver steam.adopt), e o dono aparece em todos os leaderboards.
+  const ownerId = '76561198874661673';
+  store.upsertPlayer(ownerId, null, now - 9 * 86400);
+  store.addPlaytime(ownerId, 3600 * 38);
+  ids.push(ownerId);
+
   console.log('[seed] A gerar kills...');
   // alguns "hotspots" no mapa para o heatmap ficar interessante
   const hotspots = [[-800, 600], [400, -900], [1200, 1100], [0, 0], [-1400, -400]];
@@ -53,6 +61,22 @@ function seed() {
       weapon: pick(WEAPONS),
       distance: Math.round(Math.random() * (Math.random() < 0.1 ? 350 : 120) * 10) / 10,
       headshot: Math.random() < 0.35,
+      bodypart: pick(['head', 'chest', 'stomach', 'arm', 'leg']),
+      posX: hx + (Math.random() - 0.5) * 600,
+      posZ: hz + (Math.random() - 0.5) * 600,
+    }, wipe.id);
+  }
+
+  // o dono leva um empurrão para meio da tabela — com direito a badge de sniper
+  for (let k = 0; k < 45; k++) {
+    let v = rnd(ids.length - 1);
+    const [hx, hz] = pick(hotspots);
+    store.recordKill({
+      ts: now - rnd(10 * 86400),
+      attackerId: ownerId, victimId: ids[v],
+      weapon: pick(WEAPONS),
+      distance: k === 0 ? 327 : Math.round(Math.random() * 140 * 10) / 10,
+      headshot: k === 0 ? true : Math.random() < 0.4,
       bodypart: pick(['head', 'chest', 'stomach', 'arm', 'leg']),
       posX: hx + (Math.random() - 0.5) * 600,
       posZ: hz + (Math.random() - 0.5) * 600,
