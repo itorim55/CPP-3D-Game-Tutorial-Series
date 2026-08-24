@@ -23,12 +23,14 @@ function esc(s) {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+const LOCALE = { en: 'en-GB', pt: 'pt-PT' }[LANG] || 'en-GB';
+
 function timeAgo(tsSeconds) {
   const s = Math.max(0, Math.floor(Date.now() / 1000) - tsSeconds);
-  if (s < 60) return 'agora mesmo';
-  if (s < 3600) return `há ${Math.floor(s / 60)} min`;
-  if (s < 86400) return `há ${Math.floor(s / 3600)} h`;
-  return `há ${Math.floor(s / 86400)} d`;
+  if (s < 60) return t('time.now');
+  if (s < 3600) return t('time.min', Math.floor(s / 60));
+  if (s < 86400) return t('time.hour', Math.floor(s / 3600));
+  return t('time.day', Math.floor(s / 86400));
 }
 
 function hours(seconds) {
@@ -36,11 +38,15 @@ function hours(seconds) {
 }
 
 function fmtDate(ts) {
-  return new Date(ts * 1000).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date(ts * 1000).toLocaleDateString(LOCALE, { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function fmtNum(n) {
+  return (n || 0).toLocaleString(LOCALE);
 }
 
 function gems(n) {
-  return `${(n || 0).toLocaleString('pt-PT')} 💎`;
+  return `${fmtNum(n)} 💎`;
 }
 
 function playerLink(steamId, name) {
@@ -64,14 +70,14 @@ function siteStatus() {
 // ---------- navegação e rodapé injetados ----------
 
 const NAV_LINKS = [
-  ['/', 'Início'],
-  ['/stats', 'Stats'],
-  ['/loja', 'Loja'],
-  ['/mapa', 'Mapa'],
-  ['/overwatch', 'Overwatch'],
-  ['/regras', 'Regras'],
-  ['/staff', 'Staff'],
-  ['/candidatura', 'Candidaturas'],
+  ['/', 'nav.home'],
+  ['/stats', 'nav.stats'],
+  ['/loja', 'nav.store'],
+  ['/mapa', 'nav.map'],
+  ['/overwatch', 'nav.overwatch'],
+  ['/regras', 'nav.rules'],
+  ['/staff', 'nav.staff'],
+  ['/candidatura', 'nav.apply'],
 ];
 
 function renderChrome() {
@@ -82,21 +88,25 @@ function renderChrome() {
       <nav class="nav">
         <a class="logo" href="/" id="nav-logo"><b></b></a>
         <div class="links">
-          ${NAV_LINKS.map(([href, label]) =>
-            `<a href="${href}" ${href === path || (href === '/' && path === '/index') ? 'class="active"' : ''}>${label}</a>`).join('')}
-          <a href="/auth/steam" id="nav-user" class="user-chip">Entrar</a>
+          ${NAV_LINKS.map(([href, key]) =>
+            `<a href="${href}" ${href === path || (href === '/' && path === '/index') ? 'class="active"' : ''}>${t(key)}</a>`).join('')}
+          <a href="/auth/steam" id="nav-user" class="user-chip">${t('nav.login')}</a>
           <a class="cta" href="#" id="discord-link" target="_blank" rel="noopener">Discord</a>
+          <span class="lang-switch">${Object.entries(LANGS).map(([code, label]) =>
+            `<a href="#" data-lang="${code}" ${code === LANG ? 'class="active"' : ''}>${label}</a>`).join('')}</span>
         </div>
       </nav>`;
+    header.querySelectorAll('[data-lang]').forEach((el) =>
+      el.addEventListener('click', (e) => { e.preventDefault(); setLang(el.dataset.lang); }));
   }
 
   const footer = document.querySelector('footer');
   if (footer && !footer.innerHTML.trim()) {
     footer.innerHTML = `
-      <span data-brand></span> · <a href="/regras">Regras</a> · <a href="/staff">Staff &amp; Transparência</a> ·
-      <a href="/candidatura">Junta-te à equipa</a> · <a href="/novidades">Novidades</a> ·
-      <a href="/apelo">Apelar um ban</a>
-      <br>Este servidor não é afiliado à Facepunch Studios nem à Valve.`;
+      <span data-brand></span> · <a href="/regras">${t('footer.rules')}</a> · <a href="/staff">${t('footer.staff')}</a> ·
+      <a href="/candidatura">${t('footer.apply')}</a> · <a href="/novidades">${t('footer.news')}</a> ·
+      <a href="/apelo">${t('footer.appeal')}</a>
+      <br>${t('footer.disclaimer')}`;
   }
 
   me().then((u) => {
@@ -104,11 +114,11 @@ function renderChrome() {
     if (!chip) return;
     if (u.loggedIn) {
       chip.href = '/conta';
-      chip.innerHTML = `${esc(u.name || 'A minha conta')} · ${gems(u.wallet.gems)}`;
-      chip.title = 'A minha conta';
+      chip.innerHTML = `${esc(u.name || t('nav.account'))} · ${gems(u.wallet.gems)}`;
+      chip.title = t('nav.account');
     } else {
       chip.href = '/auth/steam';
-      chip.textContent = 'Entrar com Steam';
+      chip.textContent = t('nav.login');
     }
   });
 
@@ -147,7 +157,7 @@ function startCountdown(el, isoDate) {
   if (Number.isNaN(target)) { el.textContent = '—'; return; }
   const tick = () => {
     let ms = target - Date.now();
-    if (ms <= 0) { el.textContent = 'WIPE!'; return; }
+    if (ms <= 0) { el.textContent = t('countdown.wipe'); return; }
     const d = Math.floor(ms / 86400000); ms -= d * 86400000;
     const h = Math.floor(ms / 3600000); ms -= h * 3600000;
     const m = Math.floor(ms / 60000);
@@ -162,7 +172,7 @@ function startCountdown(el, isoDate) {
 function renderAreaChart(container, data, { color = '#e0552e', maxY = null } = {}) {
   container.innerHTML = '';
   if (!data || data.length < 2) {
-    container.innerHTML = '<p style="color:var(--ink-muted);font-size:13px">Ainda sem histórico suficiente.</p>';
+    container.innerHTML = `<p style="color:var(--ink-muted);font-size:13px">${t('chart.empty')}</p>`;
     return;
   }
   const W = 720, H = 180, PAD = { l: 34, r: 10, t: 12, b: 22 };
@@ -225,7 +235,7 @@ function renderAreaChart(container, data, { color = '#e0552e', maxY = null } = {
     xhair.style.display = ''; pt.style.display = '';
     pt.setAttribute('cx', px); pt.setAttribute('cy', py);
     const dt = new Date(d.hour * 1000);
-    tip.innerHTML = `<b>${d.players}</b> jogadores · ${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')} ${fmtHour(d.hour)}`;
+    tip.innerHTML = `<b>${d.players}</b> ${t('chart.players')} · ${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')} ${fmtHour(d.hour)}`;
     tip.style.display = 'block';
     tip.style.left = `${(px / W) * rect.width}px`;
     tip.style.top = `${(py / H) * rect.height}px`;

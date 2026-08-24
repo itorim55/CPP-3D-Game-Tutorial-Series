@@ -5,10 +5,10 @@
 const store = require('./db');
 
 const NAMES = [
-  'Zé do Rust', 'RaidMaster PT', 'xX_Sniper_Xx', 'Bárbara Selvagem', 'O Naked',
-  'CaçadorDeCheaters', 'Rei do Sulfur', 'Miúdo AK', 'Farmzilla', 'Doutor C4',
-  'A Lenda de Peniche', 'Camper Profissional', 'Turista Alemão', 'ZergLeader',
-  'Solo Sofredor', 'Duo Dinamite', 'Pescador de Bradley', 'Génio das Bases',
+  'Naked Bob', 'RaidMaster', 'xX_Sniper_Xx', 'Bush Wookie', 'The Naked One',
+  'CheaterHunter', 'Sulfur King', 'AK Kid', 'Farmzilla', 'Doctor C4',
+  'Beach Legend', 'Pro Camper', 'German Tourist', 'ZergLeader',
+  'Solo Sufferer', 'Duo Dynamite', 'Bradley Fisher', 'Base Genius',
 ];
 
 const WEAPONS = [
@@ -80,10 +80,10 @@ function seed() {
 
   console.log('[seed] Staff e transparência...');
   const staff = [
-    ['Admin Principal', 'Fundador / Dono', 'Fundou o servidor. Nunca joga a wipe com vantagens — conta de admin separada, só para moderar.'],
-    ['VigiaNoturno', 'Head Admin', 'Especialista em apanhar cheaters. Todas as provas gravadas e publicadas.'],
-    ['Moderadora Ana', 'Moderadora', 'Responde a tickets no Discord e faz verificações in-game.'],
-    ['ShadowBanPT', 'Moderador', 'Moderador do mês de julho. 23 cheaters banidos com provas.'],
+    ['HeadAdmin', 'Founder / Owner', 'Founded the server. Never plays a wipe with advantages — separate admin account, moderation only.'],
+    ['NightWatch', 'Head Admin', 'Cheater-catching specialist. Every piece of evidence recorded and published.'],
+    ['ModAna', 'Moderator', 'Handles Discord tickets and in-game checks.'],
+    ['ShadowBan', 'Moderator', 'Moderator of the month in July. 23 cheaters banned with evidence.'],
   ];
   for (const [name, role, blurb] of staff) {
     store.db.prepare('INSERT INTO staff (name, role, since, blurb) VALUES (?, ?, ?, ?)')
@@ -91,18 +91,18 @@ function seed() {
   }
 
   const banReasons = [
-    ['Aimbot confirmado (gravação publicada)', 'VigiaNoturno'],
-    ['ESP / wallhack — flagged pelo sistema + revisão manual', 'ShadowBanPT'],
-    ['Contorno de ban (conta alternativa)', 'VigiaNoturno'],
-    ['Scripts de recoil', 'Moderadora Ana'],
-    ['Toxicidade extrema / discurso de ódio no chat', 'Moderadora Ana'],
-    ['Aimbot confirmado (gravação publicada)', 'ShadowBanPT'],
-    ['Associação a cheater (jogava em equipa com conta banida)', 'VigiaNoturno'],
+    ['Confirmed aimbot (recording published)', 'NightWatch'],
+    ['ESP / wallhack — flagged by the system + manual review', 'ShadowBan'],
+    ['Ban evasion (alt account)', 'NightWatch'],
+    ['Recoil scripts', 'ModAna'],
+    ['Extreme toxicity / hate speech in chat', 'ModAna'],
+    ['Confirmed aimbot (recording published)', 'ShadowBan'],
+    ['Cheater association (teamed with a banned account)', 'NightWatch'],
   ];
   banReasons.forEach(([reason, staffName], i) => {
     store.db.prepare('INSERT INTO bans (ts, steam_name, reason, staff_name, evidence) VALUES (?, ?, ?, ?, ?)')
       .run(now - rnd(25 * 86400), `Cheater#${1000 + i}`, reason, staffName,
-           i % 2 === 0 ? 'https://youtu.be/exemplo' : null);
+           i % 2 === 0 ? 'https://youtu.be/example' : null);
   });
 
   store.setInfo('map', 'Procedural 3800');
@@ -118,22 +118,22 @@ function seed() {
     store.addGems(id, 1000 * (2 + rnd(80)));
   });
 
-  store.addPost('Bem-vindos ao servidor!',
-    'Servidor novo, wipe fresca. Regras no site, staff no Discord. Boa sorte lá fora — e lembrem-se: os cheaters duram pouco por aqui.');
-  store.addPost('Wipe de 3 de setembro',
-    'Force wipe na quinta-feira às 19:00 UTC. Mapa novo escolhido pela comunidade na página de votação. Blueprints também dão wipe (force wipe mensal).');
+  store.addPost('Welcome to the server!',
+    'Fresh server, fresh wipe. Rules on the site, staff on Discord. Good luck out there — and remember: cheaters do not last long around here.');
+  store.addPost('September 3rd wipe',
+    'Force wipe on Thursday at 7pm UTC. New map chosen by the community on the map vote page. Blueprints wipe too (monthly force wipe).');
 
-  store.addOwCase('Suspeito de ESP na zona do Launch Site', 'https://youtu.be/exemplo-clip-1');
-  store.addOwCase('Recoil perfeito com AK a 150m?', 'https://youtu.be/exemplo-clip-2');
-  store.db.prepare("UPDATE ow_cases SET status = 'fechado', verdict = 'cheater' WHERE id = 1").run();
+  store.addOwCase('Suspected ESP near Launch Site', 'https://youtu.be/example-clip-1');
+  store.addOwCase('Perfect recoil with an AK at 150m?', 'https://youtu.be/example-clip-2');
+  store.db.prepare("UPDATE ow_cases SET status = 'closed', verdict = 'cheater' WHERE id = 1").run();
   ids.slice(0, 9).forEach((id, i) => {
     store.db.prepare('INSERT OR IGNORE INTO ow_votes (case_id, steam_id, vote) VALUES (?, ?, ?)')
       .run(1, id, i < 6 ? 'cheat' : i < 8 ? 'unsure' : 'clean');
   });
 
-  store.mapAdmin('add', { label: 'Mapa A — clássico, 2 lagos', seed: '183456201', size: 3800 });
-  store.mapAdmin('add', { label: 'Mapa B — ilha grande + oceano', seed: '990122837', size: 4000 });
-  store.mapAdmin('add', { label: 'Mapa C — montanhoso, neve', seed: '447789123', size: 3600 });
+  store.mapAdmin('add', { label: 'Map A — classic, 2 lakes', seed: '183456201', size: 3800 });
+  store.mapAdmin('add', { label: 'Map B — big island + ocean', seed: '990122837', size: 4000 });
+  store.mapAdmin('add', { label: 'Map C — mountains and snow', seed: '447789123', size: 3600 });
   store.mapAdmin('open', {});
   const opts = store.db.prepare('SELECT id FROM map_options WHERE round = 1').all();
   ids.slice(0, 12).forEach((id, i) => {
@@ -193,8 +193,8 @@ function seed() {
     }
   }
 
-  store.addAppeal(ids[10], 'sofredor#0001',
-    'Fui banido por "associação a cheater" mas só joguei com ele duas vezes e não sabia de nada. Peço revisão — tenho 900 h de conta limpa.');
+  store.addAppeal(ids[10], 'sufferer#0001',
+    'I was banned for "cheater association" but I only played with him twice and had no idea. Requesting a review — my account has 900 h and a clean record.');
 
   console.log('[seed] Concluído.');
 }

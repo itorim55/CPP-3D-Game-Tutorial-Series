@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>1 vs 1 — Comparador</title>
+<title>1 vs 1 — Comparator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
@@ -25,16 +25,16 @@
 <header></header>
 
 <main>
-  <h2 class="section" style="margin-top:6px">⚔️ 1 vs 1 — Comparador de jogadores</h2>
-  <p style="color:var(--ink-muted);font-size:13px">Escolhe dois jogadores e vê quem manda. Inclui o histórico direto entre os dois.</p>
+  <h2 class="section" style="margin-top:6px" data-i18n="vs.title">⚔️ 1 vs 1 — Player comparator</h2>
+  <p style="color:var(--ink-muted);font-size:13px" data-i18n="vs.sub">Pick two players and see who's boss. Includes their direct head-to-head history.</p>
 
   <div class="grid cols-2" style="margin-top:14px;max-width:760px">
     <div>
-      <input type="text" id="search-a" placeholder="🔍 jogador A…" autocomplete="off">
+      <input type="text" id="search-a" placeholder="🔍 player A…" data-i18n-ph="vs.phA" autocomplete="off">
       <div id="results-a" class="feed" style="margin-top:6px"></div>
     </div>
     <div>
-      <input type="text" id="search-b" placeholder="🔍 jogador B…" autocomplete="off">
+      <input type="text" id="search-b" placeholder="🔍 player B…" data-i18n-ph="vs.phB" autocomplete="off">
       <div id="results-b" class="feed" style="margin-top:6px"></div>
     </div>
   </div>
@@ -44,6 +44,7 @@
 
 <footer></footer>
 
+<script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
 <script>
 const params = new URLSearchParams(location.search);
@@ -61,7 +62,7 @@ function attachSearch(input, results, assign) {
       out.innerHTML = r.rows.map((p) => `
         <div class="row" style="cursor:pointer" data-pick="${esc(p.steam_id)}" data-name="${esc(p.name)}">
           <b>${esc(p.name)}</b><span class="meta">${hours(p.playtime_s)}</span>
-        </div>`).join('') || '<p style="color:var(--ink-muted);font-size:13px">Nada encontrado.</p>';
+        </div>`).join('') || `<p style="color:var(--ink-muted);font-size:13px">${t('vs.nothing')}</p>`;
       out.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('click', () => {
         assign(el.dataset.pick);
         document.getElementById(input).value = el.dataset.name;
@@ -77,14 +78,14 @@ attachSearch('search-b', 'results-b', (id) => { B = id; });
 
 function maybeLoad() {
   if (!A || !B) return;
-  if (A === B) { document.getElementById('comparison').innerHTML = '<div class="notice err">Escolhe dois jogadores diferentes. 😄</div>'; return; }
+  if (A === B) { document.getElementById('comparison').innerHTML = `<div class="notice err">${t('vs.same')}</div>`; return; }
   history.replaceState(null, '', `/vs?a=${encodeURIComponent(A)}&b=${encodeURIComponent(B)}`);
   load();
 }
 
 async function load() {
   const el = document.getElementById('comparison');
-  el.innerHTML = '<p style="color:var(--ink-muted)">a carregar…</p>';
+  el.innerHTML = `<p style="color:var(--ink-muted)">${t('loading')}</p>`;
   let c;
   try { c = await api(`/api/compare?a=${encodeURIComponent(A)}&b=${encodeURIComponent(B)}`); }
   catch (e) { el.innerHTML = `<div class="notice err">⚠️ ${esc(e.message)}</div>`; return; }
@@ -113,37 +114,36 @@ async function load() {
     </div>
 
     <div class="card h2h-banner" style="margin-top:18px">
-      <div style="color:var(--ink-muted);font-size:12.5px;text-transform:uppercase;letter-spacing:.5px">Frente a frente (todas as wipes)</div>
+      <div style="color:var(--ink-muted);font-size:12.5px;text-transform:uppercase;letter-spacing:.5px">${t('vs.h2h')}</div>
       <div class="score">${c.h2h.aKilledB} — ${c.h2h.bKilledA}</div>
       <div style="color:var(--ink-2);font-size:14px">
-        ${total === 0 ? 'Ainda nunca se cruzaram. Alguém que trate disso.'
-          : leader ? `<b style="color:var(--accent)">${esc(leader)}</b> domina esta rivalidade.` : 'Empate perfeito. 🍿'}
+        ${total === 0 ? t('vs.never') : leader ? t('vs.dominates', esc(leader)) : t('vs.tie')}
       </div>
     </div>
 
     <div class="card" style="margin-top:14px">
-      <h3>Esta wipe</h3>
-      ${row('Kills', c.a.wipe.kills, c.b.wipe.kills)}
-      ${row('Mortes', c.a.wipe.deaths, c.b.wipe.deaths, (x) => x, false)}
+      <h3>${t('vs.thisWipe')}</h3>
+      ${row(t('vs.kills'), c.a.wipe.kills, c.b.wipe.kills)}
+      ${row(t('vs.deaths'), c.a.wipe.deaths, c.b.wipe.deaths, (x) => x, false)}
       ${row('K/D', c.a.wipe.kd, c.b.wipe.kd, (x) => x.toFixed(2))}
-      ${row('Headshots', c.a.wipe.headshots, c.b.wipe.headshots)}
-      ${row('% headshot', c.a.wipe.hsRate, c.b.wipe.hsRate, (x) => x + '%')}
-      ${row('Kill + longa', c.a.wipe.bestDistance, c.b.wipe.bestDistance, (x) => x + ' m')}
-      ${row('Streak atual', c.a.wipe.streak, c.b.wipe.streak, (x) => x ? '🔥 ' + x : '0')}
-      ${row('Estruturas destruídas', c.a.wipe.structuresDestroyed, c.b.wipe.structuresDestroyed)}
-      ${row('Horas', c.a.wipe.hours, c.b.wipe.hours)}
+      ${row(t('vs.headshots'), c.a.wipe.headshots, c.b.wipe.headshots)}
+      ${row(t('vs.hsRate'), c.a.wipe.hsRate, c.b.wipe.hsRate, (x) => x + '%')}
+      ${row(t('vs.longest'), c.a.wipe.bestDistance, c.b.wipe.bestDistance, (x) => x + ' m')}
+      ${row(t('vs.streak'), c.a.wipe.streak, c.b.wipe.streak, (x) => x ? '🔥 ' + x : '0')}
+      ${row(t('vs.structures'), c.a.wipe.structuresDestroyed, c.b.wipe.structuresDestroyed)}
+      ${row(t('vs.hours'), c.a.wipe.hours, c.b.wipe.hours)}
     </div>
 
     <div class="card" style="margin-top:14px">
-      <h3>Todas as wipes</h3>
-      ${row('Kills', c.a.allTime.kills, c.b.allTime.kills)}
+      <h3>${t('vs.allTime')}</h3>
+      ${row(t('vs.kills'), c.a.allTime.kills, c.b.allTime.kills)}
       ${row('K/D', c.a.allTime.kd, c.b.allTime.kd, (x) => x.toFixed(2))}
-      ${row('Horas', c.a.allTime.hours, c.b.allTime.hours)}
+      ${row(t('vs.hours'), c.a.allTime.hours, c.b.allTime.hours)}
     </div>
 
     ${c.h2h.recent.length ? `
     <div class="card" style="margin-top:14px">
-      <h3>Últimos confrontos</h3>
+      <h3>${t('vs.recent')}</h3>
       <div class="feed">
         ${c.h2h.recent.map((k) => `
           <div class="row">

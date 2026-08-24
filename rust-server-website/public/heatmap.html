@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Heatmap de Mortes</title>
+<title data-i18n-key="heat.title">Death Heatmap</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
@@ -14,12 +14,12 @@
 
 <main>
   <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:6px">
-    <h2 class="section" style="margin:0">🗺️ Heatmap de mortes</h2>
+    <h2 class="section" style="margin:0" data-i18n="heat.title">🗺️ Death heatmap</h2>
     <select id="wipe-select" style="width:auto;border-radius:999px;padding:7px 14px;font-size:13px"></select>
   </div>
-  <p style="color:var(--ink-muted);font-size:13px;margin-top:6px">
-    Onde se morre neste mapa. Quanto mais quente (laranja→branco), mais mortes na zona.
-    Norte para cima; coordenadas do jogo normalizadas ao tamanho do mapa.
+  <p style="color:var(--ink-muted);font-size:13px;margin-top:6px" data-i18n="heat.desc">
+    Where people die on this map. The hotter (orange→white), the more deaths in the area.
+    North is up; game coordinates normalized to map size.
   </p>
 
   <div class="card" style="margin-top:16px;max-width:820px">
@@ -32,6 +32,7 @@
 
 <footer></footer>
 
+<script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
 <script>
 const SIZE = 760; // resolução interna do canvas
@@ -95,9 +96,8 @@ async function load(wipeId) {
   ctx.drawImage(heat, 0, 0);
 
   document.getElementById('meta').textContent =
-    `${data.points.length.toLocaleString('pt-PT')} mortes PVP com posição registada` +
-    ` · mapa ${mapSize}` +
-    (data.mapImage ? '' : ' · dica: define "map_image" na config do site para sobrepor a imagem real do mapa (RustMaps)');
+    t('heat.deaths', fmtNum(data.points.length), mapSize) +
+    (data.mapImage ? '' : t('heat.tip'));
 }
 
 (async () => {
@@ -106,8 +106,8 @@ async function load(wipeId) {
   for (const w of data.rows) {
     const opt = document.createElement('option');
     opt.value = w.id;
-    const date = new Date(w.started_at * 1000).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
-    opt.textContent = `${w.label || 'Wipe'} (${date})${w.id === data.current ? ' — atual' : ''}`;
+    const date = new Date(w.started_at * 1000).toLocaleDateString(LOCALE, { day: '2-digit', month: 'short' });
+    opt.textContent = `${w.label || t('stats.wipeWord')} (${date})${w.id === data.current ? ` — ${t('sum.current')}` : ''}`;
     sel.appendChild(opt);
   }
   sel.value = data.current;

@@ -30,7 +30,7 @@ function killfeed(url, lines) {
     embeds: [{
       color: ORANGE,
       description: lines.slice(0, 15).join('\n') +
-        (lines.length > 15 ? `\n… e mais ${lines.length - 15} kills` : ''),
+        (lines.length > 15 ? `\n… and ${lines.length - 15} more kills` : ''),
     }],
   });
 }
@@ -39,12 +39,12 @@ function banAnnounce(url, { steamName, reason, staffName, evidence }) {
   send(url, {
     embeds: [{
       color: RED,
-      title: '🔨 Banimento',
+      title: '🔨 Ban',
       fields: [
-        { name: 'Jogador', value: steamName, inline: true },
+        { name: 'Player', value: steamName, inline: true },
         { name: 'Admin', value: staffName, inline: true },
-        { name: 'Motivo', value: reason },
-        ...(evidence ? [{ name: 'Provas', value: evidence }] : []),
+        { name: 'Reason', value: reason },
+        ...(evidence ? [{ name: 'Evidence', value: evidence }] : []),
       ],
     }],
   });
@@ -54,8 +54,8 @@ function newApplication(url, { name, discord, steamId }) {
   send(url, {
     embeds: [{
       color: GOLD,
-      title: '📋 Nova candidatura a moderador',
-      description: `**${name}** (${discord})\nSteamID: ${steamId}\nVê no painel: /admin`,
+      title: '📋 New moderator application',
+      description: `**${name}** (${discord})\nSteamID: ${steamId}\nReview in the panel: /admin`,
     }],
   });
 }
@@ -64,17 +64,17 @@ function wipeSummaryPost(url, s, siteUrl) {
   if (!s) return;
   const f = [];
   if (s.topKiller) f.push({ name: '⚔️ Top killer', value: `${s.topKiller.name} (${s.topKiller.n} kills)`, inline: true });
-  if (s.topElo) f.push({ name: '🦅 Melhor Elo', value: `${s.topElo.name} (${s.topElo.rating})`, inline: true });
-  if (s.longestKill) f.push({ name: '🎯 Kill mais longa', value: `${s.longestKill.name} — ${Math.round(s.longestKill.distance)} m`, inline: true });
-  if (s.topHeadshots) f.push({ name: '🎖️ Mais headshots', value: `${s.topHeadshots.name} (${s.topHeadshots.n})`, inline: true });
-  if (s.topFarmer) f.push({ name: '🌾 Maior farmer', value: `${s.topFarmer.name}`, inline: true });
-  if (s.topHours) f.push({ name: '⏱️ Mais horas', value: `${s.topHours.name} (${Math.round(s.topHours.seconds / 3600)} h)`, inline: true });
-  if (s.topDeaths) f.push({ name: '🧲 Saco de pancada', value: `${s.topDeaths.name} (${s.topDeaths.n} mortes)`, inline: true });
+  if (s.topElo) f.push({ name: '🦅 Best Elo', value: `${s.topElo.name} (${s.topElo.rating})`, inline: true });
+  if (s.longestKill) f.push({ name: '🎯 Longest kill', value: `${s.longestKill.name} — ${Math.round(s.longestKill.distance)} m`, inline: true });
+  if (s.topHeadshots) f.push({ name: '🎖️ Most headshots', value: `${s.topHeadshots.name} (${s.topHeadshots.n})`, inline: true });
+  if (s.topFarmer) f.push({ name: '🌾 Top farmer', value: `${s.topFarmer.name}`, inline: true });
+  if (s.topHours) f.push({ name: '⏱️ Most hours', value: `${s.topHours.name} (${Math.round(s.topHours.seconds / 3600)} h)`, inline: true });
+  if (s.topDeaths) f.push({ name: '🧲 Punching bag', value: `${s.topDeaths.name} (${s.topDeaths.n} deaths)`, inline: true });
   send(url, {
     embeds: [{
       color: ORANGE,
-      title: `🏁 Fim da ${s.wipe.label || 'wipe'} — os highlights`,
-      description: `${s.totals?.kills ?? 0} kills no total. Resumo completo: ${siteUrl}/resumo?wipe=${s.wipe.id}`,
+      title: `🏁 End of ${s.wipe.label || 'the wipe'} — the highlights`,
+      description: `${s.totals?.kills ?? 0} kills in total. Full recap: ${siteUrl}/resumo?wipe=${s.wipe.id}`,
       fields: f,
     }],
   });

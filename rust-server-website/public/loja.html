@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Loja de Gemas</title>
+<title data-i18n-key="store.title">Gem Store</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
@@ -14,54 +14,51 @@
 
 <main>
   <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px">
-    <h2 class="section" style="margin:0">Loja de Gemas</h2>
+    <h2 class="section" style="margin:0" data-i18n="store.title">Gem Store</h2>
     <span class="gem-balance" id="balance">— 💎</span>
   </div>
 
   <div class="card" style="margin-top:16px">
-    <h3>Como funciona</h3>
-    <p style="color:var(--ink-2);font-size:14px">
-      Ganhas <b style="color:var(--gold)" id="rate">1 000 gemas por cada hora jogada</b> no servidor —
-      automaticamente, sem fazer nada. As gemas trocam-se aqui por recompensas
-      <b>100% cosméticas</b>: nada do que está na loja dá vantagem in-game.
-      Inicia sessão com a Steam para veres o teu saldo e resgatar.
+    <h3 data-i18n="store.how">How it works</h3>
+    <p style="color:var(--ink-2);font-size:14px" data-i18n="store.howDesc">
+      You earn <b style="color:var(--gold)" id="rate">1,000 gems for every hour played</b> on the server —
+      automatically, no effort needed. Gems are traded here for <b>100% cosmetic</b> rewards:
+      nothing in the store gives an in-game advantage.
+      Sign in with Steam to see your balance and redeem.
     </p>
   </div>
 
-  <div id="login-hint" class="notice err" style="display:none">
-    🔒 <a href="/auth/steam">Inicia sessão com a Steam</a> para resgatares recompensas.
+  <div id="login-hint" class="notice err" style="display:none" data-i18n="store.loginHint">
+    🔒 <a href="/auth/steam">Sign in with Steam</a> to redeem rewards.
   </div>
 
-  <h2 class="section">Recompensas</h2>
-  <div class="grid cols-2" id="items">a carregar…</div>
+  <h2 class="section" data-i18n="store.rewards">Rewards</h2>
+  <div class="grid cols-2" id="items" data-i18n="loading">loading…</div>
 
   <div id="my-redemptions" style="display:none">
-    <h2 class="section">Os meus resgates</h2>
+    <h2 class="section" data-i18n="store.myRedemptions">My redemptions</h2>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Quando</th><th>Item</th><th class="num">Custo</th><th>Estado</th></tr></thead>
+        <thead><tr><th data-i18n="store.thWhen">When</th><th data-i18n="store.thItem">Item</th><th class="num" data-i18n="store.thCost">Cost</th><th data-i18n="store.thStatus">Status</th></tr></thead>
         <tbody id="redemption-rows"></tbody>
       </table>
     </div>
-    <p style="color:var(--ink-muted);font-size:12.5px;margin-top:8px">
-      Resgates automáticos são entregues in-game em ~1 minuto (se estiveres online).
-      Itens marcados como entrega manual são tratados pela staff em 24 h.
+    <p style="color:var(--ink-muted);font-size:12.5px;margin-top:8px" data-i18n="store.deliveryNote">
+      Automatic redemptions are delivered in-game within ~1 minute (if you're online).
+      Manual-delivery items are handled by staff within 24 h.
     </p>
   </div>
 </main>
 
 <footer></footer>
 
+<script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
 <script>
-let USER = null;
-
 async function load() {
   const [storeData, user] = await Promise.all([api('/api/store'), me()]);
-  USER = user;
 
-  document.getElementById('rate').textContent =
-    `${storeData.gemsPerHour.toLocaleString('pt-PT')} gemas por cada hora jogada`;
+  document.getElementById('rate').textContent = t('store.rate', fmtNum(storeData.gemsPerHour));
 
   if (user.loggedIn) {
     document.getElementById('balance').textContent = gems(user.wallet.gems);
@@ -69,11 +66,11 @@ async function load() {
       document.getElementById('my-redemptions').style.display = '';
       document.getElementById('redemption-rows').innerHTML = user.redemptions.map((r) => `
         <tr><td>${timeAgo(r.ts)}</td><td>${esc(r.name || '?')}</td>
-        <td class="num">${r.cost.toLocaleString('pt-PT')} 💎</td>
-        <td><span class="badge ${esc(r.status)}">${esc(r.status)}</span></td></tr>`).join('');
+        <td class="num">${fmtNum(r.cost)} 💎</td>
+        <td><span class="badge ${esc(r.status)}">${tStatus(r.status)}</span></td></tr>`).join('');
     }
   } else {
-    document.getElementById('balance').textContent = 'entra para ver 💎';
+    document.getElementById('balance').textContent = t('store.enterToSee');
     document.getElementById('login-hint').style.display = '';
   }
 
@@ -83,27 +80,27 @@ async function load() {
     <div class="card store-item">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
         <b style="font-size:16px">${esc(it.name)}</b>
-        <span class="cost">${it.cost.toLocaleString('pt-PT')} 💎</span>
+        <span class="cost">${fmtNum(it.cost)} 💎</span>
       </div>
       <p style="color:var(--ink-2);font-size:13.5px;margin:8px 0 14px">${esc(it.description || '')}</p>
       <button class="btn" data-id="${esc(it.id)}" ${canAfford ? '' : 'disabled style="opacity:.45;cursor:not-allowed"'}>
-        ${user.loggedIn ? (canAfford ? 'Resgatar' : 'Gemas insuficientes') : 'Entra para resgatar'}
+        ${user.loggedIn ? (canAfford ? t('store.redeem') : t('store.notEnough')) : t('store.loginToRedeem')}
       </button>
     </div>`;
-  }).join('') || '<p style="color:var(--ink-muted)">Loja vazia.</p>';
+  }).join('') || `<p style="color:var(--ink-muted)">${t('store.empty')}</p>`;
 }
 
 document.getElementById('items').addEventListener('click', async (e) => {
   const b = e.target.closest('button[data-id]');
   if (!b || b.disabled) return;
-  b.disabled = true; b.textContent = 'a resgatar…';
+  b.disabled = true; b.textContent = t('store.redeeming');
   try {
     const r = await apiPost('/api/redeem', { itemId: b.dataset.id });
-    b.textContent = r.auto ? '✅ Resgatado — entrega em ~1 min' : '✅ Resgatado — entrega manual em 24 h';
+    b.textContent = r.auto ? t('store.redeemedAuto') : t('store.redeemedManual');
     _mePromise = null; // refrescar saldo
     setTimeout(load, 1500);
   } catch (err) {
-    b.disabled = false; b.textContent = 'Resgatar';
+    b.disabled = false; b.textContent = t('store.redeem');
     alert('⚠️ ' + err.message);
   }
 });

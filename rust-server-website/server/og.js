@@ -22,8 +22,8 @@ function forHome() {
   return {
     title: store.getInfo('server_name') || brand(),
     desc: [
-      online, `${s.killsThisWipe.toLocaleString('pt-PT')} kills esta wipe`,
-      'Estatísticas ao vivo · Staff transparente · Zero pay-to-win',
+      online, `${s.killsThisWipe.toLocaleString('en-GB')} kills this wipe`,
+      'Live stats · Transparent staff · Zero pay-to-win',
     ].filter(Boolean).join(' · '),
   };
 }
@@ -35,12 +35,12 @@ function forPlayer(query) {
   if (!p) return null;
   const w = p.wipe;
   return {
-    title: `${p.name} — perfil ${brand()}`,
+    title: `${p.name} — ${brand()} profile`,
     desc: [
-      `⚔️ ${w.kills} kills · 💀 ${w.deaths} mortes · K/D ${w.kd.toFixed(2)}`,
+      `⚔️ ${w.kills} kills · 💀 ${w.deaths} deaths · K/D ${w.kd.toFixed(2)}`,
       p.elo ? `${p.elo.tier} ${p.elo.rating}` : null,
-      p.streak >= 3 ? `🔥 streak de ${p.streak}` : null,
-      p.badges.length ? `${p.badges.length} conquistas` : null,
+      p.streak >= 3 ? `🔥 ${p.streak} streak` : null,
+      p.badges.length ? `${p.badges.length} achievements` : null,
     ].filter(Boolean).join(' · '),
   };
 }
@@ -50,24 +50,24 @@ function forSummary(query) {
   const s = store.wipeSummary(wid);
   if (!s) return null;
   return {
-    title: `🏁 ${s.wipe.label || 'Resumo da wipe'} — ${brand()}`,
+    title: `🏁 ${s.wipe.label || 'Wipe recap'} — ${brand()}`,
     desc: [
       s.topKiller && `⚔️ Top killer: ${s.topKiller.name} (${s.topKiller.n})`,
-      s.longestKill && `🎯 ${s.longestKill.name} a ${Math.round(s.longestKill.distance)} m`,
-      s.totals && `${s.totals.kills.toLocaleString('pt-PT')} kills no total`,
+      s.longestKill && `🎯 ${s.longestKill.name} at ${Math.round(s.longestKill.distance)} m`,
+      s.totals && `${s.totals.kills.toLocaleString('en-GB')} kills in total`,
     ].filter(Boolean).join(' · '),
   };
 }
 
 function forVs(query) {
   const a = query.get('a'), b = query.get('b');
-  if (!a || !b) return { title: `⚔️ Comparador 1v1 — ${brand()}`, desc: 'Escolhe dois jogadores e vê quem manda.' };
+  if (!a || !b) return { title: `⚔️ 1v1 Comparator — ${brand()}`, desc: 'Pick two players and see who is boss.' };
   const c = store.comparePlayers(a, b);
   if (!c) return null;
   return {
     title: `⚔️ ${c.a.name} vs ${c.b.name}`,
-    desc: `Frente a frente: ${c.h2h.aKilledB}–${c.h2h.bKilledA} · ` +
-      `Kills esta wipe: ${c.a.wipe.kills} vs ${c.b.wipe.kills} · K/D: ${c.a.wipe.kd} vs ${c.b.wipe.kd}`,
+    desc: `Head to head: ${c.h2h.aKilledB}–${c.h2h.bKilledA} · ` +
+      `Kills this wipe: ${c.a.wipe.kills} vs ${c.b.wipe.kills} · K/D: ${c.a.wipe.kd} vs ${c.b.wipe.kd}`,
   };
 }
 
@@ -76,21 +76,21 @@ function forStats() {
   return {
     title: `Leaderboards — ${brand()}`,
     desc: top.length
-      ? 'Top da wipe: ' + top.map((r, i) => `${i + 1}. ${r.name} (${r.kills})`).join(' · ')
-      : 'Kills, K/D, Elo, headshots, equipas, raids e mais.',
+      ? 'Wipe top: ' + top.map((r, i) => `${i + 1}. ${r.name} (${r.kills})`).join(' · ')
+      : 'Kills, K/D, Elo, headshots, teams, raids and more.',
   };
 }
 
 const STATIC_PAGES = {
-  '/loja': { title: 'Loja de Gemas', desc: 'Ganha gemas por cada hora jogada e troca por recompensas 100% cosméticas. Zero pay-to-win.' },
-  '/mapa': { title: 'Votação do próximo mapa', desc: 'A comunidade escolhe o mapa — quem joga mais, vota mais.' },
-  '/overwatch': { title: 'Overwatch Comunitário', desc: 'Ajuda a caça aos cheaters: vê clips anónimos de suspeitos e dá o teu veredicto.' },
-  '/regras': { title: 'Regras do servidor', desc: 'Tolerância zero a cheats, grupos limitados, staff transparente com bans públicos.' },
-  '/staff': { title: 'Staff & Transparência', desc: 'Código do Moderador, lista pública de bans com provas, e Moderador do Mês.' },
-  '/candidatura': { title: 'Candidatura a Moderador', desc: 'Queres moderar como o camomo_10? Candidata-te — provas gravadas em todos os bans.' },
-  '/heatmap': { title: 'Heatmap de mortes', desc: 'Onde se morre neste mapa? As zonas mais quentes da wipe.' },
-  '/novidades': { title: 'Novidades', desc: 'Changelog do servidor, wipe a wipe.' },
-  '/apelo': { title: 'Apelar um ban', desc: 'Todos os bans podem ser contestados. Revisão por um admin diferente, resposta em 48-72 h.' },
+  '/loja': { title: 'Gem Store', desc: 'Earn gems for every hour played and trade them for 100% cosmetic rewards. Zero pay-to-win.' },
+  '/mapa': { title: 'Next map vote', desc: 'The community picks the map — the more you play, the more your vote counts.' },
+  '/overwatch': { title: 'Community Overwatch', desc: 'Help hunt cheaters: watch anonymous clips of suspects and give your verdict.' },
+  '/regras': { title: 'Server rules', desc: 'Zero tolerance for cheats, group limits, transparent staff with public bans.' },
+  '/staff': { title: 'Staff & Transparency', desc: 'The Moderator Code, a public ban list with evidence, and Moderator of the Month.' },
+  '/candidatura': { title: 'Moderator Application', desc: 'Want to moderate like camomo_10? Apply — recorded evidence behind every ban.' },
+  '/heatmap': { title: 'Death heatmap', desc: 'Where do people die on this map? The hottest zones of the wipe.' },
+  '/novidades': { title: 'News', desc: 'Server changelog, wipe by wipe.' },
+  '/apelo': { title: 'Appeal a ban', desc: 'Every ban can be contested. Reviewed by a different admin, answer within 48-72 h.' },
 };
 
 // ---------- construção do bloco de tags ----------
@@ -105,7 +105,7 @@ function tagsFor(pathname, query, siteUrl) {
     else if (pathname === '/vs') meta = forVs(query);
     else if (pathname === '/stats') meta = forStats();
     else meta = STATIC_PAGES[pathname] || null;
-    if (!meta) meta = { title: brand(), desc: store.getInfo('server_name') || 'Servidor de Rust' };
+    if (!meta) meta = { title: brand(), desc: store.getInfo('server_name') || 'Rust server' };
 
     const url = siteUrl + pathname + (query.toString() ? `?${query}` : '');
     return [

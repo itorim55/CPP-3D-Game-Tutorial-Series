@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>A minha conta</title>
+<title>My account</title>
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -14,11 +14,12 @@
 <header></header>
 
 <main id="content">
-  <p style="color:var(--ink-muted)">a carregar…</p>
+  <p style="color:var(--ink-muted)" data-i18n="loading">loading…</p>
 </main>
 
 <footer></footer>
 
+<script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
 <script>
 (async () => {
@@ -28,62 +29,57 @@
 
   if (!user.loggedIn) {
     el.innerHTML = `
-      ${err ? '<div class="notice err">⚠️ O login com a Steam falhou. Tenta outra vez.</div>' : ''}
+      ${err ? `<div class="notice err">${t('account.loginFailed')}</div>` : ''}
       <div class="card" style="max-width:480px;margin:40px auto;text-align:center;padding:36px">
-        <h2 style="font-family:var(--font-display);font-size:30px;letter-spacing:2px">ENTRAR NA CONTA</h2>
-        <p style="color:var(--ink-2);margin:12px 0 22px">
-          Liga a tua conta Steam para veres as tuas gemas, resgatares recompensas,
-          votares no próximo mapa e no Overwatch, e apelares bans.
-          Só recebemos o teu SteamID — nunca a tua password.
-        </p>
-        <a class="btn" href="/auth/steam">🎮 Entrar com a Steam</a>
+        <h2 style="font-family:var(--font-display);font-size:30px;letter-spacing:2px">${t('account.title')}</h2>
+        <p style="color:var(--ink-2);margin:12px 0 22px">${t('account.loginDesc')}</p>
+        <a class="btn" href="/auth/steam">${t('account.loginBtn')}</a>
       </div>`;
     return;
   }
 
   el.innerHTML = `
     <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:6px">
-      <h1 style="font-family:var(--font-display);font-size:40px;letter-spacing:2px">${esc(user.name || 'Sobrevivente')}</h1>
+      <h1 style="font-family:var(--font-display);font-size:40px;letter-spacing:2px">${esc(user.name || t('account.survivor'))}</h1>
       <span style="color:var(--ink-muted);font-size:13px">SteamID ${esc(user.steamId)}</span>
-      <a href="/auth/logout" style="margin-left:auto;font-size:13px;color:var(--ink-muted)">terminar sessão</a>
+      <a href="/auth/logout" style="margin-left:auto;font-size:13px;color:var(--ink-muted)">${t('account.logout')}</a>
     </div>
-    ${user.name ? '' : `<div class="notice err" style="margin-top:10px">
-      Ainda não te vimos no servidor — entra no jogo e as tuas stats começam a contar.</div>`}
+    ${user.name ? '' : `<div class="notice err" style="margin-top:10px">${t('account.notSeenYet')}</div>`}
 
     <div class="grid cols-4" style="margin-top:18px">
-      <div class="card tile"><div class="big" style="color:var(--gold)">${user.wallet.gems.toLocaleString('pt-PT')}</div><div class="label">💎 gemas disponíveis</div></div>
-      <div class="card tile"><div class="big">${user.wallet.earned_total.toLocaleString('pt-PT')}</div><div class="label">gemas ganhas no total</div></div>
-      <div class="card tile"><div class="big">${hours(user.playtimeS)}</div><div class="label">tempo de jogo</div></div>
-      <div class="card tile"><div class="big">×${user.voteWeight}</div><div class="label">peso do teu voto de mapa</div></div>
+      <div class="card tile"><div class="big" style="color:var(--gold)">${fmtNum(user.wallet.gems)}</div><div class="label">${t('account.gemsAvailable')}</div></div>
+      <div class="card tile"><div class="big">${fmtNum(user.wallet.earned_total)}</div><div class="label">${t('account.gemsTotal')}</div></div>
+      <div class="card tile"><div class="big">${hours(user.playtimeS)}</div><div class="label">${t('account.playtime')}</div></div>
+      <div class="card tile"><div class="big">×${user.voteWeight}</div><div class="label">${t('account.voteWeight')}</div></div>
     </div>
 
     <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
-      <a class="btn" href="/loja">💎 Ir à loja</a>
-      <a class="btn ghost" href="/mapa">🗳️ Votar no mapa</a>
-      <a class="btn ghost" href="/player?id=${encodeURIComponent(user.steamId)}">📊 O meu perfil público</a>
-      <a class="btn ghost" href="/apelo">⚖️ Apelar um ban</a>
+      <a class="btn" href="/loja">${t('account.goStore')}</a>
+      <a class="btn ghost" href="/mapa">${t('account.goMap')}</a>
+      <a class="btn ghost" href="/player?id=${encodeURIComponent(user.steamId)}">${t('account.myProfile')}</a>
+      <a class="btn ghost" href="/apelo">${t('account.goAppeal')}</a>
     </div>
 
-    <h2 class="section">Os meus resgates</h2>
+    <h2 class="section">${t('account.myRedemptions')}</h2>
     ${user.redemptions.length ? `<div class="table-wrap"><table>
-      <thead><tr><th>Quando</th><th>Item</th><th class="num">Custo</th><th>Estado</th></tr></thead>
+      <thead><tr><th>${t('store.thWhen')}</th><th>${t('store.thItem')}</th><th class="num">${t('store.thCost')}</th><th>${t('store.thStatus')}</th></tr></thead>
       <tbody>${user.redemptions.map((r) => `
         <tr><td>${timeAgo(r.ts)}</td><td>${esc(r.name || '?')}</td>
-        <td class="num">${r.cost.toLocaleString('pt-PT')} 💎</td>
-        <td><span class="badge ${esc(r.status)}">${esc(r.status)}</span></td></tr>`).join('')}</tbody>
-    </table></div>` : '<p style="color:var(--ink-muted)">Ainda não resgataste nada. <a href="/loja">Vê a loja →</a></p>'}
+        <td class="num">${fmtNum(r.cost)} 💎</td>
+        <td><span class="badge ${esc(r.status)}">${tStatus(r.status)}</span></td></tr>`).join('')}</tbody>
+    </table></div>` : `<p style="color:var(--ink-muted)">${t('account.noRedemptions')}</p>`}
 
-    <h2 class="section">Os meus apelos</h2>
+    <h2 class="section">${t('account.myAppeals')}</h2>
     ${user.appeals.length ? user.appeals.map((a) => `
       <div class="card" style="margin-bottom:10px">
         <div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap">
-          <span class="badge ${esc(a.status)}">${esc(a.status)}</span>
+          <span class="badge ${esc(a.status)}">${tStatus(a.status)}</span>
           <span style="color:var(--ink-muted);font-size:12.5px">${timeAgo(a.ts)}</span>
         </div>
         <p style="color:var(--ink-2);font-size:13.5px;margin-top:8px">${esc(a.text)}</p>
         ${a.response ? `<p style="margin-top:10px;padding:10px 14px;background:var(--surface-2);border-radius:8px;font-size:13.5px">
-          <b>Resposta da staff:</b> ${esc(a.response)}</p>` : ''}
-      </div>`).join('') : '<p style="color:var(--ink-muted)">Sem apelos. Ainda bem. 😄</p>'}`;
+          <b>${t('account.staffReply')}</b> ${esc(a.response)}</p>` : ''}
+      </div>`).join('') : `<p style="color:var(--ink-muted)">${t('account.noAppeals')}</p>`}`;
 })().catch(console.error);
 </script>
 </body>

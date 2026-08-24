@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS applications (
   scenario1    TEXT,
   scenario2    TEXT,
   scenario3    TEXT,
-  status       TEXT NOT NULL DEFAULT 'pendente',
+  status       TEXT NOT NULL DEFAULT 'pending',
   ip           TEXT
 );
 
@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS redemptions (
   item_id  TEXT NOT NULL,
   cost     INTEGER NOT NULL,
   command  TEXT,
-  status   TEXT NOT NULL DEFAULT 'pendente'  -- pendente|enviado|entregue|falhou
+  status   TEXT NOT NULL DEFAULT 'pending'  -- pending|sent|delivered|failed
 );
 
 CREATE TABLE IF NOT EXISTS appeals (
@@ -158,7 +158,7 @@ CREATE TABLE IF NOT EXISTS appeals (
   steam_id TEXT NOT NULL,
   discord  TEXT,
   text     TEXT NOT NULL,
-  status   TEXT NOT NULL DEFAULT 'pendente', -- pendente|em análise|aceite|recusado
+  status   TEXT NOT NULL DEFAULT 'pending', -- pending|reviewing|accepted|rejected
   response TEXT
 );
 
@@ -175,8 +175,8 @@ CREATE TABLE IF NOT EXISTS ow_cases (
   ts       INTEGER NOT NULL,
   title    TEXT NOT NULL,
   clip_url TEXT NOT NULL,
-  status   TEXT NOT NULL DEFAULT 'aberto',   -- aberto|fechado
-  verdict  TEXT                              -- cheater|inocente|inconclusivo
+  status   TEXT NOT NULL DEFAULT 'open',     -- open|closed
+  verdict  TEXT                              -- cheater|innocent|inconclusive
 );
 
 CREATE TABLE IF NOT EXISTS ow_votes (
@@ -272,7 +272,7 @@ function now() { return Math.floor(Date.now() / 1000); }
 function currentWipe() {
   let w = db.prepare('SELECT * FROM wipes ORDER BY started_at DESC LIMIT 1').get();
   if (!w) {
-    db.prepare('INSERT INTO wipes (started_at, label) VALUES (?, ?)').run(now(), 'Wipe inicial');
+    db.prepare('INSERT INTO wipes (started_at, label) VALUES (?, ?)').run(now(), 'First wipe');
     w = db.prepare('SELECT * FROM wipes ORDER BY started_at DESC LIMIT 1').get();
   }
   return w;
@@ -344,9 +344,9 @@ function listStore() {
 
 function redeem(steamId, itemId) {
   const item = db.prepare('SELECT * FROM store_items WHERE id = ? AND active = 1').get(itemId);
-  if (!item) return { error: 'Item não encontrado.' };
+  if (!item) return { error: 'Item not found.' };
   const w = getWallet(steamId);
-  if (w.gems < item.cost) return { error: `Gemas insuficientes (tens ${w.gems}, precisas de ${item.cost}).` };
+  if (w.gems < item.cost) return { error: `Not enough gems (you have ${w.gems}, you need ${item.cost}).` };
   db.prepare('UPDATE wallets SET gems = gems - ? WHERE steam_id = ?').run(item.cost, steamId);
   const command = item.command ? item.command.replaceAll('{steamid}', steamId) : null;
   db.prepare('INSERT INTO redemptions (ts, steam_id, item_id, cost, command) VALUES (?, ?, ?, ?, ?)')
@@ -364,15 +364,15 @@ function myRedemptions(steamId) {
 function pendingPluginRedemptions() {
   const rows = db.prepare(`
     SELECT id, steam_id, command FROM redemptions
-    WHERE status = 'pendente' AND command IS NOT NULL ORDER BY id LIMIT 20`).all();
-  const mark = db.prepare("UPDATE redemptions SET status = 'enviado' WHERE id = ?");
+    WHERE status = 'pending' AND command IS NOT NULL ORDER BY id LIMIT 20`).all();
+  const mark = db.prepare("UPDATE redemptions SET status = 'sent' WHERE id = ?");
   for (const r of rows) mark.run(r.id);
   return rows;
 }
 
 function completeRedemption(id, ok) {
   db.prepare('UPDATE redemptions SET status = ? WHERE id = ?')
-    .run(ok ? 'entregue' : 'falhou', id | 0);
+    .run(ok ? 'delivered' : 'failed', id | 0);
 }
 
 function listRedemptions() {
@@ -391,8 +391,8 @@ function setRedemptionStatus(id, status) {
 
 function addAppeal(steamId, discord, text) {
   const open = db.prepare(
-    "SELECT COUNT(*) c FROM appeals WHERE steam_id = ? AND status IN ('pendente','em análise')").get(steamId);
-  if (open.c > 0) return { error: 'Já tens um apelo em aberto. Aguarda a resposta.' };
+    "SELECT COUNT(*) c FROM appeals WHERE steam_id = ? AND status IN ('pending','reviewing')").get(steamId);
+  if (open.c > 0) return { error: 'You already have an open appeal. Please wait for the reply.' };
   db.prepare('INSERT INTO appeals (ts, steam_id, discord, text) VALUES (?, ?, ?, ?)')
     .run(now(), steamId, discord || null, text);
   return { ok: true };
@@ -447,19 +447,19 @@ function listOwCases(steamId) {
       ? db.prepare('SELECT vote FROM ow_votes WHERE case_id = ? AND steam_id = ?').get(c.id, steamId)?.vote || null
       : null;
     // tally só é visível depois de votar (evita enviesar) ou quando o caso fecha
-    const showTally = c.status === 'fechado' || !!myVote;
+    const showTally = c.status === 'closed' || !!myVote;
     return { ...c, myVote, tally: showTally ? owTally(c.id) : null };
   });
 }
 
 function voteOw(steamId, caseId, vote) {
-  if (!['cheat', 'clean', 'unsure'].includes(vote)) return { error: 'Voto inválido.' };
+  if (!['cheat', 'clean', 'unsure'].includes(vote)) return { error: 'Invalid vote.' };
   const c = db.prepare('SELECT status FROM ow_cases WHERE id = ?').get(caseId | 0);
-  if (!c) return { error: 'Caso não encontrado.' };
-  if (c.status !== 'aberto') return { error: 'Este caso já está fechado.' };
+  if (!c) return { error: 'Case not found.' };
+  if (c.status !== 'open') return { error: 'This case is already closed.' };
   const p = db.prepare('SELECT playtime_s FROM players WHERE steam_id = ?').get(steamId);
   if (!p || p.playtime_s < OW_MIN_PLAYTIME_S) {
-    return { error: 'Precisas de pelo menos 5 h de jogo no servidor para votar no Overwatch.' };
+    return { error: 'You need at least 5 h of playtime on the server to vote on Overwatch.' };
   }
   db.prepare(`
     INSERT INTO ow_votes (case_id, steam_id, vote) VALUES (?, ?, ?)
@@ -473,7 +473,7 @@ function addOwCase(title, clipUrl) {
 }
 
 function closeOwCase(id, verdict) {
-  db.prepare("UPDATE ow_cases SET status = 'fechado', verdict = ? WHERE id = ?").run(verdict, id | 0);
+  db.prepare("UPDATE ow_cases SET status = 'closed', verdict = ? WHERE id = ?").run(verdict, id | 0);
 }
 
 function listOwCasesAdmin() {
@@ -519,10 +519,10 @@ function mapState(steamId) {
 }
 
 function castMapVote(steamId, optionId) {
-  if (!mapVoteOpen()) return { error: 'A votação está fechada.' };
+  if (!mapVoteOpen()) return { error: 'Voting is closed.' };
   const round = mapRound();
   const opt = db.prepare('SELECT id FROM map_options WHERE id = ? AND round = ?').get(optionId | 0, round);
-  if (!opt) return { error: 'Opção inválida.' };
+  if (!opt) return { error: 'Invalid option.' };
   db.prepare(`
     INSERT INTO map_votes (round, steam_id, option_id, weight) VALUES (?, ?, ?, ?)
     ON CONFLICT(round, steam_id) DO UPDATE SET option_id = excluded.option_id, weight = excluded.weight
@@ -542,7 +542,7 @@ function mapAdmin(action, data) {
       setInfo('map_round', String(mapRound() + 1));
       setInfo('map_vote_open', '0');
       return { ok: true };
-    default: return { error: 'Ação desconhecida.' };
+    default: return { error: 'Unknown action.' };
   }
 }
 
@@ -618,45 +618,45 @@ function achievements(steamId, wipeId) {
   const p = db.prepare('SELECT playtime_s FROM players WHERE steam_id = ?').get(steamId);
   const pw = db.prepare('SELECT seconds FROM playtime_wipe WHERE wipe_id = ? AND steam_id = ?').get(wipeId, steamId);
 
-  if (all.kills >= 1) add('🩸', 'Primeira Kill', 'Fez a primeira kill no servidor');
-  if (all.dist >= 300) add('🎯', 'Sniper de Elite', `Kill a ${Math.round(all.dist)} m`);
-  if (w.kills >= 100) add('💀', 'Máquina', '100+ kills numa wipe');
-  if (w.hs >= 50) add('🎖️', 'Headhunter', '50+ headshots numa wipe');
-  if (wd.n >= 100) add('🧲', 'Íman de Balas', '100+ mortes numa wipe (herói)');
+  if (all.kills >= 1) add('🩸', 'First Blood', 'Got their first kill on the server');
+  if (all.dist >= 300) add('🎯', 'Elite Sniper', `Kill at ${Math.round(all.dist)} m`);
+  if (w.kills >= 100) add('💀', 'Machine', '100+ kills in one wipe');
+  if (w.hs >= 50) add('🎖️', 'Headhunter', '50+ headshots in one wipe');
+  if (wd.n >= 100) add('🧲', 'Bullet Magnet', '100+ deaths in one wipe (a hero)');
 
   const burst = db.prepare(`
     SELECT COUNT(*) n FROM kills WHERE attacker_id = ?
     GROUP BY ts / 3600 ORDER BY n DESC LIMIT 1`).get(steamId);
-  if (burst && burst.n >= 5) add('🔥', 'Em Chamas', `${burst.n} kills numa só hora`);
+  if (burst && burst.n >= 5) add('🔥', 'On Fire', `${burst.n} kills in a single hour`);
 
   const night = db.prepare(`
     SELECT COUNT(*) n FROM kills WHERE attacker_id = ? AND ((ts % 86400) / 3600) BETWEEN 0 AND 5`).get(steamId);
-  if (night.n >= 10) add('🦉', 'Noturno', '10+ kills de madrugada');
+  if (night.n >= 10) add('🦉', 'Night Owl', '10+ kills in the small hours');
 
   const gatherRows = db.prepare('SELECT resource, amount FROM gather WHERE steam_id = ? AND wipe_id = ?').all(steamId, wipeId);
   const g = Object.fromEntries(gatherRows.map((r) => [r.resource, r.amount]));
-  if ((g['wood'] || 0) >= 100000) add('🌲', 'Lenhador', '100k+ madeira numa wipe');
-  if ((g['stone'] || 0) >= 100000) add('⛏️', 'Mineiro', '100k+ pedra numa wipe');
-  if ((g['sulfur.ore'] || 0) >= 50000) add('💥', 'Rei do Sulfur', '50k+ sulfur numa wipe');
+  if ((g['wood'] || 0) >= 100000) add('🌲', 'Lumberjack', '100k+ wood in one wipe');
+  if ((g['stone'] || 0) >= 100000) add('⛏️', 'Miner', '100k+ stone in one wipe');
+  if ((g['sulfur.ore'] || 0) >= 50000) add('💥', 'Sulfur King', '50k+ sulfur in one wipe');
 
-  if ((p?.playtime_s || 0) >= 100 * 3600) add('🏆', 'Veterano', '100+ horas no servidor');
-  if ((pw?.seconds || 0) >= 10 * 3600 && wd.n === 0) add('👻', 'Intocável', '10h+ nesta wipe sem morrer em PVP');
+  if ((p?.playtime_s || 0) >= 100 * 3600) add('🏆', 'Veteran', '100+ hours on the server');
+  if ((pw?.seconds || 0) >= 10 * 3600 && wd.n === 0) add('👻', 'Untouchable', '10h+ this wipe without a PVP death');
 
   const demolished = raidStats(steamId, wipeId);
-  if (demolished >= 50) add('🧨', 'Demolidor', `${demolished} estruturas destruídas nesta wipe`);
+  if (demolished >= 50) add('🧨', 'Demolition Man', `${demolished} structures destroyed this wipe`);
 
   const me = playerMapEvents(steamId, wipeId);
-  if ((me.heli || 0) >= 3) add('🚁', 'Caça-Helis', `${me.heli} Patrol Helis abatidos nesta wipe`);
-  if ((me.bradley || 0) >= 3) add('🛡️', 'Anti-Tanque', `${me.bradley} Bradleys destruídos nesta wipe`);
-  if ((me.crate || 0) >= 5) add('📦', 'Mãos Rápidas', `${me.crate} crates hackeadas nesta wipe`);
+  if ((me.heli || 0) >= 3) add('🚁', 'Heli Hunter', `${me.heli} Patrol Helis downed this wipe`);
+  if ((me.bradley || 0) >= 3) add('🛡️', 'Tank Buster', `${me.bradley} Bradleys destroyed this wipe`);
+  if ((me.crate || 0) >= 5) add('📦', 'Fast Hands', `${me.crate} crates hacked this wipe`);
 
   const streak = playerStreak(steamId, wipeId);
-  if (streak >= 10) add('⚡', 'Rampage', `${streak} kills sem morrer (em curso!)`);
+  if (streak >= 10) add('⚡', 'Rampage', `${streak} kills without dying (ongoing!)`);
 
   const supporter = db.prepare(`
     SELECT COUNT(*) n FROM redemptions WHERE steam_id = ? AND item_id = 'site-badge'
     AND status IN ('pendente','enviado','entregue')`).get(steamId);
-  if (supporter.n > 0) add('💎', 'Apoiante', 'Resgatou o badge de apoiante na loja');
+  if (supporter.n > 0) add('💎', 'Supporter', 'Redeemed the supporter badge in the store');
 
   return out;
 }
@@ -963,8 +963,8 @@ function updateElo(wipeId, attackerId, victimId) {
 }
 
 const ELO_TIERS = [
-  [1300, 'Predador 🦅'], [1150, 'Diamante 💠'], [1050, 'Ouro 🥇'],
-  [950, 'Prata 🥈'], [0, 'Bronze 🥉'],
+  [1300, 'Predator 🦅'], [1150, 'Diamond 💠'], [1050, 'Gold 🥇'],
+  [950, 'Silver 🥈'], [0, 'Bronze 🥉'],
 ];
 
 function eloTier(rating) {

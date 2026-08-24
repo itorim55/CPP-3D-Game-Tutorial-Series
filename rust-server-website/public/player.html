@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Perfil de jogador</title>
+<title>Player profile</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
@@ -13,22 +13,22 @@
 <header></header>
 
 <main id="content">
-  <p style="color:var(--ink-muted)">a carregar perfil…</p>
+  <p style="color:var(--ink-muted)" data-i18n="loading">loading…</p>
 </main>
 
 <footer></footer>
 
+<script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
 <script>
 (async () => {
   const id = new URLSearchParams(location.search).get('id');
   const el = document.getElementById('content');
-  if (!id) { el.innerHTML = '<p>Falta o parâmetro <code>id</code>.</p>'; return; }
-
+  if (!id) { el.innerHTML = '<p>Missing <code>id</code> parameter.</p>'; return; }
 
   let p;
   try { p = await api(`/api/player?id=${encodeURIComponent(id)}`); }
-  catch (e) { el.innerHTML = `<p>😕 ${esc(e.message)}</p><p><a href="/stats">← voltar às estatísticas</a></p>`; return; }
+  catch (e) { el.innerHTML = `<p>😕 ${esc(e.message)}</p><p><a href="/stats">${t('player.backToStats')}</a></p>`; return; }
 
   document.title = p.name;
   const w = p.wipe, a = p.allTime;
@@ -36,85 +36,88 @@
   const statTile = (big, label) => `
     <div class="card tile"><div class="big">${big}</div><div class="label">${label}</div></div>`;
 
-  const gatherNames = { 'wood': '🪵 Madeira', 'stone': '🪨 Pedra', 'metal.ore': '⛏️ Metal', 'sulfur.ore': '💥 Sulfur', 'hq.metal.ore': '✨ HQM' };
+  const gatherNames = {
+    'wood': t('res.wood'), 'stone': t('res.stone'), 'metal.ore': t('res.metal'),
+    'sulfur.ore': t('res.sulfur'), 'hq.metal.ore': t('res.hqm'),
+  };
 
   el.innerHTML = `
     <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:6px">
       <h1 style="font-family:var(--font-display);font-size:44px;letter-spacing:2px">${esc(p.name)}</h1>
       ${p.elo ? `<span style="font-size:15px;font-weight:700;color:var(--gold)">${esc(p.elo.tier)} · ${p.elo.rating} Elo</span>` : ''}
-      <span style="color:var(--ink-muted);font-size:13px">SteamID ${esc(p.steamId)} · visto ${timeAgo(p.lastSeen)}</span>
+      <span style="color:var(--ink-muted);font-size:13px">SteamID ${esc(p.steamId)} · ${t('seen', timeAgo(p.lastSeen))}</span>
     </div>
 
     ${p.badges.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
       ${p.badges.map((b) => `<span title="${esc(b.desc)}" style="background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 14px;font-size:13px;cursor:help">${b.icon} <b>${esc(b.name)}</b></span>`).join('')}
     </div>` : ''}
 
-    ${p.team ? `<p style="margin-top:12px;font-size:14px;color:var(--ink-2)">👥 Equipa:
+    ${p.team ? `<p style="margin-top:12px;font-size:14px;color:var(--ink-2)">${t('player.team')}
       ${p.team.members.map((m, i) => playerLink(m, p.team.names[i])).join(', ')}</p>` : ''}
 
-    <h2 class="section">Esta wipe</h2>
+    <h2 class="section">${t('vs.thisWipe')}</h2>
     <div class="grid cols-4">
-      ${statTile(w.kills, 'kills')}
-      ${statTile(w.deaths, 'mortes (PVP)')}
+      ${statTile(w.kills, t('player.kills'))}
+      ${statTile(w.deaths, t('player.deathsPvp'))}
       ${statTile(w.kd.toFixed(2), 'K/D')}
-      ${statTile(w.hsRate + '%', 'taxa de headshot')}
-      ${statTile(Math.round(w.bestDistance) + 'm', 'kill mais longa')}
-      ${statTile(p.streak ? '🔥 ' + p.streak : '0', 'streak atual (sem morrer)')}
-      ${statTile('💥 ' + p.structuresDestroyed, 'estruturas destruídas')}
-      ${statTile(hours(p.playtimeS), 'tempo de jogo (total)')}
+      ${statTile(w.hsRate + '%', t('player.hsRate'))}
+      ${statTile(Math.round(w.bestDistance) + 'm', t('player.longest'))}
+      ${statTile(p.streak ? '🔥 ' + p.streak : '0', t('player.streakTile'))}
+      ${statTile('💥 ' + p.structuresDestroyed, t('player.structuresTile'))}
+      ${statTile(hours(p.playtimeS), t('player.playtimeTotal'))}
     </div>
 
     <div style="margin-top:14px">
-      <a class="btn ghost" href="/vs?a=${encodeURIComponent(p.steamId)}">⚔️ Comparar com outro jogador</a>
+      <a class="btn ghost" href="/vs?a=${encodeURIComponent(p.steamId)}">${t('player.compare')}</a>
     </div>
 
-    <h2 class="section">Todas as wipes</h2>
+    <h2 class="section">${t('vs.allTime')}</h2>
     <div class="grid cols-4">
-      ${statTile(a.kills, 'kills')}
-      ${statTile(a.deaths, 'mortes')}
+      ${statTile(a.kills, t('player.kills'))}
+      ${statTile(a.deaths, t('player.deaths'))}
       ${statTile(a.kd.toFixed(2), 'K/D')}
-      ${statTile(a.headshots, 'headshots')}
+      ${statTile(a.headshots, t('player.headshots'))}
     </div>
 
     <div class="grid cols-2" style="margin-top:28px">
       <div class="card">
-        <h3>Armas favoritas (wipe)</h3>
+        <h3>${t('player.favWeapons')}</h3>
         ${p.weapons.length ? `<table><tbody>${p.weapons.map((x) => `
-          <tr><td>${esc(x.weapon)}</td><td class="num">${x.kills} kills</td></tr>`).join('')}</tbody></table>`
-          : '<p style="color:var(--ink-muted);font-size:13px">Sem kills nesta wipe.</p>'}
+          <tr><td>${esc(x.weapon)}</td><td class="num">${t('player.killsUnit', x.kills)}</td></tr>`).join('')}</tbody></table>`
+          : `<p style="color:var(--ink-muted);font-size:13px">${t('player.noKillsWipe')}</p>`}
       </div>
       <div class="card">
-        <h3>Recursos recolhidos (wipe)</h3>
+        <h3>${t('player.gather')}</h3>
         ${p.gather.length ? `<table><tbody>${p.gather.map((g) => `
-          <tr><td>${gatherNames[g.resource] || esc(g.resource)}</td><td class="num">${g.amount.toLocaleString('pt-PT')}</td></tr>`).join('')}</tbody></table>`
-          : '<p style="color:var(--ink-muted);font-size:13px">Sem dados de farm.</p>'}
+          <tr><td>${gatherNames[g.resource] || esc(g.resource)}</td><td class="num">${fmtNum(g.amount)}</td></tr>`).join('')}</tbody></table>`
+          : `<p style="color:var(--ink-muted);font-size:13px">${t('player.noFarm')}</p>`}
       </div>
       <div class="card">
-        <h3>🎯 Vítimas frequentes</h3>
+        <h3>${t('player.victims')}</h3>
         ${p.victims.length ? p.victims.map((v) => `
           <p style="font-size:14px">${playerLink(v.steam_id, v.name || v.steam_id)} <span style="color:var(--ink-muted)">× ${v.n}</span></p>`).join('')
           : '<p style="color:var(--ink-muted);font-size:13px">—</p>'}
       </div>
       <div class="card">
-        <h3>💀 Nemesis (quem mais te mata)</h3>
+        <h3>${t('player.nemesis')}</h3>
         ${p.nemesis.length ? p.nemesis.map((v) => `
           <p style="font-size:14px">${playerLink(v.steam_id, v.name || v.steam_id)} <span style="color:var(--ink-muted)">× ${v.n}</span></p>`).join('')
           : '<p style="color:var(--ink-muted);font-size:13px">—</p>'}
       </div>
     </div>
 
-    <h2 class="section">Atividade recente</h2>
+    <h2 class="section">${t('player.activity')}</h2>
     <div class="feed">
       ${p.recent.map((k) => {
         const isKill = k.attacker_id === p.steamId;
         return `<div class="row">
-          <span class="who ${isKill ? 'k' : 'v'}">${isKill ? '⚔️ matou' : '💀 morreu para'}</span>
+          <span class="who ${isKill ? 'k' : 'v'}">${isKill ? t('player.killed') : t('player.diedTo')}</span>
           <span class="who k">${esc(isKill ? (k.victim_name || '?') : (k.attacker_name || '?'))}</span>
           <span class="weapon">${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}</span>
           ${k.headshot ? '<span class="hs">HS</span>' : ''}
           <span class="meta">${timeAgo(k.ts)}</span>
         </div>`;
-      }).join('') || '<p style="color:var(--ink-muted)">Sem atividade registada.</p>'}
+      }).join('') || `<p style="color:var(--ink-muted)">${t('player.noActivity')}</p>`}
     </div>`;
 })();
 </script>

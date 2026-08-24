@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("StatsHub", "LusoRust", "1.1.0")]
+    [Info("StatsHub", "Rustworthy", "1.2.0")]
     [Description("Envia kills, sessões, farm e heartbeats para o site de estatísticas e entrega recompensas da loja")]
     public class StatsHub : RustPlugin
     {
@@ -17,31 +17,31 @@ namespace Oxide.Plugins
 
         private class PluginConfig
         {
-            [JsonProperty("Url do site (sem barra final)")]
+            [JsonProperty("Site URL (no trailing slash)")]
             public string SiteUrl = "http://127.0.0.1:8080";
 
-            [JsonProperty("Chave de API (apiKey do config.json do site)")]
-            public string ApiKey = "COLOCA-AQUI-A-CHAVE";
+            [JsonProperty("API key (apiKey from the site config.json)")]
+            public string ApiKey = "PUT-YOUR-KEY-HERE";
 
-            [JsonProperty("Intervalo de envio de eventos (segundos)")]
+            [JsonProperty("Event flush interval (seconds)")]
             public float FlushInterval = 30f;
 
-            [JsonProperty("Intervalo do heartbeat (segundos)")]
+            [JsonProperty("Heartbeat interval (seconds)")]
             public float HeartbeatInterval = 60f;
 
-            [JsonProperty("Intervalo de crédito de tempo de jogo (segundos)")]
+            [JsonProperty("Playtime credit interval (seconds)")]
             public float CreditInterval = 300f;
 
-            [JsonProperty("Registar farm de recursos")]
+            [JsonProperty("Track resource gathering")]
             public bool TrackGather = true;
 
-            [JsonProperty("Registar raids (estruturas destruídas)")]
+            [JsonProperty("Track raids (destroyed structures)")]
             public bool TrackRaids = true;
 
-            [JsonProperty("Entregar recompensas da loja (executa comandos)")]
+            [JsonProperty("Deliver store rewards (runs commands)")]
             public bool ExecuteRedemptions = true;
 
-            [JsonProperty("Intervalo de verificação de recompensas (segundos)")]
+            [JsonProperty("Reward poll interval (seconds)")]
             public float RedemptionPollInterval = 60f;
         }
 
@@ -73,8 +73,8 @@ namespace Oxide.Plugins
 
         private void OnServerInitialized()
         {
-            if (_config.ApiKey == "COLOCA-AQUI-A-CHAVE")
-                PrintWarning("Configura a chave de API em oxide/config/StatsHub.json!");
+            if (_config.ApiKey == "PUT-YOUR-KEY-HERE")
+                PrintWarning("Set the API key in oxide/config/StatsHub.json!");
 
             foreach (var player in BasePlayer.activePlayerList)
                 _lastCredit[player.userID] = Time.realtimeSinceStartup;
@@ -364,13 +364,13 @@ namespace Oxide.Plugins
                     var ok = true;
                     try
                     {
-                        Puts($"Recompensa #{row.Id} para {row.SteamId}: {row.Command}");
+                        Puts($"Reward #{row.Id} for {row.SteamId}: {row.Command}");
                         ConsoleSystem.Run(ConsoleSystem.Option.Server.Quiet(), row.Command);
                     }
                     catch (Exception ex)
                     {
                         ok = false;
-                        PrintWarning($"Recompensa #{row.Id} falhou: {ex.Message}");
+                        PrintWarning($"Reward #{row.Id} failed: {ex.Message}");
                     }
                     Post("/api/plugin/redemptions/complete", new Dictionary<string, object>
                     {
@@ -451,7 +451,7 @@ namespace Oxide.Plugins
             webrequest.Enqueue(url, body, (code, response) =>
             {
                 var ok = code >= 200 && code < 300;
-                if (!ok) PrintWarning($"POST {path} falhou ({code}): {response}");
+                if (!ok) PrintWarning($"POST {path} failed ({code}): {response}");
                 callback?.Invoke(ok);
             }, this, RequestMethod.POST, headers, 10f);
         }

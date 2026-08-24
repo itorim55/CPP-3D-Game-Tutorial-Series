@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Estatísticas</title>
+<title data-i18n-key="stats.title">Leaderboards</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
@@ -13,33 +13,33 @@
 <header></header>
 
 <main>
-  <h2 class="section" style="margin-top:6px">Leaderboards</h2>
+  <h2 class="section" style="margin-top:6px" data-i18n="stats.title">Leaderboards</h2>
 
   <div class="tabs" id="metric-tabs">
-    <button data-by="kills" class="active">Kills</button>
-    <button data-by="deaths">Mortes</button>
-    <button data-by="kd">K/D</button>
-    <button data-by="elo">Elo 🦅</button>
-    <button data-by="headshots">Headshots</button>
-    <button data-by="distance">Kill + longa</button>
-    <button data-by="playtime">Horas jogadas</button>
+    <button data-by="kills" class="active" data-i18n="stats.mKills">Kills</button>
+    <button data-by="deaths" data-i18n="stats.mDeaths">Deaths</button>
+    <button data-by="kd" data-i18n="stats.mKd">K/D</button>
+    <button data-by="elo" data-i18n="stats.mElo">Elo 🦅</button>
+    <button data-by="headshots" data-i18n="stats.mHeadshots">Headshots</button>
+    <button data-by="distance" data-i18n="stats.mLongest">Longest kill</button>
+    <button data-by="playtime" data-i18n="stats.mHours">Hours played</button>
     <span class="spacer"></span>
     <select id="wipe-select" style="width:auto;border-radius:999px;padding:7px 14px;font-size:13px">
-      <option value="w:1h">⏱️ Última hora</option>
-      <option value="w:24h">Hoje (24 h)</option>
-      <option value="w:7d">Últimos 7 dias</option>
-      <option value="w:30d">Últimos 30 dias</option>
-      <option value="" selected>Esta wipe</option>
-      <option value="all">Sempre (todas as wipes)</option>
+      <option value="w:1h" data-i18n="stats.wLastHour">⏱️ Last hour</option>
+      <option value="w:24h" data-i18n="stats.wToday">Today (24 h)</option>
+      <option value="w:7d" data-i18n="stats.w7d">Last 7 days</option>
+      <option value="w:30d" data-i18n="stats.w30d">Last 30 days</option>
+      <option value="" selected data-i18n="stats.wWipe">This wipe</option>
+      <option value="all" data-i18n="stats.wAll">All time (every wipe)</option>
     </select>
   </div>
-  <p style="color:var(--ink-muted);font-size:12.5px;margin:-6px 0 12px">
-    💡 As janelas curtas (hora/dia) também servem para a comunidade detetar picos suspeitos —
-    um jogador com kills anormais na última hora merece um F7. O Elo é sazonal (reset a cada wipe, mínimo 5 combates).
+  <p style="color:var(--ink-muted);font-size:12.5px;margin:-6px 0 12px" data-i18n="stats.hint">
+    💡 The short windows (hour/day) also help the community spot suspicious spikes —
+    a player with abnormal kills in the last hour deserves an F7 report. Elo is seasonal (resets every wipe, minimum 5 fights).
   </p>
 
   <div style="margin:12px 0;max-width:360px">
-    <input type="text" id="search" placeholder="🔍 procurar jogador…" autocomplete="off">
+    <input type="text" id="search" placeholder="🔍 search player…" data-i18n-ph="stats.searchPh" autocomplete="off">
     <div id="search-results" class="feed" style="margin-top:8px"></div>
   </div>
 
@@ -47,46 +47,47 @@
     <table>
       <thead id="lb-head">
         <tr>
-          <th>#</th><th>Jogador</th>
-          <th class="num">Kills</th><th class="num">Mortes</th><th class="num">K/D</th>
-          <th class="num">Headshots</th><th class="num">Kill + longa</th><th class="num">Horas</th>
+          <th>#</th><th data-i18n="stats.thPlayer">Player</th>
+          <th class="num" data-i18n="stats.thKills">Kills</th><th class="num" data-i18n="stats.thDeaths">Deaths</th><th class="num">K/D</th>
+          <th class="num" data-i18n="stats.thHeadshots">Headshots</th><th class="num" data-i18n="stats.thLongest">Longest kill</th><th class="num" data-i18n="stats.thHours">Hours</th>
         </tr>
       </thead>
-      <tbody id="lb-body"><tr><td colspan="8">a carregar…</td></tr></tbody>
+      <tbody id="lb-body"><tr><td colspan="8" data-i18n="loading">loading…</td></tr></tbody>
     </table>
   </div>
 
-  <h2 class="section">Top equipas <small>esta wipe · equipas nativas do Rust</small></h2>
+  <h2 class="section"><span data-i18n="stats.teamsTitle">Top teams</span> <small data-i18n="stats.teamsSub">this wipe · native Rust teams</small></h2>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>#</th><th>Equipa</th><th>Membros</th><th class="num">Kills</th><th class="num">Mortes</th><th class="num">K/D</th></tr></thead>
-      <tbody id="teams-body"><tr><td colspan="6">a carregar…</td></tr></tbody>
+      <thead><tr><th>#</th><th data-i18n="stats.thTeam">Team</th><th data-i18n="stats.thMembers">Members</th><th class="num" data-i18n="stats.thKills">Kills</th><th class="num" data-i18n="stats.thDeaths">Deaths</th><th class="num">K/D</th></tr></thead>
+      <tbody id="teams-body"><tr><td colspan="6" data-i18n="loading">loading…</td></tr></tbody>
     </table>
   </div>
 
-  <h2 class="section">Eventos do mapa <small>esta wipe — quem manda nos monumentos</small></h2>
-  <div class="grid cols-3" id="map-events">a carregar…</div>
+  <h2 class="section"><span data-i18n="stats.eventsTitle">Map events</span> <small data-i18n="stats.eventsSub">this wipe — who owns the monuments</small></h2>
+  <div class="grid cols-3" id="map-events" data-i18n="loading">loading…</div>
 
-  <h2 class="section">Maiores raids da wipe <small>agrupados por zona e hora</small></h2>
+  <h2 class="section"><span data-i18n="stats.raidsTitle">Biggest raids of the wipe</span> <small data-i18n="stats.raidsSub">grouped by zone and time</small></h2>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Quando</th><th>Zona</th><th class="num">Estruturas</th><th>Raiders</th><th>Armas</th></tr></thead>
-      <tbody id="raids-body"><tr><td colspan="5">a carregar…</td></tr></tbody>
+      <thead><tr><th data-i18n="stats.thWhen">When</th><th data-i18n="stats.thZone">Zone</th><th class="num" data-i18n="stats.thStructures">Structures</th><th data-i18n="stats.thRaiders">Raiders</th><th data-i18n="stats.thWeapons">Weapons</th></tr></thead>
+      <tbody id="raids-body"><tr><td colspan="5" data-i18n="loading">loading…</td></tr></tbody>
     </table>
   </div>
 
   <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap">
-    <a class="btn ghost" href="/vs">⚔️ Comparador 1v1</a>
-    <a class="btn ghost" href="/heatmap">🗺️ Heatmap de mortes</a>
-    <a class="btn ghost" href="/resumo">🏁 Resumo da wipe</a>
+    <a class="btn ghost" href="/vs" data-i18n="stats.vsLink">⚔️ 1v1 comparator</a>
+    <a class="btn ghost" href="/heatmap" data-i18n="stats.heatLink">🗺️ Death heatmap</a>
+    <a class="btn ghost" href="/resumo" data-i18n="stats.sumLink">🏁 Wipe recap</a>
   </div>
 
-  <h2 class="section">Killfeed completo</h2>
-  <div class="feed" id="killfeed">a carregar…</div>
+  <h2 class="section" data-i18n="stats.killfeedTitle">Full killfeed</h2>
+  <div class="feed" id="killfeed" data-i18n="loading">loading…</div>
 </main>
 
 <footer></footer>
 
+<script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
 <script>
 let by = 'kills';
@@ -107,8 +108,8 @@ async function loadWipes() {
       if (w.id === data.current) continue; // a atual já é a opção por omissão
       const opt = document.createElement('option');
       opt.value = w.id;
-      const date = new Date(w.started_at * 1000).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
-      opt.textContent = `Arquivo: ${w.label || 'Wipe'} (${date})`;
+      const date = new Date(w.started_at * 1000).toLocaleDateString(LOCALE, { day: '2-digit', month: 'short' });
+      opt.textContent = t('stats.archive', w.label || t('stats.wipeWord'), date);
       sel.appendChild(opt);
     }
   } catch {}
@@ -117,11 +118,11 @@ async function loadWipes() {
 async function loadBoard() {
   const body = document.getElementById('lb-body');
   const head = document.getElementById('lb-head');
-  body.innerHTML = '<tr><td colspan="8">a carregar…</td></tr>';
+  body.innerHTML = `<tr><td colspan="8">${t('loading')}</td></tr>`;
   const lb = await api(`/api/leaderboard?by=${by}&${periodQuery()}&limit=100`);
 
   if (by === 'elo') {
-    head.innerHTML = '<tr><th>#</th><th>Jogador</th><th>Tier</th><th class="num">Rating</th><th class="num">Combates</th></tr>';
+    head.innerHTML = `<tr><th>#</th><th>${t('stats.thPlayer')}</th><th>Tier</th><th class="num">Rating</th><th class="num">Fights</th></tr>`;
     body.innerHTML = lb.rows.map((r, i) => `
       <tr>
         <td><span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
@@ -129,14 +130,14 @@ async function loadBoard() {
         <td>${esc(r.tier)}</td>
         <td class="num">${r.rating}</td>
         <td class="num">${r.games}</td>
-      </tr>`).join('') || '<tr><td colspan="5">Ainda ninguém com 5+ combates nesta wipe.</td></tr>';
+      </tr>`).join('') || `<tr><td colspan="5">${t('stats.eloEmpty')}</td></tr>`;
     return;
   }
 
   head.innerHTML = `<tr>
-    <th>#</th><th>Jogador</th>
-    <th class="num">Kills</th><th class="num">Mortes</th><th class="num">K/D</th>
-    <th class="num">Headshots</th><th class="num">Kill + longa</th><th class="num">Horas</th>
+    <th>#</th><th>${t('stats.thPlayer')}</th>
+    <th class="num">${t('stats.thKills')}</th><th class="num">${t('stats.thDeaths')}</th><th class="num">K/D</th>
+    <th class="num">${t('stats.thHeadshots')}</th><th class="num">${t('stats.thLongest')}</th><th class="num">${t('stats.thHours')}</th>
   </tr>`;
   body.innerHTML = lb.rows.map((r, i) => `
     <tr>
@@ -148,7 +149,7 @@ async function loadBoard() {
       <td class="num">${r.headshots}</td>
       <td class="num">${r.best_distance ? Math.round(r.best_distance) + 'm' : '—'}</td>
       <td class="num">${Math.round(r.playtime_s / 3600 * 10) / 10}</td>
-    </tr>`).join('') || '<tr><td colspan="8">Sem dados para este período.</td></tr>';
+    </tr>`).join('') || `<tr><td colspan="8">${t('stats.noPeriod')}</td></tr>`;
 }
 
 document.getElementById('metric-tabs').addEventListener('click', (e) => {
@@ -172,42 +173,41 @@ document.getElementById('search').addEventListener('input', (e) => {
     out.innerHTML = r.rows.map((p) => `
       <div class="row">
         ${playerLink(p.steam_id, p.name)}
-        <span class="meta">visto ${timeAgo(p.last_seen)} · ${hours(p.playtime_s)}</span>
-      </div>`).join('') || '<p style="color:var(--ink-muted);font-size:13px">Nenhum jogador encontrado.</p>';
+        <span class="meta">${t('seen', timeAgo(p.last_seen))} · ${hours(p.playtime_s)}</span>
+      </div>`).join('') || `<p style="color:var(--ink-muted);font-size:13px">${t('stats.noPlayers')}</p>`;
   }, 250);
 });
 
 async function loadTeams() {
-  const t = await api('/api/teams');
-  document.getElementById('teams-body').innerHTML = t.rows.map((team, i) => `
+  const data = await api('/api/teams');
+  document.getElementById('teams-body').innerHTML = data.rows.map((team, i) => `
     <tr>
       <td><span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
-      <td><b>Equipa ${esc(team.leader)}</b> <span style="color:var(--ink-muted)">(${team.size})</span></td>
+      <td><b>${t('stats.team', esc(team.leader))}</b> <span style="color:var(--ink-muted)">(${team.size})</span></td>
       <td style="white-space:normal">${team.members.map((m) => playerLink(m.steamId, m.name)).join(', ')}</td>
       <td class="num">${team.kills}</td>
       <td class="num">${team.deaths}</td>
       <td class="num">${team.kd.toFixed(2)}</td>
-    </tr>`).join('') ||
-    '<tr><td colspan="6">Ainda sem equipas registadas nesta wipe (o plugin envia as equipas nativas a cada 5 min).</td></tr>';
+    </tr>`).join('') || `<tr><td colspan="6">${t('stats.noTeams')}</td></tr>`;
 }
 
 async function loadMapEvents() {
   const m = await api('/api/mapevents');
   const block = (icon, title, rows, total, unit) => `
     <div class="card">
-      <h3>${icon} ${title} <span style="color:var(--ink-muted);font-weight:400">· ${total} esta wipe</span></h3>
+      <h3>${icon} ${title} <span style="color:var(--ink-muted);font-weight:400">${t('stats.evTotal', total)}</span></h3>
       ${rows.length ? rows.map((r, i) => `
         <div style="display:flex;gap:8px;align-items:baseline;font-size:14px;padding:3px 0">
           <span class="rank ${i === 0 ? 'top' : ''}" style="width:20px">${i + 1}</span>
           ${playerLink(r.steam_id, r.name || r.steam_id)}
           <b style="margin-left:auto">${r.n}</b>
         </div>`).join('')
-        : `<p style="color:var(--ink-muted);font-size:13px">Ainda ninguém. ${unit} à solta!</p>`}
+        : `<p style="color:var(--ink-muted);font-size:13px">${t('stats.evEmpty', unit)}</p>`}
     </div>`;
   document.getElementById('map-events').innerHTML =
-    block('🚁', 'Caça-Helis', m.heli, m.totals.heli, 'Patrol Heli') +
-    block('🛡️', 'Anti-Tanque', m.bradley, m.totals.bradley, 'Bradley') +
-    block('📦', 'Mãos Rápidas', m.crate, m.totals.crate, 'Crates');
+    block('🚁', t('stats.evHeli'), m.heli, m.totals.heli, 'Patrol Heli') +
+    block('🛡️', t('stats.evBradley'), m.bradley, m.totals.bradley, 'Bradley') +
+    block('📦', t('stats.evCrate'), m.crate, m.totals.crate, 'Crates');
 }
 
 async function loadRaids() {
@@ -219,8 +219,7 @@ async function loadRaids() {
       <td class="num">💥 ${raid.destroyed}</td>
       <td style="white-space:normal">${raid.raiders.map((p) => playerLink(p.steamId, p.name)).join(', ')}</td>
       <td style="color:var(--ink-muted);font-size:13px">${raid.weapons.map(esc).join(', ') || '—'}</td>
-    </tr>`).join('') ||
-    '<tr><td colspan="5">Ainda sem raids registados nesta wipe. As bases agradecem. 🏠</td></tr>';
+    </tr>`).join('') || `<tr><td colspan="5">${t('stats.noRaids')}</td></tr>`;
 }
 
 (async () => {
@@ -237,7 +236,7 @@ async function loadRaids() {
       ${k.headshot ? '<span class="hs">HS</span>' : ''}
       <span class="who v">${k.victim_name ? playerLink(k.victim_id, k.victim_name) : '?'}</span>
       <span class="meta">${timeAgo(k.ts)}</span>
-    </div>`).join('') || '<p style="color:var(--ink-muted)">Sem kills registadas.</p>';
+    </div>`).join('') || `<p style="color:var(--ink-muted)">${t('stats.noKills')}</p>`;
 })();
 </script>
 </body>

@@ -61,6 +61,21 @@ rust-server-website/
     └── ROADMAP.md                opiniões e próximos passos por fases
 ```
 
+## Idiomas (i18n)
+
+O site é **inglês por omissão** com um seletor EN|PT na navegação (guardado no
+browser). Todo o texto vive em `public/js/i18n.js`:
+
+- O HTML tem o texto em inglês + atributos `data-i18n="chave"`;
+- As strings geradas por JS usam `t('chave')`;
+- Para adicionar um idioma (ex.: francês): copia o bloco `pt` dentro de `I18N`,
+  traduz, e acrescenta `fr: 'FR'` a `LANGS` — o seletor atualiza sozinho.
+
+O servidor (mensagens de erro, embeds Open Graph, webhooks do Discord, badges,
+tiers de Elo e dados de demonstração) está em inglês. Os estados guardados na
+base de dados usam chaves inglesas (`pending`, `delivered`, `open`…) e são
+traduzidos no frontend.
+
 ## Mudar o nome do servidor
 
 O nome/marca vive na configuração, não no código. Em `server/config.json`:

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Novidades</title>
+<title>News</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
@@ -13,13 +13,14 @@
 <header></header>
 
 <main class="prose" style="max-width:820px">
-  <h2 class="section" style="margin-top:6px">Novidades e changelog</h2>
-  <p style="color:var(--ink-muted);font-size:13px">O que mudou no servidor, wipe a wipe.</p>
-  <div id="posts" style="margin-top:16px;display:flex;flex-direction:column;gap:16px">a carregar…</div>
+  <h2 class="section" style="margin-top:6px" data-i18n="news.title">News and changelog</h2>
+  <p style="color:var(--ink-muted);font-size:13px" data-i18n="news.sub">What changed on the server, wipe by wipe.</p>
+  <div id="posts" style="margin-top:16px;display:flex;flex-direction:column;gap:16px" data-i18n="loading">loading…</div>
 </main>
 
 <footer></footer>
 
+<script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
 <script>
 api('/api/posts').then((data) => {
@@ -28,7 +29,7 @@ api('/api/posts').then((data) => {
       <h3>${esc(p.title)}</h3>
       <div class="date">${fmtDate(p.ts)}</div>
       <p>${esc(p.body)}</p>
-    </div>`).join('') || '<p style="color:var(--ink-muted)">Ainda sem publicações.</p>';
+    </div>`).join('') || `<p style="color:var(--ink-muted)">${t('news.empty')}</p>`;
 }).catch(console.error);
 </script>
 </body>

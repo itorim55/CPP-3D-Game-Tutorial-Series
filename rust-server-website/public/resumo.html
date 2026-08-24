@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Resumo da Wipe</title>
+<title data-i18n-key="sum.title">Wipe Recap</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
@@ -14,25 +14,26 @@
 
 <main>
   <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:6px">
-    <h2 class="section" style="margin:0">🏁 Resumo da wipe</h2>
+    <h2 class="section" style="margin:0" data-i18n="sum.title">🏁 Wipe recap</h2>
     <select id="wipe-select" style="width:auto;border-radius:999px;padding:7px 14px;font-size:13px"></select>
   </div>
   <p style="color:var(--ink-muted);font-size:13px;margin-top:6px" id="wipe-meta"></p>
 
-  <div class="grid cols-3" id="highlights" style="margin-top:18px">a carregar…</div>
+  <div class="grid cols-3" id="highlights" style="margin-top:18px" data-i18n="loading">loading…</div>
 </main>
 
 <footer></footer>
 
+<script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
 <script>
 async function load(wipeId) {
   const s = await api(`/api/wipesummary${wipeId ? `?wipe=${wipeId}` : ''}`);
 
   document.getElementById('wipe-meta').textContent =
-    `${s.wipe.label || 'Wipe'} · começou a ${fmtDate(s.wipe.startedAt)}` +
-    `${s.wipe.mapSeed ? ` · seed ${s.wipe.mapSeed}` : ''}${s.wipe.mapSize ? ` · mapa ${s.wipe.mapSize}` : ''}` +
-    ` · ${(s.totals?.kills || 0).toLocaleString('pt-PT')} kills por ${s.totals?.killers || 0} jogadores`;
+    t('sum.meta', s.wipe.label || t('stats.wipeWord'), fmtDate(s.wipe.startedAt)) +
+    `${s.wipe.mapSeed ? ` · seed ${s.wipe.mapSeed}` : ''}${s.wipe.mapSize ? ` · map ${s.wipe.mapSize}` : ''}` +
+    ` · ${t('sum.metaKills', fmtNum(s.totals?.kills || 0), s.totals?.killers || 0)}`;
 
   const card = (icon, title, who, detail) => who ? `
     <div class="card" style="text-align:center;padding:26px">
@@ -43,16 +44,16 @@ async function load(wipeId) {
     </div>` : '';
 
   document.getElementById('highlights').innerHTML = [
-    card('⚔️', 'Top killer', s.topKiller, `${s.topKiller?.n} kills`),
-    card('🦅', 'Melhor Elo', s.topElo, `${s.topElo?.rating} (${esc(s.topElo?.tier || '')})`),
-    card('🎯', 'Kill mais longa', s.longestKill, `${Math.round(s.longestKill?.distance || 0)} m · ${esc(s.longestKill?.weapon || '')}`),
-    card('🎖️', 'Mais headshots', s.topHeadshots, `${s.topHeadshots?.n} headshots`),
-    card('🌾', 'Maior farmer', s.topFarmer, `${(s.topFarmer?.n || 0).toLocaleString('pt-PT')} recursos`),
-    card('⏱️', 'Mais horas', s.topHours, `${Math.round((s.topHours?.seconds || 0) / 3600)} horas`),
-    card('🧲', 'Saco de pancada', s.topDeaths, `${s.topDeaths?.n} mortes (um herói)`),
-    card('🚁', 'Caça-Helis', s.topHeli, `${s.topHeli?.n} Patrol Helis abatidos`),
+    card('⚔️', t('sum.topKiller'), s.topKiller, t('sum.kills', s.topKiller?.n)),
+    card('🦅', t('sum.bestElo'), s.topElo, `${s.topElo?.rating} (${esc(s.topElo?.tier || '')})`),
+    card('🎯', t('sum.longest'), s.longestKill, `${Math.round(s.longestKill?.distance || 0)} m · ${esc(s.longestKill?.weapon || '')}`),
+    card('🎖️', t('sum.headshots'), s.topHeadshots, `${s.topHeadshots?.n} headshots`),
+    card('🌾', t('sum.farmer'), s.topFarmer, t('sum.resources', fmtNum(s.topFarmer?.n || 0))),
+    card('⏱️', t('sum.hours'), s.topHours, t('sum.hoursVal', Math.round((s.topHours?.seconds || 0) / 3600))),
+    card('🧲', t('sum.punchbag'), s.topDeaths, t('sum.deaths', s.topDeaths?.n)),
+    card('🚁', t('sum.heli'), s.topHeli, t('sum.helis', s.topHeli?.n)),
   ].filter(Boolean).join('') ||
-  '<p style="color:var(--ink-muted)">Ainda não há dados suficientes nesta wipe.</p>';
+  `<p style="color:var(--ink-muted)">${t('sum.noData')}</p>`;
 }
 
 (async () => {
@@ -61,8 +62,8 @@ async function load(wipeId) {
   for (const w of data.rows) {
     const opt = document.createElement('option');
     opt.value = w.id;
-    const date = new Date(w.started_at * 1000).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
-    opt.textContent = `${w.label || 'Wipe'} (${date})${w.id === data.current ? ' — atual' : ''}`;
+    const date = new Date(w.started_at * 1000).toLocaleDateString(LOCALE, { day: '2-digit', month: 'short' });
+    opt.textContent = `${w.label || t('stats.wipeWord')} (${date})${w.id === data.current ? ` — ${t('sum.current')}` : ''}`;
     sel.appendChild(opt);
   }
   const urlWipe = new URLSearchParams(location.search).get('wipe');

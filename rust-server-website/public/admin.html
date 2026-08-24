@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Administração</title>
+<title>Admin Panel</title>
 <meta name="robots" content="noindex,nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -14,32 +14,33 @@
 <header>
   <nav class="nav">
     <a class="logo" href="/"><b data-brand></b> <span style="font-size:13px;color:var(--ink-muted);letter-spacing:0">admin</span></a>
-    <div class="links"><a href="/">← voltar ao site</a></div>
+    <div class="links"><a href="/">← back to site</a></div>
   </nav>
 </header>
 
 <main>
   <div class="card" id="login-card" style="max-width:420px;margin-top:6px">
-    <h3>Chave de administração</h3>
-    <input type="text" id="admin-key" placeholder="cola aqui a adminKey do config.json">
-    <button class="btn" style="margin-top:12px" id="load-btn">Entrar</button>
-    <p class="hint" style="color:var(--ink-muted);font-size:12px;margin-top:8px">A chave está em server/config.json (campo adminKey). Nunca a partilhes.</p>
+    <h3>Admin key</h3>
+    <input type="text" id="admin-key" placeholder="paste the adminKey from config.json">
+    <button class="btn" style="margin-top:12px" id="load-btn">Enter</button>
+    <p class="hint" style="color:var(--ink-muted);font-size:12px;margin-top:8px">The key is in server/config.json (adminKey field). Never share it.</p>
   </div>
 
   <div id="panel" style="display:none">
     <div class="tabs" id="section-tabs" style="margin-top:6px">
-      <button data-s="apps" class="active">Candidaturas</button>
-      <button data-s="appeals">Apelos</button>
-      <button data-s="redemptions">Loja / Entregas</button>
+      <button data-s="apps" class="active">Applications</button>
+      <button data-s="appeals">Appeals</button>
+      <button data-s="redemptions">Store / Deliveries</button>
       <button data-s="ow">Overwatch</button>
       <button data-s="bans">Bans</button>
-      <button data-s="map">Votação de mapa</button>
-      <button data-s="posts">Novidades</button>
+      <button data-s="map">Map vote</button>
+      <button data-s="posts">News</button>
     </div>
     <div id="section-body" style="margin-top:14px"></div>
   </div>
 </main>
 
+<script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
 <script>
 let KEY = sessionStorage.getItem('adminKey') || '';
@@ -63,21 +64,21 @@ async function renderApps() {
     <div class="card" style="margin-bottom:12px">
       <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
         <b style="font-size:16px">${esc(a.name)}</b>
-        <span style="color:var(--ink-muted);font-size:13px">${esc(a.discord)} · ${esc(a.steam_id)} · ${a.age ?? '?'} anos · ${a.hours_played ?? '?'}h · ${esc(a.timezone || '—')}</span>
+        <span style="color:var(--ink-muted);font-size:13px">${esc(a.discord)} · ${esc(a.steam_id)} · ${a.age ?? '?'} yrs · ${a.hours_played ?? '?'}h · ${esc(a.timezone || '—')}</span>
         <span style="margin-left:auto">${badge(a.status)}</span>
       </div>
-      <div style="color:var(--ink-muted);font-size:12px;margin:4px 0 8px">${new Date(a.ts * 1000).toLocaleString('pt-PT')} · disponibilidade: ${esc(a.availability || '—')}</div>
-      <details><summary style="cursor:pointer;color:var(--accent);font-size:13px">respostas completas</summary>
+      <div style="color:var(--ink-muted);font-size:12px;margin:4px 0 8px">${new Date(a.ts * 1000).toLocaleString('en-GB')} · availability: ${esc(a.availability || '—')}</div>
+      <details><summary style="cursor:pointer;color:var(--accent);font-size:13px">full answers</summary>
         <div class="prose" style="margin-top:10px;font-size:13.5px">
-          <p><b>Experiência:</b> ${esc(a.experience || '—')}</p>
-          <p><b>Motivação:</b> ${esc(a.motivation || '—')}</p>
-          <p><b>Cenário 1 (clã suspeito sem provas):</b> ${esc(a.scenario1 || '—')}</p>
-          <p><b>Cenário 2 (amigo acusado):</b> ${esc(a.scenario2 || '—')}</p>
-          <p><b>Cenário 3 (acusado de admin abuse):</b> ${esc(a.scenario3 || '—')}</p>
+          <p><b>Experience:</b> ${esc(a.experience || '—')}</p>
+          <p><b>Motivation:</b> ${esc(a.motivation || '—')}</p>
+          <p><b>Scenario 1 (suspected clan, no proof):</b> ${esc(a.scenario1 || '—')}</p>
+          <p><b>Scenario 2 (accused friend):</b> ${esc(a.scenario2 || '—')}</p>
+          <p><b>Scenario 3 (accused of admin abuse):</b> ${esc(a.scenario3 || '—')}</p>
         </div>
       </details>
-      ${statusButtons('app', a.id, a.status, ['pendente', 'em análise', 'entrevista', 'aprovada', 'recusada'])}
-    </div>`).join('') || '<p style="color:var(--ink-muted)">Sem candidaturas.</p>';
+      ${statusButtons('app', a.id, a.status, ['pending', 'reviewing', 'interview', 'approved', 'rejected'])}
+    </div>`).join('') || '<p style="color:var(--ink-muted)">No applications.</p>';
 }
 
 async function renderAppeals() {
@@ -86,46 +87,46 @@ async function renderAppeals() {
     <div class="card" style="margin-bottom:12px">
       <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
         <b>${esc(a.player_name || a.steam_id)}</b>
-        <span style="color:var(--ink-muted);font-size:13px">${esc(a.discord || 'sem discord')} · ${timeAgo(a.ts)}</span>
+        <span style="color:var(--ink-muted);font-size:13px">${esc(a.discord || 'no discord')} · ${timeAgo(a.ts)}</span>
         <span style="margin-left:auto">${badge(a.status)}</span>
       </div>
       <p style="color:var(--ink-2);font-size:13.5px;margin-top:8px">${esc(a.text)}</p>
-      ${a.response ? `<p style="margin-top:8px;font-size:13px"><b>Resposta:</b> ${esc(a.response)}</p>` : ''}
+      ${a.response ? `<p style="margin-top:8px;font-size:13px"><b>Reply:</b> ${esc(a.response)}</p>` : ''}
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <input type="text" data-response-for="${a.id}" placeholder="resposta ao jogador…" style="flex:1;min-width:220px">
+        <input type="text" data-response-for="${a.id}" placeholder="reply to the player…" style="flex:1;min-width:220px">
       </div>
-      ${statusButtons('appeal', a.id, a.status, ['pendente', 'em análise', 'aceite', 'recusado'])}
-    </div>`).join('') || '<p style="color:var(--ink-muted)">Sem apelos.</p>';
+      ${statusButtons('appeal', a.id, a.status, ['pending', 'reviewing', 'accepted', 'rejected'])}
+    </div>`).join('') || '<p style="color:var(--ink-muted)">No appeals.</p>';
 }
 
 async function renderRedemptions() {
   const { rows } = await aGet('/api/admin/redemptions');
   body().innerHTML = `
     <p style="color:var(--ink-muted);font-size:13px;margin-bottom:10px">
-      Resgates com comando são entregues automaticamente pelo plugin ("enviado" → "entregue").
-      Os restantes entregam-se manualmente in-game e marcam-se aqui.</p>` +
+      Redemptions with a command are delivered automatically by the plugin ("sent" → "delivered").
+      The rest are delivered manually in-game and marked here.</p>` +
     (rows.map((r) => `
     <div class="card" style="margin-bottom:10px">
       <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
         <b>${esc(r.item_name || r.item_id)}</b>
-        <span style="color:var(--ink-muted);font-size:13px">${esc(r.player_name || r.steam_id)} · ${r.cost.toLocaleString('pt-PT')} 💎 · ${timeAgo(r.ts)}</span>
+        <span style="color:var(--ink-muted);font-size:13px">${esc(r.player_name || r.steam_id)} · ${r.cost.toLocaleString('en-GB')} 💎 · ${timeAgo(r.ts)}</span>
         <span style="margin-left:auto">${badge(r.status)}</span>
       </div>
-      ${r.command ? `<code style="font-size:12px;color:var(--ink-muted)">${esc(r.command)}</code>` : '<span style="font-size:12px;color:var(--gold)">entrega manual</span>'}
-      ${statusButtons('redemption', r.id, r.status, ['pendente', 'enviado', 'entregue', 'falhou'])}
-    </div>`).join('') || '<p style="color:var(--ink-muted)">Sem resgates.</p>');
+      ${r.command ? `<code style="font-size:12px;color:var(--ink-muted)">${esc(r.command)}</code>` : '<span style="font-size:12px;color:var(--gold)">manual delivery</span>'}
+      ${statusButtons('redemption', r.id, r.status, ['pending', 'sent', 'delivered', 'failed'])}
+    </div>`).join('') || '<p style="color:var(--ink-muted)">No redemptions.</p>');
 }
 
 async function renderOw() {
   const { rows } = await aGet('/api/admin/owcases');
   body().innerHTML = `
     <form id="ow-form" class="card" style="margin-bottom:14px">
-      <b>Novo caso</b>
+      <b>New case</b>
       <div class="form-grid" style="margin-top:10px">
-        <div class="field"><label>Título (sem nomes de jogadores!)</label><input name="title" required maxlength="120"></div>
-        <div class="field"><label>URL do clip (YouTube/Streamable)</label><input name="clipUrl" required maxlength="300"></div>
+        <div class="field"><label>Title (no player names!)</label><input name="title" required maxlength="120"></div>
+        <div class="field"><label>Clip URL (YouTube/Streamable)</label><input name="clipUrl" required maxlength="300"></div>
       </div>
-      <button class="btn" style="margin-top:12px">Publicar caso</button>
+      <button class="btn" style="margin-top:12px">Publish case</button>
     </form>` +
     rows.map((c) => `
     <div class="card" style="margin-bottom:10px">
@@ -135,11 +136,11 @@ async function renderOw() {
         <span style="margin-left:auto;font-size:13px;color:var(--ink-2)">
           🚨 ${c.tally.cheat} · 🤔 ${c.tally.unsure} · ✅ ${c.tally.clean}</span>
       </div>
-      ${c.status === 'aberto' ? `
+      ${c.status === 'open' ? `
         <div class="tabs" style="margin-top:10px">
-          ${['cheater', 'inocente', 'inconclusivo'].map((v) =>
-            `<button data-close-ow="${c.id}" data-verdict="${v}">fechar: ${v}</button>`).join('')}
-        </div>` : `<p style="font-size:13px;margin-top:6px">Veredicto: <b>${esc(c.verdict)}</b></p>`}
+          ${['cheater', 'innocent', 'inconclusive'].map((v) =>
+            `<button data-close-ow="${c.id}" data-verdict="${v}">close: ${v}</button>`).join('')}
+        </div>` : `<p style="font-size:13px;margin-top:6px">Verdict: <b>${esc(c.verdict)}</b></p>`}
     </div>`).join('');
 
   document.getElementById('ow-form').addEventListener('submit', async (e) => {
@@ -153,25 +154,25 @@ async function renderBans() {
   const { rows } = await aGet('/api/admin/bans');
   body().innerHTML = `
     <p style="color:var(--ink-muted);font-size:13px;margin-bottom:10px">
-      Esta lista alimenta a página pública de transparência e o webhook do Discord.
-      Publica só o nome de jogo — nunca dados pessoais.</p>
+      This list feeds the public transparency page and the Discord webhook.
+      Publish only the in-game name — never personal data.</p>
     <form id="ban-form" class="card" style="margin-bottom:14px">
-      <b>Registar banimento</b>
+      <b>Record a ban</b>
       <div class="form-grid" style="margin-top:10px">
-        <div class="field"><label>Nome do jogador *</label><input name="steamName" required maxlength="64"></div>
-        <div class="field"><label>Admin responsável *</label><input name="staffName" required maxlength="64"></div>
-        <div class="field full"><label>Motivo *</label><input name="reason" required maxlength="300" placeholder="ex.: Aimbot confirmado (gravação publicada)"></div>
-        <div class="field full"><label>Link das provas (opcional)</label><input name="evidence" maxlength="300" placeholder="https://youtu.be/…"></div>
+        <div class="field"><label>Player name *</label><input name="steamName" required maxlength="64"></div>
+        <div class="field"><label>Responsible admin *</label><input name="staffName" required maxlength="64"></div>
+        <div class="field full"><label>Reason *</label><input name="reason" required maxlength="300" placeholder="e.g.: Confirmed aimbot (recording published)"></div>
+        <div class="field full"><label>Evidence link (optional)</label><input name="evidence" maxlength="300" placeholder="https://youtu.be/…"></div>
       </div>
-      <button class="btn" style="margin-top:12px">Registar ban</button>
+      <button class="btn" style="margin-top:12px">Record ban</button>
     </form>` +
     rows.map((b) => `
       <div class="card" style="margin-bottom:8px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
         <b>${esc(b.steam_name)}</b>
         <span style="color:var(--ink-2);font-size:13.5px">${esc(b.reason)}</span>
         <span style="color:var(--ink-muted);font-size:12.5px">${esc(b.staff_name)} · ${timeAgo(b.ts)}</span>
-        ${b.evidence ? `<a href="${esc(b.evidence)}" target="_blank" rel="noopener" style="font-size:13px">🎬 provas</a>` : ''}
-        <button class="btn ghost" data-del-ban="${b.id}" style="margin-left:auto;padding:4px 12px;font-size:12px">remover</button>
+        ${b.evidence ? `<a href="${esc(b.evidence)}" target="_blank" rel="noopener" style="font-size:13px">🎬 evidence</a>` : ''}
+        <button class="btn ghost" data-del-ban="${b.id}" style="margin-left:auto;padding:4px 12px;font-size:12px">remove</button>
       </div>`).join('');
 
   document.getElementById('ban-form').addEventListener('submit', async (e) => {
@@ -186,25 +187,25 @@ async function renderMap() {
   body().innerHTML = `
     <div class="card" style="margin-bottom:14px">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <b>Ronda ${state.round}</b> ${badge(state.open ? 'aberto' : 'fechado')}
-        <button class="btn ghost" data-map-action="${state.open ? 'close' : 'open'}">${state.open ? 'Fechar votação' : 'Abrir votação'}</button>
-        <button class="btn ghost" data-map-action="new_round">Nova ronda (limpa opções)</button>
+        <b>Round ${state.round}</b> ${badge(state.open ? 'open' : 'closed')}
+        <button class="btn ghost" data-map-action="${state.open ? 'close' : 'open'}">${state.open ? 'Close voting' : 'Open voting'}</button>
+        <button class="btn ghost" data-map-action="new_round">New round (clears options)</button>
       </div>
     </div>
     <form id="map-form" class="card" style="margin-bottom:14px">
-      <b>Adicionar mapa candidato</b>
+      <b>Add candidate map</b>
       <div class="form-grid" style="margin-top:10px">
-        <div class="field"><label>Nome/descrição</label><input name="label" required maxlength="80" placeholder="Mapa A — clássico, 2 lagos"></div>
+        <div class="field"><label>Name/description</label><input name="label" required maxlength="80" placeholder="Map A — classic, 2 lakes"></div>
         <div class="field"><label>Seed</label><input name="seed" maxlength="20"></div>
-        <div class="field"><label>Tamanho</label><input name="size" type="number" min="1000" max="6000" placeholder="3800"></div>
+        <div class="field"><label>Size</label><input name="size" type="number" min="1000" max="6000" placeholder="3800"></div>
       </div>
-      <button class="btn" style="margin-top:12px">Adicionar</button>
+      <button class="btn" style="margin-top:12px">Add</button>
     </form>` +
     state.options.map((o) => `
       <div class="card" style="margin-bottom:8px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
         <b>${esc(o.label)}</b>
         <span style="color:var(--ink-muted);font-size:13px">seed ${esc(o.seed || '—')} · ${o.size || '—'}</span>
-        <span style="margin-left:auto;font-size:13px"><b>${o.votes}</b> pontos (${o.voters} votantes)</span>
+        <span style="margin-left:auto;font-size:13px"><b>${o.votes}</b> points (${o.voters} voters)</span>
       </div>`).join('');
 
   document.getElementById('map-form').addEventListener('submit', async (e) => {
@@ -219,17 +220,17 @@ async function renderPosts() {
   const { rows } = await api('/api/posts');
   body().innerHTML = `
     <form id="post-form" class="card" style="margin-bottom:14px">
-      <b>Nova publicação</b>
-      <div class="field" style="margin-top:10px"><label>Título</label><input name="title" required maxlength="120"></div>
-      <div class="field" style="margin-top:10px"><label>Texto</label><textarea name="body" required maxlength="8000"></textarea></div>
-      <button class="btn" style="margin-top:12px">Publicar</button>
+      <b>New post</b>
+      <div class="field" style="margin-top:10px"><label>Title</label><input name="title" required maxlength="120"></div>
+      <div class="field" style="margin-top:10px"><label>Body</label><textarea name="body" required maxlength="8000"></textarea></div>
+      <button class="btn" style="margin-top:12px">Publish</button>
     </form>` +
     rows.map((p) => `
       <div class="card post" style="margin-bottom:10px">
         <div style="display:flex;gap:10px;align-items:baseline">
           <h3 style="margin:0">${esc(p.title)}</h3>
           <span style="color:var(--ink-muted);font-size:12px">${fmtDate(p.ts)}</span>
-          <button class="btn ghost" data-del-post="${p.id}" style="margin-left:auto;padding:4px 12px;font-size:12px">apagar</button>
+          <button class="btn ghost" data-del-post="${p.id}" style="margin-left:auto;padding:4px 12px;font-size:12px">delete</button>
         </div>
         <p style="margin-top:8px">${esc(p.body)}</p>
       </div>`).join('');
@@ -246,9 +247,9 @@ const SECTIONS = { apps: renderApps, appeals: renderAppeals, redemptions: render
 async function show(section) {
   SECTION = section;
   document.querySelectorAll('#section-tabs button').forEach((x) => x.classList.toggle('active', x.dataset.s === section));
-  body().innerHTML = '<p style="color:var(--ink-muted)">a carregar…</p>';
+  body().innerHTML = '<p style="color:var(--ink-muted)">loading…</p>';
   try { await SECTIONS[section](); }
-  catch (e) { body().innerHTML = `<div class="notice err">Erro: ${esc(e.message)}</div>`; }
+  catch (e) { body().innerHTML = `<div class="notice err">Error: ${esc(e.message)}</div>`; }
 }
 
 // ---------- eventos globais ----------
@@ -262,7 +263,7 @@ document.getElementById('load-btn').addEventListener('click', async () => {
     document.getElementById('login-card').style.display = 'none';
     document.getElementById('panel').style.display = '';
     show('apps');
-  } catch { alert('Chave inválida.'); }
+  } catch { alert('Invalid key.'); }
 });
 
 document.getElementById('section-tabs').addEventListener('click', (e) => {
@@ -295,7 +296,7 @@ document.getElementById('section-body').addEventListener('click', async (e) => {
   const ma = e.target.closest('button[data-map-action]');
   if (ma) {
     e.preventDefault();
-    if (ma.dataset.mapAction === 'new_round' && !confirm('Nova ronda apaga as opções e votos atuais da vista pública. Continuar?')) return;
+    if (ma.dataset.mapAction === 'new_round' && !confirm('A new round clears the current options and votes from the public view. Continue?')) return;
     await aPost('/api/admin/mapvote', { action: ma.dataset.mapAction });
     show(SECTION);
     return;
@@ -303,7 +304,7 @@ document.getElementById('section-body').addEventListener('click', async (e) => {
   const dp = e.target.closest('button[data-del-post]');
   if (dp) {
     e.preventDefault();
-    if (!confirm('Apagar esta publicação?')) return;
+    if (!confirm('Delete this post?')) return;
     await aPost('/api/admin/posts/delete', { id: parseInt(dp.dataset.delPost, 10) });
     show(SECTION);
     return;
@@ -311,7 +312,7 @@ document.getElementById('section-body').addEventListener('click', async (e) => {
   const db = e.target.closest('button[data-del-ban]');
   if (db) {
     e.preventDefault();
-    if (!confirm('Remover este ban da lista pública?')) return;
+    if (!confirm('Remove this ban from the public list?')) return;
     await aPost('/api/admin/bans', { action: 'delete', id: parseInt(db.dataset.delBan, 10) });
     show(SECTION);
   }

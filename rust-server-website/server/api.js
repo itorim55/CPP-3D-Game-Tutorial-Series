@@ -40,7 +40,7 @@ function handleIngest(body, config) {
           posX: Number.isFinite(e.posX) ? e.posX : null,
           posZ: Number.isFinite(e.posZ) ? e.posZ : null,
         }, wipe.id);
-        killLines.push(`⚔️ **${clean(e.attackerName, 32) || '?'}** matou **${clean(e.victimName, 32) || '?'}**` +
+        killLines.push(`⚔️ **${clean(e.attackerName, 32) || '?'}** killed **${clean(e.victimName, 32) || '?'}**` +
           ` (${clean(e.weapon, 32) || '?'}${Number.isFinite(e.distance) ? `, ${Math.round(e.distance)}m` : ''}${e.headshot ? ', HS 🎯' : ''})`);
         accepted++;
         break;
@@ -127,10 +127,10 @@ function checkKillAnomalies(config) {
     discord.send(url, {
       embeds: [{
         color: 0xd8a94e,
-        title: '⚠️ Pico de kills detetado',
-        description: `**${r.name}** tem **${r.kills} kills na última hora** ` +
-          `(K/D ${r.kd}). Pode ser um jogador em grande noite — ou não. ` +
-          `Vale a pena espectar.\nPerfil: /player?id=${r.steam_id}`,
+        title: '⚠️ Kill spike detected',
+        description: `**${r.name}** has **${r.kills} kills in the last hour** ` +
+          `(K/D ${r.kd}). Might just be a great night — or not. ` +
+          `Worth spectating.\nProfile: /player?id=${r.steam_id}`,
       }],
     });
   }
@@ -153,13 +153,13 @@ const REQUIRED_APP_FIELDS = ['name', 'steamId', 'discord', 'motivation', 'scenar
 
 function handleApplication(body, ip, config) {
   for (const f of REQUIRED_APP_FIELDS) {
-    if (!clean(body[f], 4000)) return { error: `Campo obrigatório em falta: ${f}`, code: 400 };
+    if (!clean(body[f], 4000)) return { error: `Missing required field: ${f}`, code: 400 };
   }
   if (!/^7656119\d{10}$/.test(String(body.steamId).trim())) {
-    return { error: 'SteamID64 inválido (deve começar por 7656119...).', code: 400 };
+    return { error: 'Invalid SteamID64 (must start with 7656119...).', code: 400 };
   }
   if (store.recentApplicationFromIp(ip, 6 * 3600)) {
-    return { error: 'Já foi enviada uma candidatura recentemente deste endereço. Tenta mais tarde.', code: 429 };
+    return { error: 'An application was already submitted from this address recently. Try again later.', code: 429 };
   }
   store.addApplication({
     name: clean(body.name, 64), steamId: String(body.steamId).trim(),
@@ -196,13 +196,13 @@ function route(req, res, url, body, config, session) {
   // --- endpoints do plugin (chave de API) ---
   if (p.startsWith('/api/plugin/') || p === '/api/ingest' || p === '/api/heartbeat' || p === '/api/wipe') {
     const key = req.headers['x-api-key'];
-    if (!config.apiKey || key !== config.apiKey) { json(res, 401, { error: 'Chave de API inválida' }); return true; }
+    if (!config.apiKey || key !== config.apiKey) { json(res, 401, { error: 'Invalid API key' }); return true; }
 
     if (p === '/api/plugin/redemptions' && req.method === 'GET') {
       json(res, 200, { rows: store.pendingPluginRedemptions() }); return true;
     }
-    if (req.method !== 'POST') { json(res, 405, { error: 'Método não permitido' }); return true; }
-    if (!body) { json(res, 400, { error: 'JSON inválido' }); return true; }
+    if (req.method !== 'POST') { json(res, 405, { error: 'Method not allowed' }); return true; }
+    if (!body) { json(res, 400, { error: 'Invalid JSON' }); return true; }
 
     if (p === '/api/ingest') json(res, 200, handleIngest(body, config));
     else if (p === '/api/heartbeat') json(res, 200, handleHeartbeat(body));
@@ -214,17 +214,17 @@ function route(req, res, url, body, config, session) {
         const summary = store.wipeSummary(oldWipe.id);
         if (summary && summary.totals?.kills > 0) {
           store.addPost(
-            `🏁 Fim da ${oldWipe.label || 'wipe'} — os highlights`,
+            `🏁 End of ${oldWipe.label || 'the wipe'} — the highlights`,
             [
               summary.topKiller && `⚔️ Top killer: ${summary.topKiller.name} (${summary.topKiller.n} kills)`,
-              summary.topElo && `🦅 Melhor Elo: ${summary.topElo.name} (${summary.topElo.rating})`,
-              summary.longestKill && `🎯 Kill mais longa: ${summary.longestKill.name} — ${Math.round(summary.longestKill.distance)} m (${summary.longestKill.weapon})`,
-              summary.topHeadshots && `🎖️ Mais headshots: ${summary.topHeadshots.name} (${summary.topHeadshots.n})`,
-              summary.topFarmer && `🌾 Maior farmer: ${summary.topFarmer.name}`,
-              summary.topHours && `⏱️ Mais horas: ${summary.topHours.name} (${Math.round(summary.topHours.seconds / 3600)} h)`,
-              summary.topDeaths && `🧲 Saco de pancada: ${summary.topDeaths.name} (${summary.topDeaths.n} mortes)`,
+              summary.topElo && `🦅 Best Elo: ${summary.topElo.name} (${summary.topElo.rating})`,
+              summary.longestKill && `🎯 Longest kill: ${summary.longestKill.name} — ${Math.round(summary.longestKill.distance)} m (${summary.longestKill.weapon})`,
+              summary.topHeadshots && `🎖️ Most headshots: ${summary.topHeadshots.name} (${summary.topHeadshots.n})`,
+              summary.topFarmer && `🌾 Top farmer: ${summary.topFarmer.name}`,
+              summary.topHours && `⏱️ Most hours: ${summary.topHours.name} (${Math.round(summary.topHours.seconds / 3600)} h)`,
+              summary.topDeaths && `🧲 Punching bag: ${summary.topDeaths.name} (${summary.topDeaths.n} deaths)`,
               ``,
-              `Resumo completo: /resumo?wipe=${oldWipe.id}`,
+              `Full recap: /resumo?wipe=${oldWipe.id}`,
             ].filter((x) => x !== null && x !== undefined).join('\n'));
           discord.wipeSummaryPost(config.discordWebhooks?.announcements, summary,
             (config.siteUrl || '').replace(/\/$/, ''));
@@ -235,7 +235,7 @@ function route(req, res, url, body, config, session) {
     else if (p === '/api/plugin/redemptions/complete') {
       store.completeRedemption(body.id, body.ok !== false);
       json(res, 200, { ok: true });
-    } else json(res, 404, { error: 'Endpoint desconhecido' });
+    } else json(res, 404, { error: 'Unknown endpoint' });
     return true;
   }
 
@@ -284,9 +284,9 @@ function route(req, res, url, body, config, session) {
       }
       case '/api/compare': {
         const a = url.searchParams.get('a'), b = url.searchParams.get('b');
-        if (!a || !b) { json(res, 400, { error: 'Faltam os parâmetros a e b' }); return true; }
+        if (!a || !b) { json(res, 400, { error: 'Missing a and b parameters' }); return true; }
         const r = store.comparePlayers(a, b);
-        if (!r) { json(res, 404, { error: 'Jogador não encontrado' }); return true; }
+        if (!r) { json(res, 404, { error: 'Player not found' }); return true; }
         json(res, 200, r); return true;
       }
       case '/api/heatmap': {
@@ -297,7 +297,7 @@ function route(req, res, url, body, config, session) {
       case '/api/wipesummary': {
         const wid = parseInt(url.searchParams.get('wipe') || '', 10) || store.currentWipe().id;
         const s = store.wipeSummary(wid);
-        if (!s) { json(res, 404, { error: 'Wipe não encontrada' }); return true; }
+        if (!s) { json(res, 404, { error: 'Wipe not found' }); return true; }
         json(res, 200, s);
         return true;
       }
@@ -306,9 +306,9 @@ function route(req, res, url, body, config, session) {
         return true;
       case '/api/player': {
         const id = url.searchParams.get('id');
-        if (!id) { json(res, 400, { error: 'Falta o parâmetro id' }); return true; }
+        if (!id) { json(res, 400, { error: 'Missing id parameter' }); return true; }
         const prof = store.playerProfile(id);
-        if (!prof) { json(res, 404, { error: 'Jogador não encontrado' }); return true; }
+        if (!prof) { json(res, 404, { error: 'Player not found' }); return true; }
         json(res, 200, prof); return true;
       }
       case '/api/search': {
@@ -350,15 +350,15 @@ function route(req, res, url, body, config, session) {
 
   // --- endpoints autenticados por sessão Steam (POST) ---
   if (req.method === 'POST' && ['/api/redeem', '/api/mapvote/vote', '/api/owcases/vote', '/api/appeals'].includes(p)) {
-    if (!session) { json(res, 401, { error: 'Inicia sessão com a Steam primeiro.' }); return true; }
-    if (!body) { json(res, 400, { error: 'JSON inválido' }); return true; }
+    if (!session) { json(res, 401, { error: 'Sign in with Steam first.' }); return true; }
+    if (!body) { json(res, 400, { error: 'Invalid JSON' }); return true; }
     let r;
     if (p === '/api/redeem') r = store.redeem(session.steamId, clean(body.itemId, 64));
     else if (p === '/api/mapvote/vote') r = store.castMapVote(session.steamId, body.optionId | 0);
     else if (p === '/api/owcases/vote') r = store.voteOw(session.steamId, body.caseId | 0, clean(body.vote, 10));
     else {
       const text = clean(body.text, 4000);
-      if (!text || text.length < 20) r = { error: 'Descreve o teu apelo com pelo menos 20 caracteres.' };
+      if (!text || text.length < 20) r = { error: 'Describe your appeal with at least 20 characters.' };
       else r = store.addAppeal(session.steamId, clean(body.discord, 64), text);
     }
     json(res, r.error ? 400 : 200, r);
@@ -367,7 +367,7 @@ function route(req, res, url, body, config, session) {
 
   // --- candidaturas (público, com rate-limit) ---
   if (p === '/api/applications' && req.method === 'POST') {
-    if (!body) { json(res, 400, { error: 'JSON inválido' }); return true; }
+    if (!body) { json(res, 400, { error: 'Invalid JSON' }); return true; }
     const r = handleApplication(body, ip, config);
     if (r.error) json(res, r.code, { error: r.error });
     else json(res, 200, r);
@@ -377,7 +377,7 @@ function route(req, res, url, body, config, session) {
   // --- administração ---
   if (p.startsWith('/api/admin/')) {
     const key = req.headers['x-admin-key'] || url.searchParams.get('key');
-    if (!config.adminKey || key !== config.adminKey) { json(res, 401, { error: 'Chave de administração inválida' }); return true; }
+    if (!config.adminKey || key !== config.adminKey) { json(res, 401, { error: 'Invalid admin key' }); return true; }
 
     if (req.method === 'GET') {
       switch (p) {
@@ -392,24 +392,24 @@ function route(req, res, url, body, config, session) {
     if (req.method === 'POST' && body) {
       switch (p) {
         case '/api/admin/applications': {
-          const allowed = ['pendente', 'em análise', 'entrevista', 'aprovada', 'recusada'];
-          store.setApplicationStatus(body.id, allowed.includes(body.status) ? body.status : 'pendente');
+          const allowed = ['pending', 'reviewing', 'interview', 'approved', 'rejected'];
+          store.setApplicationStatus(body.id, allowed.includes(body.status) ? body.status : 'pending');
           json(res, 200, { ok: true }); return true;
         }
         case '/api/admin/appeals': {
-          const allowed = ['pendente', 'em análise', 'aceite', 'recusado'];
-          store.setAppealStatus(body.id, allowed.includes(body.status) ? body.status : 'pendente',
+          const allowed = ['pending', 'reviewing', 'accepted', 'rejected'];
+          store.setAppealStatus(body.id, allowed.includes(body.status) ? body.status : 'pending',
                                 clean(body.response, 2000));
           json(res, 200, { ok: true }); return true;
         }
         case '/api/admin/redemptions': {
-          const allowed = ['pendente', 'enviado', 'entregue', 'falhou'];
-          store.setRedemptionStatus(body.id, allowed.includes(body.status) ? body.status : 'pendente');
+          const allowed = ['pending', 'sent', 'delivered', 'failed'];
+          store.setRedemptionStatus(body.id, allowed.includes(body.status) ? body.status : 'pending');
           json(res, 200, { ok: true }); return true;
         }
         case '/api/admin/posts': {
           const title = clean(body.title, 120), text = clean(body.body, 8000);
-          if (!title || !text) { json(res, 400, { error: 'Título e texto obrigatórios' }); return true; }
+          if (!title || !text) { json(res, 400, { error: 'Title and body are required' }); return true; }
           store.addPost(title, text);
           json(res, 200, { ok: true }); return true;
         }
@@ -417,13 +417,13 @@ function route(req, res, url, body, config, session) {
           store.deletePost(body.id); json(res, 200, { ok: true }); return true;
         case '/api/admin/owcases': {
           const title = clean(body.title, 120), clip = clean(body.clipUrl, 300);
-          if (!title || !clip) { json(res, 400, { error: 'Título e URL do clip obrigatórios' }); return true; }
+          if (!title || !clip) { json(res, 400, { error: 'Title and clip URL are required' }); return true; }
           store.addOwCase(title, clip);
           json(res, 200, { ok: true }); return true;
         }
         case '/api/admin/owcases/close': {
-          const allowed = ['cheater', 'inocente', 'inconclusivo'];
-          if (!allowed.includes(body.verdict)) { json(res, 400, { error: 'Veredicto inválido' }); return true; }
+          const allowed = ['cheater', 'innocent', 'inconclusive'];
+          if (!allowed.includes(body.verdict)) { json(res, 400, { error: 'Invalid verdict' }); return true; }
           store.closeOwCase(body.id, body.verdict);
           json(res, 200, { ok: true }); return true;
         }
@@ -436,7 +436,7 @@ function route(req, res, url, body, config, session) {
             staffName: clean(body.staffName, 64), evidence: clean(body.evidence, 300),
           };
           if (!ban.steamName || !ban.reason || !ban.staffName) {
-            json(res, 400, { error: 'Jogador, motivo e admin são obrigatórios' }); return true;
+            json(res, 400, { error: 'Player, reason and admin are required' }); return true;
           }
           store.addBan(ban);
           discord.banAnnounce(config.discordWebhooks?.bans, ban);
@@ -444,7 +444,7 @@ function route(req, res, url, body, config, session) {
         }
       }
     }
-    json(res, 400, { error: 'Pedido inválido' }); return true;
+    json(res, 400, { error: 'Invalid request' }); return true;
   }
 
   return false;

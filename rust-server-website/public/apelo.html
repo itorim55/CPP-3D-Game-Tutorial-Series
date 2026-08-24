@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Apelar um ban</title>
+<title>Appeal a ban</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
@@ -13,24 +13,25 @@
 <header></header>
 
 <main style="max-width:760px">
-  <h2 class="section" style="margin-top:6px">Apelar um ban ⚖️</h2>
+  <h2 class="section" style="margin-top:6px" data-i18n="appeal.title">Appeal a ban ⚖️</h2>
 
   <div class="card prose">
-    <p>Todos os bans podem ser contestados — é uma promessa do nosso
-    <a href="/staff">Código do Moderador</a>. Como funciona:</p>
+    <p data-i18n="appeal.intro">Every ban can be contested — it's a promise of our
+    <a href="/staff">Moderator Code</a>. How it works:</p>
     <ul>
-      <li>O apelo é revisto por um admin <b>diferente</b> do que aplicou o ban;</li>
-      <li>Revemos as provas gravadas do teu caso contigo em mente;</li>
-      <li>Resposta em 48-72 h, visível aqui e na <a href="/conta">tua conta</a>;</li>
-      <li>Sê honesto: um apelo com mentiras confirma o ban de vez.</li>
+      <li data-i18n="appeal.li1">The appeal is reviewed by a <b>different</b> admin than the one who issued the ban;</li>
+      <li data-i18n="appeal.li2">We re-watch the recorded evidence of your case with you in mind;</li>
+      <li data-i18n="appeal.li3">Answer within 48-72 h, visible here and in <a href="/conta">your account</a>;</li>
+      <li data-i18n="appeal.li4">Be honest: an appeal with lies confirms the ban for good.</li>
     </ul>
   </div>
 
-  <div id="form-area" style="margin-top:18px">a carregar…</div>
+  <div id="form-area" style="margin-top:18px" data-i18n="loading">loading…</div>
 </main>
 
 <footer></footer>
 
+<script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
 <script>
 (async () => {
@@ -38,45 +39,40 @@
   const area = document.getElementById('form-area');
 
   if (!user.loggedIn) {
-    area.innerHTML = `<div class="notice err">
-      🔑 <a href="/auth/steam">Inicia sessão com a Steam</a> para apelares —
-      assim sabemos que o apelo vem mesmo da conta banida.</div>`;
+    area.innerHTML = `<div class="notice err">${t('appeal.login')}</div>`;
     return;
   }
 
-  const open = user.appeals.find((a) => ['pendente', 'em análise'].includes(a.status));
+  const open = user.appeals.find((a) => ['pending', 'reviewing'].includes(a.status));
   if (open) {
-    area.innerHTML = `<div class="notice ok">
-      ⏳ Já tens um apelo <b>${esc(open.status)}</b> (${timeAgo(open.ts)}).
-      Acompanha o estado na <a href="/conta">tua conta</a>.</div>`;
+    area.innerHTML = `<div class="notice ok">${t('appeal.open', tStatus(open.status), timeAgo(open.ts))}</div>`;
     return;
   }
 
   area.innerHTML = `
     <form id="appeal-form" class="card">
       <div class="field">
-        <label>O teu Discord (para te contactarmos)</label>
-        <input type="text" name="discord" maxlength="64" placeholder="utilizador#0000 ou @utilizador">
+        <label>${t('appeal.discordLabel')}</label>
+        <input type="text" name="discord" maxlength="64" placeholder="user#0000 / @user">
       </div>
       <div class="field" style="margin-top:14px">
-        <label>O teu apelo *</label>
+        <label>${t('appeal.textLabel')}</label>
         <textarea name="text" required minlength="20" maxlength="4000"
-          placeholder="Conta a tua versão: o que aconteceu, porque achas que o ban foi injusto, e qualquer contexto que a staff deva saber."></textarea>
+          placeholder="${esc(t('appeal.textPh'))}"></textarea>
       </div>
-      <button class="btn" type="submit" style="margin-top:16px">Enviar apelo</button>
+      <button class="btn" type="submit" style="margin-top:16px">${t('appeal.submit')}</button>
     </form>`;
 
   document.getElementById('appeal-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target).entries());
     const btn = e.target.querySelector('button');
-    btn.disabled = true; btn.textContent = 'a enviar…';
+    btn.disabled = true; btn.textContent = t('appeal.sending');
     try {
       await apiPost('/api/appeals', data);
-      area.innerHTML = `<div class="notice ok"><b>✅ Apelo recebido.</b>
-        Resposta em 48-72 h — acompanha na <a href="/conta">tua conta</a>.</div>`;
+      area.innerHTML = `<div class="notice ok">${t('appeal.received')}</div>`;
     } catch (err) {
-      btn.disabled = false; btn.textContent = 'Enviar apelo';
+      btn.disabled = false; btn.textContent = t('appeal.submit');
       alert('⚠️ ' + err.message);
     }
   });

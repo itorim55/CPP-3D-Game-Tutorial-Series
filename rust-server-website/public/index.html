@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Servidor de Rust — Início</title>
+<title>Rust Server — Home</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
@@ -15,77 +15,78 @@
 <main>
   <section class="hero">
     <h1 data-brand-hero></h1>
-    <p class="tag" id="server-tag">Estatísticas ao vivo · staff transparente · zero pay-to-win.</p>
-    <button class="connect" id="connect-btn" title="Clica para copiar">
+    <p class="tag" id="server-tag" data-i18n="home.tagline">Live stats · transparent staff · zero pay-to-win.</p>
+    <button class="connect" id="connect-btn">
       <span class="dot off" id="status-dot"></span>
-      <span id="connect-text">a carregar…</span>
-      <span style="color:var(--ink-muted)">⧉ copiar</span>
+      <span id="connect-text" data-i18n="loading">loading…</span>
+      <span style="color:var(--ink-muted)">⧉ <span data-i18n="home.copy">copy</span></span>
     </button>
   </section>
 
   <section class="grid cols-4">
     <div class="card tile" id="tile-players">
       <div class="big" id="players-now">—</div>
-      <div class="label">jogadores online</div>
+      <div class="label" data-i18n="home.playersOnline">players online</div>
     </div>
     <div class="card tile">
       <div class="big" id="wipe-countdown">—</div>
-      <div class="label">até à próxima wipe</div>
+      <div class="label" data-i18n="home.untilWipe">until next wipe</div>
     </div>
     <div class="card tile">
       <div class="big" id="kills-wipe">—</div>
-      <div class="label">kills esta wipe</div>
+      <div class="label" data-i18n="home.killsWipe">kills this wipe</div>
     </div>
     <div class="card tile">
       <div class="big" id="server-fps">—</div>
-      <div class="label">FPS do servidor</div>
+      <div class="label" data-i18n="home.serverFps">server FPS</div>
     </div>
   </section>
 
-  <h2 class="section">População <small>últimas 48 horas</small></h2>
+  <h2 class="section"><span data-i18n="home.population">Population</span> <small data-i18n="home.last48h">last 48 hours</small></h2>
   <div class="card">
     <div id="pop-chart"></div>
   </div>
 
   <div class="grid cols-2" style="margin-top:28px">
     <div>
-      <h2 class="section" style="margin-top:0">Top da wipe <small><a href="/stats">ver tudo →</a></small></h2>
+      <h2 class="section" style="margin-top:0"><span data-i18n="home.topWipe">Wipe top</span> <small><a href="/stats" data-i18n="home.viewAll">view all →</a></small></h2>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>#</th><th>Jogador</th><th class="num">Kills</th><th class="num">K/D</th></tr></thead>
-          <tbody id="top-players"><tr><td colspan="4">a carregar…</td></tr></tbody>
+          <thead><tr><th>#</th><th data-i18n="stats.thPlayer">Player</th><th class="num" data-i18n="stats.thKills">Kills</th><th class="num">K/D</th></tr></thead>
+          <tbody id="top-players"><tr><td colspan="4" data-i18n="loading">loading…</td></tr></tbody>
         </table>
       </div>
     </div>
     <div>
-      <h2 class="section" style="margin-top:0">Killfeed ao vivo</h2>
-      <div class="feed" id="killfeed">a carregar…</div>
+      <h2 class="section" style="margin-top:0" data-i18n="home.liveKillfeed">Live killfeed</h2>
+      <div class="feed" id="killfeed" data-i18n="loading">loading…</div>
       <div id="streaks-card" style="display:none;margin-top:14px" class="card">
-        <h3>🔥 Em fogo agora</h3>
+        <h3 data-i18n="home.onFire">🔥 On fire right now</h3>
         <div id="streaks" style="display:flex;flex-direction:column;gap:6px"></div>
       </div>
     </div>
   </div>
 
-  <h2 class="section">Porquê jogar aqui?</h2>
+  <h2 class="section" data-i18n="home.whyPlay">Why play here?</h2>
   <div class="grid cols-3">
     <div class="card">
-      <h3>🛡️ Anti-cheat a sério</h3>
-      <p style="color:var(--ink-2);font-size:14px">Moderação ativa ao estilo <b>camomo_10</b>: cheaters apanhados em direto, provas gravadas e banimentos públicos. Vê a <a href="/staff">lista de bans</a>.</p>
+      <h3 data-i18n="home.antiCheat">🛡️ Serious anti-cheat</h3>
+      <p style="color:var(--ink-2);font-size:14px" data-i18n="home.antiCheatDesc">Active <b>camomo_10</b>-style moderation: cheaters caught live, evidence recorded, and public bans. See the <a href="/staff">ban list</a>.</p>
     </div>
     <div class="card">
-      <h3>📊 Estatísticas ao vivo</h3>
-      <p style="color:var(--ink-2);font-size:14px">Todas as kills, mortes, headshots e recursos registados em tempo real. Procura o teu nome e acompanha a tua evolução wipe a wipe.</p>
+      <h3 data-i18n="home.liveStats">📊 Live statistics</h3>
+      <p style="color:var(--ink-2);font-size:14px" data-i18n="home.liveStatsDesc">Every kill, death, headshot and resource tracked in real time. Search your name and follow your progress wipe after wipe.</p>
     </div>
     <div class="card">
-      <h3>⚖️ Zero pay-to-win</h3>
-      <p style="color:var(--ink-2);font-size:14px">Nada de kits pagos nem loot à venda. Os apoios ao servidor dão apenas cosméticos e cor no chat — o jogo é igual para todos.</p>
+      <h3 data-i18n="home.noP2w">⚖️ Zero pay-to-win</h3>
+      <p style="color:var(--ink-2);font-size:14px" data-i18n="home.noP2wDesc">No paid kits, no loot for sale. Supporting the server gets you cosmetics and chat colors only — the game is the same for everyone.</p>
     </div>
   </div>
 </main>
 
 <footer></footer>
 
+<script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
 <script>
 (async () => {
@@ -102,14 +103,14 @@
     const hb = s.heartbeat;
     document.getElementById('players-now').textContent =
       hb ? `${hb.players}/${hb.max_players}${hb.queued ? ` (+${hb.queued})` : ''}` : '—';
-    document.getElementById('kills-wipe').textContent = s.killsThisWipe.toLocaleString('pt-PT');
+    document.getElementById('kills-wipe').textContent = fmtNum(s.killsThisWipe);
     document.getElementById('server-fps').textContent = hb && hb.fps ? Math.round(hb.fps) : '—';
 
     const ip = s.info.ip || 'client.connect <ip>:28015';
     document.getElementById('connect-text').textContent = ip;
     document.getElementById('connect-btn').addEventListener('click', () => {
       navigator.clipboard.writeText(ip);
-      document.getElementById('connect-text').textContent = 'copiado! cola na consola F1';
+      document.getElementById('connect-text').textContent = t('home.copied');
       setTimeout(() => { document.getElementById('connect-text').textContent = ip; }, 2000);
     });
 
@@ -124,7 +125,7 @@
         <td>${playerLink(r.steam_id, r.name)}</td>
         <td class="num">${r.kills}</td>
         <td class="num">${r.kd.toFixed(2)}</td>
-      </tr>`).join('') || '<tr><td colspan="4">Sem dados ainda.</td></tr>';
+      </tr>`).join('') || `<tr><td colspan="4">${t('home.noData')}</td></tr>`;
 
     api('/api/streaks').then((st) => {
       if (!st.rows.length) return;
@@ -132,7 +133,7 @@
       document.getElementById('streaks').innerHTML = st.rows.slice(0, 5).map((s) => `
         <div style="display:flex;gap:8px;align-items:baseline;font-size:14px">
           <b>🔥 ${s.streak}</b> ${playerLink(s.steam_id, s.name)}
-          <span style="color:var(--ink-muted);font-size:12px;margin-left:auto">kills sem morrer</span>
+          <span style="color:var(--ink-muted);font-size:12px;margin-left:auto">${t('home.streakUnit')}</span>
         </div>`).join('');
     }).catch(() => {});
 
@@ -144,7 +145,7 @@
         ${k.headshot ? '<span class="hs">HS</span>' : ''}
         <span class="who v">${esc(k.victim_name || '?')}</span>
         <span class="meta">${timeAgo(k.ts)}</span>
-      </div>`).join('') || '<p style="color:var(--ink-muted)">Sem kills registadas ainda.</p>';
+      </div>`).join('') || `<p style="color:var(--ink-muted)">${t('home.noKills')}</p>`;
   } catch (e) {
     console.error(e);
   }
