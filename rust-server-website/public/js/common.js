@@ -3,7 +3,7 @@
 
 async function api(path) {
   const r = await fetch(path);
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `Erro ${r.status}`);
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || t('error.generic', r.status));
   return r.json();
 }
 
@@ -14,7 +14,7 @@ async function apiPost(path, body, headers = {}) {
     body: JSON.stringify(body),
   });
   const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data.error || `Erro ${r.status}`);
+  if (!r.ok) throw new Error(data.error || t('error.generic', r.status));
   return data;
 }
 
@@ -206,7 +206,7 @@ function renderAreaChart(container, data, { color = '#e0552e', maxY = null } = {
   wrap.className = 'chart-wrap';
   wrap.innerHTML = `
     <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img"
-         aria-label="Jogadores online nas últimas 48 horas">
+         aria-label="${esc(t('chart.aria'))}">
       ${gridLines}${ticks}
       <path d="${area}" fill="${color}" opacity="0.14"/>
       <path d="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>

@@ -45,10 +45,14 @@ function readSession(req, secret) {
   if (dot < 0) return null;
   const payload = value.slice(0, dot);
   const sig = value.slice(dot + 1);
-  const expected = sign(payload, secret);
-  if (sig.length !== expected.length ||
-      !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
   try {
+    const expected = sign(payload, secret);
+    // Comparar em bytes: timingSafeEqual exige buffers do MESMO comprimento em
+    // bytes, e uma assinatura forjada com caracteres multi-byte teria o mesmo
+    // string length mas byte length diferente — sem esta guarda, lançaria.
+    const a = Buffer.from(sig, 'utf8');
+    const b = Buffer.from(expected, 'utf8');
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf-8'));
     if (!data.sid || !/^7656119\d{10}$/.test(data.sid)) return null;
     if (data.exp < Math.floor(Date.now() / 1000)) return null;

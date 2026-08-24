@@ -102,7 +102,7 @@ poll a cada 60 s:
   cruzar os dados; não vale a complexidade no arranque.
 - Resgates: o saldo é verificado e descontado numa única operação no SQLite
   (síncrono, sem race conditions), e cada resgate fica registado com estado
-  (`pendente → enviado → entregue/falhou`) visível no /admin.
+  (`pending → sent → delivered/failed`) visível no /admin.
 
 ## Configuração
 
@@ -113,9 +113,9 @@ No site (`server/config.json`):
 
 No plugin (`oxide/config/StatsHub.json`):
 ```json
-"Intervalo de crédito de tempo de jogo (segundos)": 300.0,
-"Entregar recompensas da loja (executa comandos)": true,
-"Intervalo de verificação de recompensas (segundos)": 60.0
+"Playtime credit interval (seconds)": 300.0,
+"Deliver store rewards (runs commands)": true,
+"Reward poll interval (seconds)": 60.0
 ```
 
 Os itens da loja editam-se em `server/store-items.json` (nome, custo, e o

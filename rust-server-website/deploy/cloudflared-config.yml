@@ -1,0 +1,12 @@
+# Exemplo de configuração do Cloudflare Tunnel.
+# Windows: C:\cloudflared\config.yml   Linux: ~/.cloudflared/config.yml
+# Substitui o hostname, o ID do tunnel e o caminho do ficheiro de credenciais
+# (criado pelo `cloudflared tunnel create rustworthy`).
+
+tunnel: rustworthy
+credentials-file: C:\Users\TEU-USER\.cloudflared\ID-DO-TUNNEL.json
+
+ingress:
+  - hostname: stats.oteudominio.com
+    service: http://localhost:8080
+  - service: http_status:404

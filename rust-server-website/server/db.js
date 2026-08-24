@@ -279,11 +279,16 @@ function currentWipe() {
 }
 
 function upsertPlayer(steamId, name, ts) {
-  db.prepare(`
+  // Se o evento não trouxer nome, não apagar o nome real já conhecido — só
+  // atualizar last_seen. O parâmetro :name é null quando ausente.
+  upsertPlayer.stmt ??= db.prepare(`
     INSERT INTO players (steam_id, name, first_seen, last_seen)
-    VALUES (?, ?, ?, ?)
-    ON CONFLICT(steam_id) DO UPDATE SET name = excluded.name, last_seen = excluded.last_seen
-  `).run(steamId, name || 'Desconhecido', ts, ts);
+    VALUES ($id, COALESCE($name, 'Unknown'), $ts, $ts)
+    ON CONFLICT(steam_id) DO UPDATE SET
+      name = COALESCE($name, players.name),
+      last_seen = $ts
+  `);
+  upsertPlayer.stmt.run({ id: steamId, name: name || null, ts });
 }
 
 function addPlaytime(steamId, seconds, wipeId = null) {
@@ -554,10 +559,30 @@ function updateTeams(wipeId, teamsArr) {
     ON CONFLICT(wipe_id, team_id) DO UPDATE SET
       leader_id = excluded.leader_id, members = excluded.members, updated_at = excluded.updated_at
   `);
-  for (const t of teamsArr.slice(0, 200)) {
-    if (!t.id || !Array.isArray(t.members) || t.members.length < 2) continue;
-    up.run(wipeId, String(t.id), String(t.leader || t.members[0]),
-           JSON.stringify(t.members.map(String).slice(0, 12)), now());
+  // O snapshot do plugin é autoritário: aplicar os upserts e apagar as equipas
+  // desta wipe que já não existem (dissolvidas/reformadas) numa transação, para
+  // não deixar equipas-fantasma no leaderboard nem no perfil.
+  const tx = db.prepare('BEGIN'), commit = db.prepare('COMMIT'), rollback = db.prepare('ROLLBACK');
+  tx.run();
+  try {
+    const kept = [];
+    for (const t of teamsArr.slice(0, 200)) {
+      if (!t.id || !Array.isArray(t.members) || t.members.length < 2) continue;
+      const id = String(t.id);
+      up.run(wipeId, id, String(t.leader || t.members[0]),
+             JSON.stringify(t.members.map(String).slice(0, 12)), now());
+      kept.push(id);
+    }
+    if (kept.length) {
+      db.prepare(`DELETE FROM teams WHERE wipe_id = ?
+                  AND team_id NOT IN (${kept.map(() => '?').join(',')})`).run(wipeId, ...kept);
+    } else {
+      db.prepare('DELETE FROM teams WHERE wipe_id = ?').run(wipeId);
+    }
+    commit.run();
+  } catch (e) {
+    rollback.run();
+    throw e;
   }
 }
 
@@ -592,7 +617,8 @@ function teamLeaderboard(wipeId, limit = 25) {
 }
 
 function playerTeam(wipeId, steamId) {
-  const teams = db.prepare('SELECT * FROM teams WHERE wipe_id = ?').all(wipeId);
+  // mais recente primeiro (defesa em profundidade contra registos obsoletos)
+  const teams = db.prepare('SELECT * FROM teams WHERE wipe_id = ? ORDER BY updated_at DESC').all(wipeId);
   for (const t of teams) {
     const members = JSON.parse(t.members);
     if (members.includes(steamId)) {
@@ -655,7 +681,7 @@ function achievements(steamId, wipeId) {
 
   const supporter = db.prepare(`
     SELECT COUNT(*) n FROM redemptions WHERE steam_id = ? AND item_id = 'site-badge'
-    AND status IN ('pendente','enviado','entregue')`).get(steamId);
+    AND status != 'failed'`).get(steamId);
   if (supporter.n > 0) add('💎', 'Supporter', 'Redeemed the supporter badge in the store');
 
   return out;
@@ -1160,7 +1186,7 @@ function killfeed(limit = 50) {
     FROM kills k
     LEFT JOIN players pa ON pa.steam_id = k.attacker_id
     LEFT JOIN players pv ON pv.steam_id = k.victim_id
-    ORDER BY k.ts DESC LIMIT ?`).all(Math.min(limit, 200));
+    ORDER BY k.ts DESC LIMIT ?`).all(Math.max(1, Math.min(limit | 0, 200)));
 }
 
 function searchPlayers(q, limit = 20) {

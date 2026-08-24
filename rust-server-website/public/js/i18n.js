@@ -34,9 +34,11 @@ const EN_JS = {
   'footer.disclaimer': 'This server is not affiliated with Facepunch Studios or Valve.',
   'time.now': 'just now', 'time.min': '$1 min ago', 'time.hour': '$1 h ago', 'time.day': '$1 d ago',
   'chart.empty': 'Not enough history yet.', 'chart.players': 'players',
+  'chart.aria': 'Players online over the last 48 hours',
   'countdown.wipe': 'WIPE!',
   'loading': 'loading…',
   'seen': 'seen $1',
+  'error.generic': 'Error $1',
 
   // status (valores da base de dados -> etiquetas)
   'status.pending': 'pending', 'status.reviewing': 'reviewing', 'status.interview': 'interview',
@@ -99,6 +101,7 @@ const EN_JS = {
   'ow.verdict.cheater': '🚨 CONFIRMED CHEATER — banned', 'ow.verdict.innocent': '✅ Innocent',
   'ow.verdict.inconclusive': '🤷 Inconclusive',
   'ow.community': 'Community: <b style="color:var(--bad)">$1% cheater</b> · $2% unsure · <b style="color:var(--good)">$3% clean</b> <span style="color:var(--ink-muted)">($4 votes)</span>',
+  'ow.noVotes': 'No community votes yet.',
 
   // conta / apelo
   'account.survivor': 'Survivor',
@@ -122,6 +125,8 @@ const EN_JS = {
   'store.thWhen': 'When', 'store.thItem': 'Item', 'store.thCost': 'Cost', 'store.thStatus': 'Status',
   'stats.thPlayer': 'Player', 'stats.thKills': 'Kills', 'stats.thDeaths': 'Deaths',
   'stats.thHeadshots': 'Headshots', 'stats.thLongest': 'Longest kill', 'stats.thHours': 'Hours',
+  'stats.thTier': 'Tier', 'stats.thRating': 'Rating', 'stats.thFights': 'Fights',
+  'stats.eloWindowNote': 'Elo is seasonal — always the current wipe.',
   'appeal.open': '⏳ You already have an appeal <b>$1</b> ($2). Track it in <a href="/conta">your account</a>.',
   'appeal.received': '<b>✅ Appeal received.</b> Answer within 48-72 h — track it in <a href="/conta">your account</a>.',
   'appeal.login': '🔑 <a href="/auth/steam">Sign in with Steam</a> to appeal — so we know the appeal comes from the banned account.',
@@ -152,7 +157,7 @@ const EN_JS = {
   'sum.meta': '$1 · started $2', 'sum.metaKills': '$1 kills by $2 players',
   'sum.current': 'current', 'sum.noData': 'Not enough data in this wipe yet.',
   'heat.deaths': '$1 PVP deaths with recorded position · map $2',
-  'heat.tip': ' · tip: set "map_image" in the site config to overlay the real map image (RustMaps)',
+  'heat.tip': ' · tip: set "mapImage" (a map image URL, e.g. from RustMaps) in server/config.json to overlay the real map',
 };
 
 // ---------- traduções ----------
@@ -168,12 +173,14 @@ const I18N = {
     'footer.disclaimer': 'Este servidor não é afiliado à Facepunch Studios nem à Valve.',
     'time.now': 'agora mesmo', 'time.min': 'há $1 min', 'time.hour': 'há $1 h', 'time.day': 'há $1 d',
     'chart.empty': 'Ainda sem histórico suficiente.', 'chart.players': 'jogadores',
+    'chart.aria': 'Jogadores online nas últimas 48 horas',
     'countdown.wipe': 'WIPE!',
     'loading': 'a carregar…',
     'seen': 'visto $1',
+    'error.generic': 'Erro $1',
 
     'status.pending': 'pendente', 'status.reviewing': 'em análise', 'status.interview': 'entrevista',
-    'status.approved': 'aprovada', 'status.rejected': 'recusada', 'status.accepted': 'aceite',
+    'status.approved': 'aprovado', 'status.rejected': 'recusado', 'status.accepted': 'aceite',
     'status.sent': 'enviado', 'status.delivered': 'entregue', 'status.failed': 'falhou',
     'status.open': 'aberto', 'status.closed': 'fechado',
 
@@ -215,6 +222,8 @@ const I18N = {
     'stats.searchPh': '🔍 procurar jogador…',
     'stats.thPlayer': 'Jogador', 'stats.thKills': 'Kills', 'stats.thDeaths': 'Mortes',
     'stats.thHeadshots': 'Headshots', 'stats.thLongest': 'Kill + longa', 'stats.thHours': 'Horas',
+    'stats.thTier': 'Tier', 'stats.thRating': 'Rating', 'stats.thFights': 'Combates',
+    'stats.eloWindowNote': 'O Elo é sazonal — sempre a wipe atual.',
     'stats.teamsTitle': 'Top equipas', 'stats.teamsSub': 'esta wipe · equipas nativas do Rust',
     'stats.thTeam': 'Equipa', 'stats.thMembers': 'Membros',
     'stats.eventsTitle': 'Eventos do mapa', 'stats.eventsSub': 'esta wipe — quem manda nos monumentos',
@@ -277,6 +286,7 @@ const I18N = {
     'ow.verdict.cheater': '🚨 CONFIRMADO CHEATER — banido', 'ow.verdict.innocent': '✅ Inocente',
     'ow.verdict.inconclusive': '🤷 Inconclusivo',
     'ow.community': 'Comunidade: <b style="color:var(--bad)">$1% cheater</b> · $2% não sabe · <b style="color:var(--good)">$3% limpo</b> <span style="color:var(--ink-muted)">($4 votos)</span>',
+    'ow.noVotes': 'Ainda sem votos da comunidade.',
     // overwatch (HTML)
     'ow.title': 'Overwatch Comunitário 🕵️',
     'ow.sub': 'A comunidade também caça cheaters',
@@ -409,7 +419,7 @@ const I18N = {
     'sum.meta': '$1 · começou a $2', 'sum.metaKills': '$1 kills por $2 jogadores',
     'sum.current': 'atual', 'sum.noData': 'Ainda não há dados suficientes nesta wipe.',
     'heat.deaths': '$1 mortes PVP com posição registada · mapa $2',
-    'heat.tip': ' · dica: define "map_image" na config do site para sobrepor a imagem real do mapa (RustMaps)',
+    'heat.tip': ' · dica: define "mapImage" (URL de uma imagem do mapa, ex.: do RustMaps) em server/config.json para sobrepor o mapa real',
     // resumo / heatmap (HTML)
     'sum.title': '🏁 Resumo da wipe',
     'heat.title': '🗺️ Heatmap de mortes',
@@ -419,11 +429,17 @@ const I18N = {
 
 // ---------- API ----------
 
-/** Traduz uma chave; $1, $2… são substituídos pelos argumentos. */
+/** Traduz uma chave; $1, $2… são substituídos pelos argumentos.
+ *  Usa uma função de substituição (não uma string) para que argumentos com
+ *  $-patterns (ex.: nomes de jogadores como "Cool$1Guy") não sejam
+ *  reinterpretados como referências de captura. */
 function t(key, ...args) {
-  let s = (LANG !== 'en' && I18N[LANG]?.[key]) || EN_JS[key] || key;
-  args.forEach((a, i) => { s = s.replaceAll(`$${i + 1}`, a); });
-  return s;
+  const s = (LANG !== 'en' && I18N[LANG]?.[key]) || EN_JS[key] || key;
+  if (!args.length) return s;
+  return s.replace(/\$(\d+)/g, (m, n) => {
+    const i = parseInt(n, 10) - 1;
+    return i >= 0 && i < args.length ? String(args[i]) : m;
+  });
 }
 
 /** Traduz o estado guardado na BD (pending/delivered/…) para etiqueta visível. */

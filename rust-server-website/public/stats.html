@@ -122,7 +122,7 @@ async function loadBoard() {
   const lb = await api(`/api/leaderboard?by=${by}&${periodQuery()}&limit=100`);
 
   if (by === 'elo') {
-    head.innerHTML = `<tr><th>#</th><th>${t('stats.thPlayer')}</th><th>Tier</th><th class="num">Rating</th><th class="num">Fights</th></tr>`;
+    head.innerHTML = `<tr><th>#</th><th>${t('stats.thPlayer')}</th><th>${t('stats.thTier')}</th><th class="num">${t('stats.thRating')}</th><th class="num">${t('stats.thFights')}</th></tr>`;
     body.innerHTML = lb.rows.map((r, i) => `
       <tr>
         <td><span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
@@ -152,11 +152,22 @@ async function loadBoard() {
     </tr>`).join('') || `<tr><td colspan="8">${t('stats.noPeriod')}</td></tr>`;
 }
 
+// O Elo é sempre sazonal (por wipe atual) — o seletor de janela não se aplica.
+function syncWindowSelect() {
+  const sel = document.getElementById('wipe-select');
+  const eloActive = by === 'elo';
+  if (eloActive) sel.value = ''; // Elo é sempre a wipe atual
+  sel.disabled = eloActive;
+  sel.title = eloActive ? t('stats.eloWindowNote') : '';
+  sel.style.opacity = eloActive ? '0.5' : '';
+}
+
 document.getElementById('metric-tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button');
   if (!b || !b.dataset.by) return;
   by = b.dataset.by;
   document.querySelectorAll('#metric-tabs button[data-by]').forEach((x) => x.classList.toggle('active', x === b));
+  syncWindowSelect();
   loadBoard();
 });
 

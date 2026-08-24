@@ -90,13 +90,13 @@ node server/app.js --seed        # arranca em http://localhost:8080
 
 # Cloudflare Tunnel (conta gratuita + domínio ~€10/ano)
 cloudflared tunnel login
-cloudflared tunnel create lusorust
-cloudflared tunnel route dns lusorust stats.oteudominio.pt
-cloudflared tunnel run --url http://localhost:8080 lusorust
+cloudflared tunnel create rustworthy
+cloudflared tunnel route dns rustworthy stats.oteudominio.pt
+cloudflared tunnel run --url http://localhost:8080 rustworthy
 ```
 
 Depois configura o plugin StatsHub no servidor de jogo com
-`"Url do site": "https://stats.oteudominio.pt"` e a chave de API.
+`"Site URL (no trailing slash)": "https://stats.oteudominio.pt"` e a chave de API.
 
 ## Wipes — o que precisas de saber
 

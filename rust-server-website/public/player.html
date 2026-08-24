@@ -28,7 +28,12 @@
 
   let p;
   try { p = await api(`/api/player?id=${encodeURIComponent(id)}`); }
-  catch (e) { el.innerHTML = `<p>😕 ${esc(e.message)}</p><p><a href="/stats">${t('player.backToStats')}</a></p>`; return; }
+  catch (e) {
+    // 404 do servidor ("Player not found") -> mensagem traduzida
+    const msg = /not found/i.test(e.message) ? t('player.notSeen') : esc(e.message);
+    el.innerHTML = `<p>😕 ${msg}</p><p><a href="/stats">${t('player.backToStats')}</a></p>`;
+    return;
+  }
 
   document.title = p.name;
   const w = p.wipe, a = p.allTime;

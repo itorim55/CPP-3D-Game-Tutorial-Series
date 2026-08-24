@@ -15,8 +15,10 @@ As minhas opiniões sobre prioridades, com base na análise da concorrência
 
 ## Fase 0 — antes de abrir o servidor (essencial)
 
-1. **Escolhe a identidade.** "LusoRust" é um placeholder — muda o nome em
-   `server/config.json` e nos HTML. Decide o nicho: o mercado PT/BR tem poucos
+1. **Escolhe a identidade.** O nome atual é **Rustworthy** (o trocadilho
+   *trustworthy*) — muda-o, se quiseres, editando `brandAccent`/`brandRest` e
+   `serverName` em `server/config.json` (o site inteiro atualiza; não há nomes
+   no HTML). Decide o nicho: o mercado PT/BR tem poucos
    servidores 2x vanilla+ com moderação a sério; essa é a tua abertura. Não
    compitas com a Rustoria em população — compete em **confiança**.
 2. **Discord primeiro.** Todas as grandes redes vivem do Discord (Rusticated:

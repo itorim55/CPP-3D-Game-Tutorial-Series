@@ -8,7 +8,7 @@ using UnityEngine;
 namespace Oxide.Plugins
 {
     [Info("StatsHub", "Rustworthy", "1.2.0")]
-    [Description("Envia kills, sessões, farm e heartbeats para o site de estatísticas e entrega recompensas da loja")]
+    [Description("Sends kills, sessions, farming and heartbeats to the stats website and delivers store rewards")]
     public class StatsHub : RustPlugin
     {
         #region Configuração
@@ -77,7 +77,7 @@ namespace Oxide.Plugins
                 PrintWarning("Set the API key in oxide/config/StatsHub.json!");
 
             foreach (var player in BasePlayer.activePlayerList)
-                _lastCredit[player.userID] = Time.realtimeSinceStartup;
+                _lastCredit[player.userID] = UnityEngine.Time.realtimeSinceStartup;
 
             timer.Every(_config.FlushInterval, Flush);
             timer.Every(_config.HeartbeatInterval, SendHeartbeat);
@@ -125,11 +125,11 @@ namespace Oxide.Plugins
             float last;
             if (!_lastCredit.TryGetValue(player.userID, out last))
             {
-                _lastCredit[player.userID] = Time.realtimeSinceStartup;
+                _lastCredit[player.userID] = UnityEngine.Time.realtimeSinceStartup;
                 return;
             }
-            var seconds = (int)(Time.realtimeSinceStartup - last);
-            _lastCredit[player.userID] = Time.realtimeSinceStartup;
+            var seconds = (int)(UnityEngine.Time.realtimeSinceStartup - last);
+            _lastCredit[player.userID] = UnityEngine.Time.realtimeSinceStartup;
             if (seconds <= 0) return;
             Enqueue(new Dictionary<string, object>
             {
@@ -148,7 +148,7 @@ namespace Oxide.Plugins
         private void OnPlayerConnected(BasePlayer player)
         {
             if (player == null) return;
-            _lastCredit[player.userID] = Time.realtimeSinceStartup;
+            _lastCredit[player.userID] = UnityEngine.Time.realtimeSinceStartup;
             Enqueue(new Dictionary<string, object>
             {
                 ["type"] = "connect",
@@ -261,19 +261,24 @@ namespace Oxide.Plugins
             });
         }
 
-        // Crate hackeada (Oil Rig / Cargo) -> "Mãos Rápidas" no site
+        // Crate hackeada (Oil Rig / Cargo) -> "Fast Hands" no site.
+        // O hack demora ~15 min, por isso o jogador pode já ter saído/morrido
+        // quando termina — creditamos pelo SteamID (não precisamos do objeto
+        // BasePlayer, que FindByID só devolve para jogadores online).
         private void OnCrateHackEnd(HackableLockedCrate crate)
         {
             if (crate == null) return;
-            var hacker = BasePlayer.FindByID(crate.originalHackerPlayerId);
-            if (hacker == null || hacker.IsNpc) return;
+            var hackerId = crate.originalHackerPlayerId;
+            if (hackerId == 0) return;
+            var hacker = BasePlayer.FindByID(hackerId);          // online?
+                       ?? BasePlayer.FindSleeping(hackerId);      // ou a dormir
             Enqueue(new Dictionary<string, object>
             {
                 ["type"] = "mapevent",
                 ["ts"] = Now(),
                 ["kind"] = "crate",
-                ["steamId"] = hacker.UserIDString,
-                ["name"] = hacker.displayName,
+                ["steamId"] = hackerId.ToString(),
+                ["name"] = hacker != null ? hacker.displayName : null,
                 ["posX"] = Math.Round(crate.transform.position.x, 1),
                 ["posZ"] = Math.Round(crate.transform.position.z, 1),
             });
@@ -411,18 +416,27 @@ namespace Oxide.Plugins
             _gather.Clear();
 
             if (_queue.Count == 0) return;
-            var batch = _queue.ToList();
+
+            // O site aceita no máximo 500 eventos por pedido — enviar em pedaços
+            // de 250 para nunca perder eventos silenciosamente (mesmo que a fila
+            // tenha crescido por causa de retries).
+            const int chunkSize = 250;
+            var pending = _queue.ToList();
             _queue.Clear();
 
-            Post("/api/ingest", new Dictionary<string, object> { ["events"] = batch }, success =>
+            for (int i = 0; i < pending.Count; i += chunkSize)
             {
-                if (!success)
+                var batch = pending.GetRange(i, Math.Min(chunkSize, pending.Count - i));
+                Post("/api/ingest", new Dictionary<string, object> { ["events"] = batch }, success =>
                 {
-                    // devolve à fila para tentar de novo no próximo flush (com limite)
-                    if (batch.Count + _queue.Count <= 2000)
-                        _queue.InsertRange(0, batch);
-                }
-            });
+                    if (!success)
+                    {
+                        // devolve à fila para tentar de novo no próximo flush (com limite)
+                        if (batch.Count + _queue.Count <= 4000)
+                            _queue.InsertRange(0, batch);
+                    }
+                });
+            }
         }
 
         private void SendHeartbeat()

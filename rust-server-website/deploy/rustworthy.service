@@ -1,0 +1,26 @@
+# Serviço systemd para o site (Linux).
+# 1. Edita User= e os caminhos abaixo para o teu sistema.
+# 2. sudo cp deploy/rustworthy.service /etc/systemd/system/
+# 3. sudo systemctl daemon-reload && sudo systemctl enable --now rustworthy
+# Logs: journalctl -u rustworthy -f
+
+[Unit]
+Description=Rustworthy community website
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=CHANGE-ME
+WorkingDirectory=/home/CHANGE-ME/rustworthy/rust-server-website
+ExecStart=/usr/bin/node server/app.js
+Restart=always
+RestartSec=5
+# endurecimento básico
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/home/CHANGE-ME/rustworthy/rust-server-website
+
+[Install]
+WantedBy=multi-user.target

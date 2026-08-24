@@ -191,7 +191,12 @@ const WINDOWS = { '1h': 3600, '24h': 86400, '7d': 7 * 86400, '30d': 30 * 86400 }
  */
 function route(req, res, url, body, config, session) {
   const p = url.pathname;
-  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+  // Só confiar no X-Forwarded-For quando o site está atrás de um proxy de
+  // confiança (Cloudflare Tunnel, nginx…) — config.trustProxy: true. Caso
+  // contrário um cliente direto podia forjar o IP e contornar o rate-limit.
+  const ip = (config.trustProxy && req.headers['x-forwarded-for'])
+    ? req.headers['x-forwarded-for'].split(',')[0].trim()
+    : req.socket.remoteAddress;
 
   // --- endpoints do plugin (chave de API) ---
   if (p.startsWith('/api/plugin/') || p === '/api/ingest' || p === '/api/heartbeat' || p === '/api/wipe') {
@@ -376,7 +381,8 @@ function route(req, res, url, body, config, session) {
 
   // --- administração ---
   if (p.startsWith('/api/admin/')) {
-    const key = req.headers['x-admin-key'] || url.searchParams.get('key');
+    // só via header (nunca query string — evita vazar a chave em logs/histórico)
+    const key = req.headers['x-admin-key'];
     if (!config.adminKey || key !== config.adminKey) { json(res, 401, { error: 'Invalid admin key' }); return true; }
 
     if (req.method === 'GET') {

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Community Overwatch</title>
+<title data-i18n-key="ow.title">Community Overwatch</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
@@ -52,7 +52,8 @@ async function load() {
 
   document.getElementById('cases').innerHTML = data.rows.map((c) => {
     const tallyHtml = c.tally ? (() => {
-      const total = c.tally.cheat + c.tally.clean + c.tally.unsure || 1;
+      const total = c.tally.cheat + c.tally.clean + c.tally.unsure;
+      if (total === 0) return `<div style="margin-top:12px;font-size:13px;color:var(--ink-muted)">${t('ow.noVotes')}</div>`;
       return `<div style="margin-top:12px;font-size:13px;color:var(--ink-2)">
         ${t('ow.community',
           Math.round(c.tally.cheat / total * 100),

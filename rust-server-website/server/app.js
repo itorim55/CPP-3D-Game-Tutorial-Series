@@ -37,6 +37,7 @@ for (const [k, v] of Object.entries({
   server_name: config.serverName, server_ip: config.serverIp,
   discord: config.discord, next_wipe: config.nextWipe,
   brand_accent: config.brandAccent || 'RUST', brand_rest: config.brandRest || '',
+  map_image: config.mapImage, // imagem de fundo do heatmap (URL da imagem do mapa)
 })) if (v !== undefined && v !== null && v !== '') store.setInfo(k, v);
 if (!config.brandRest) store.setInfo('brand_rest', '');
 
@@ -63,15 +64,20 @@ const MIME = {
 };
 
 function serveStatic(req, res, url) {
-  let p = decodeURIComponent(url.pathname);
+  let p;
+  try { p = decodeURIComponent(url.pathname); }
+  catch { res.writeHead(400); res.end('Bad Request'); return; } // %-encoding inválido
   if (p === '/') p = '/index.html';
   if (!path.extname(p)) p += '.html'; // /stats -> stats.html
   const file = path.normalize(path.join(PUBLIC_DIR, p));
-  if (!file.startsWith(PUBLIC_DIR)) { res.writeHead(403); res.end('Proibido'); return; }
+  // contenção: tem de ser o próprio dir ou um caminho por baixo dele (com separador)
+  if (file !== PUBLIC_DIR && !file.startsWith(PUBLIC_DIR + path.sep)) {
+    res.writeHead(403); res.end('Forbidden'); return;
+  }
   fs.readFile(file, (err, data) => {
     if (err) {
       res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end('<h1>404</h1><p>Página não encontrada. <a href="/">Voltar ao início</a></p>');
+      res.end('<!doctype html><meta charset="utf-8"><h1>404</h1><p>Page not found. <a href="/">Back to home</a></p>');
       return;
     }
     const isHtml = file.endsWith('.html');
@@ -117,7 +123,7 @@ async function handleAuth(req, res, url) {
       // login falso para desenvolvimento local — desativado por omissão
       if (!config.devLogin) return false;
       const id = url.searchParams.get('id');
-      if (!/^7656119\d{10}$/.test(id || '')) { res.writeHead(400); res.end('id inválido'); return true; }
+      if (!/^7656119\d{10}$/.test(id || '')) { res.writeHead(400); res.end('invalid id'); return true; }
       redirect(res, '/conta', auth.makeSessionCookie(id, config.sessionSecret));
       return true;
     }
@@ -129,48 +135,79 @@ async function handleAuth(req, res, url) {
 
 const MAX_BODY = 512 * 1024;
 
+// Fecha uma resposta com um erro sem nunca deixar uma exceção escapar.
+function fail(res, code, msg) {
+  try {
+    if (!res.headersSent) res.writeHead(code, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end(msg);
+  } catch { /* já fechada */ }
+}
+
 const server = http.createServer((req, res) => {
-  const url = new URL(req.url, 'http://localhost');
+  let url;
+  try { url = new URL(req.url, 'http://localhost'); }
+  catch { fail(res, 400, 'Bad Request'); return; } // URL malformado
 
-  if (url.pathname.startsWith('/auth/')) {
-    handleAuth(req, res, url).then((handled) => {
-      if (!handled) { res.writeHead(404); res.end('Não encontrado'); }
-    }).catch(() => { res.writeHead(500); res.end('Erro de autenticação'); });
-    return;
-  }
-
-  if (!url.pathname.startsWith('/api/')) { serveStatic(req, res, url); return; }
-
-  const session = auth.readSession(req, config.sessionSecret);
-
-  if (req.method === 'GET') {
-    if (!api.route(req, res, url, null, config, session)) {
-      api.json(res, 404, { error: 'Endpoint desconhecido' });
+  try {
+    if (url.pathname.startsWith('/auth/')) {
+      handleAuth(req, res, url).then((handled) => {
+        if (!handled) fail(res, 404, 'Not Found');
+      }).catch(() => fail(res, 500, 'Auth error'));
+      return;
     }
-    return;
-  }
 
-  // POST: ler corpo JSON com limite de tamanho
-  let size = 0;
-  const chunks = [];
-  req.on('data', (c) => {
-    size += c.length;
-    if (size > MAX_BODY) { req.destroy(); return; }
-    chunks.push(c);
-  });
-  req.on('end', () => {
-    let body = null;
-    try { body = JSON.parse(Buffer.concat(chunks).toString('utf-8')); } catch { /* body fica null */ }
-    if (!api.route(req, res, url, body, config, session)) {
-      api.json(res, 404, { error: 'Endpoint desconhecido' });
+    if (!url.pathname.startsWith('/api/')) { serveStatic(req, res, url); return; }
+
+    // ler a sessão nunca pode derrubar o pedido (cookie forjado/inválido)
+    let session = null;
+    try { session = auth.readSession(req, config.sessionSecret); } catch { session = null; }
+
+    if (req.method === 'GET') {
+      if (!api.route(req, res, url, null, config, session)) {
+        api.json(res, 404, { error: 'Unknown endpoint' });
+      }
+      return;
     }
-  });
-  req.on('error', () => {});
+
+    // POST: ler corpo JSON com limite de tamanho
+    let size = 0, tooBig = false;
+    const chunks = [];
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > MAX_BODY) {
+        if (!tooBig) { tooBig = true; fail(res, 413, 'Payload Too Large'); req.destroy(); }
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on('end', () => {
+      if (tooBig) return;
+      let body = null;
+      try { body = JSON.parse(Buffer.concat(chunks).toString('utf-8')); } catch { /* body fica null */ }
+      try {
+        if (!api.route(req, res, url, body, config, session)) {
+          api.json(res, 404, { error: 'Unknown endpoint' });
+        }
+      } catch (e) {
+        console.error('[route error]', e);
+        if (!res.headersSent) api.json(res, 500, { error: 'Internal error' });
+      }
+    });
+    req.on('error', () => {});
+  } catch (e) {
+    console.error('[handler error]', e);
+    fail(res, 500, 'Internal error');
+  }
 });
+
+// Rede de segurança final: um bug num callback assíncrono não deve derrubar
+// o processo inteiro (mantém o site vivo em produção). Regista e continua.
+process.on('uncaughtException', (e) => console.error('[uncaughtException]', e));
+process.on('unhandledRejection', (e) => console.error('[unhandledRejection]', e));
 
 const PORT = config.port || 8080;
 const HOST = config.host || '0.0.0.0';
 server.listen(PORT, HOST, () => {
-  console.log(`Site a correr em http://${HOST}:${PORT} (URL público: ${SITE_URL})`);
-  console.log(`Chave de API do plugin (X-API-Key): ${config.apiKey}`);
+  console.log(`Site running at http://${HOST}:${PORT} (public URL: ${SITE_URL})`);
+  console.log(`Plugin API key (X-API-Key): ${config.apiKey}`);
 });

@@ -24,11 +24,15 @@ E recebe do site:
 
 ```json
 {
-  "Url do site (sem barra final)": "https://stats.oteudominio.pt",
-  "Chave de API (apiKey do config.json do site)": "a-chave-gerada-pelo-site",
-  "Intervalo de envio de eventos (segundos)": 30.0,
-  "Intervalo do heartbeat (segundos)": 60.0,
-  "Registar farm de recursos": true
+  "Site URL (no trailing slash)": "https://stats.yourdomain.com",
+  "API key (apiKey from the site config.json)": "the-key-the-site-generated",
+  "Event flush interval (seconds)": 30.0,
+  "Heartbeat interval (seconds)": 60.0,
+  "Playtime credit interval (seconds)": 300.0,
+  "Track resource gathering": true,
+  "Track raids (destroyed structures)": true,
+  "Deliver store rewards (runs commands)": true,
+  "Reward poll interval (seconds)": 60.0
 }
 ```
 
