@@ -122,7 +122,7 @@ function renderChrome() {
 // A marca (nome do servidor) vem da configuração do site — muda em
 // server/config.json (brandAccent/brandRest) e todo o site atualiza.
 function applyBrand(s) {
-  const accent = s?.info?.brandAccent || 'EOKA';
+  const accent = s?.info?.brandAccent || 'RUST';
   const rest = s?.info?.brandRest || '';
   const full = accent + rest;
 

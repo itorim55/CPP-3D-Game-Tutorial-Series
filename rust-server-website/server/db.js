@@ -676,7 +676,7 @@ function status() {
     info: {
       name: getInfo('server_name'), ip: getInfo('server_ip'),
       map: getInfo('map'), discord: getInfo('discord'),
-      brandAccent: getInfo('brand_accent') || 'EOKA',
+      brandAccent: getInfo('brand_accent') || 'RUST',
       brandRest: getInfo('brand_rest') || '',
     },
   };

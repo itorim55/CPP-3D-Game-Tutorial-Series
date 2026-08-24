@@ -1,4 +1,4 @@
-# EOKA — Site de estatísticas para servidor de Rust
+# Rustworthy — Site de estatísticas para servidor de Rust
 
 Site completo para um servidor de Rust (o jogo da Facepunch) com estatísticas ao
 vivo, killfeed, leaderboards por wipe (com arquivo navegável), perfis de jogador,
@@ -62,9 +62,9 @@ rust-server-website/
 O nome/marca vive na configuração, não no código. Em `server/config.json`:
 
 ```json
-"brandAccent": "EOKA",   // a parte a laranja do logo
-"brandRest": "",         // a parte a branco (ex.: accent "DOOR" + rest "CAMP")
-"serverName": "EOKA | 2x Vanilla+ | EU"
+"brandAccent": "RUST",     // a parte a laranja do logo
+"brandRest": "WORTHY",   // a parte a branco
+"serverName": "Rustworthy | Full Vanilla | EU"
 ```
 
 Reinicia o site e o logo, o hero, o rodapé e os títulos das páginas atualizam

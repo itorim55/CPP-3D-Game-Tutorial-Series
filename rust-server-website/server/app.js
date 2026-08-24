@@ -35,7 +35,7 @@ const store = require('./db');
 for (const [k, v] of Object.entries({
   server_name: config.serverName, server_ip: config.serverIp,
   discord: config.discord, next_wipe: config.nextWipe,
-  brand_accent: config.brandAccent || 'EOKA', brand_rest: config.brandRest || '',
+  brand_accent: config.brandAccent || 'RUST', brand_rest: config.brandRest || '',
 })) if (v !== undefined && v !== null && v !== '') store.setInfo(k, v);
 if (!config.brandRest) store.setInfo('brand_rest', '');
 

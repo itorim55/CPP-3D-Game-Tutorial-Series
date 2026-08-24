@@ -37,6 +37,35 @@ E recebe do site:
 A chave de API é a `apiKey` que o site gera no primeiro arranque (em `server/config.json`).
 **Nunca uses a `adminKey` aqui** — essa é só para a página /admin do site.
 
+## Servidor full vanilla? Lê isto
+
+O separador do server browser onde apareces importa: **Community** (sem mods)
+tem muito mais tráfego de jogadores vanilla do que **Modded**. Por convenção,
+um servidor com Oxide/Carbon carregado lista-se em Modded — mesmo que os
+plugins não alterem o gameplay.
+
+As opções, da mais purista à mais prática:
+
+1. **Zero plugins (Community tab garantida)** — não instalar Oxide de todo e
+   recolher stats por **WebRCON**: o site liga-se ao websocket RCON do servidor
+   e lê o feed da consola (mortes, ligações, `serverinfo` para o heartbeat).
+   Custo: stats mais pobres (sem arma exata/headshot/distância/farm) e sem
+   entrega automática de recompensas. Se quiseres este caminho, é um módulo
+   extra no site (`rcon-collector`) em vez deste plugin.
+2. **Oxide só com plugins de telemetria/admin (o que as grandes fazem)** — o
+   StatsHub não altera nada do gameplay (só observa e envia), tal como os
+   plugins de admin que as redes "vanilla" usam. Muitos servidores assim
+   continuam listados como Community; a decisão final do separador é feita
+   pelas tags do servidor. Verifica como o teu servidor aparece após instalar
+   e decide.
+3. **Assumir Modded** — se acabares por querer queue skip/cor no chat da loja
+   de gemas (precisam de plugins), já estás em Modded e não há conflito.
+
+Recomendação para full vanilla a sério: começa pela opção 2 (só StatsHub),
+confirma o separador onde apareces, e se fores parar a Modded pondera a
+opção 1. Os itens da loja que não tocam no jogo (badge no site, sorteios,
+cargos no Discord) funcionam em qualquer das opções.
+
 ## Notas
 
 - Os eventos são enviados em lotes a cada 30 s — uma kill não gera um pedido HTTP imediato.
