@@ -52,6 +52,12 @@ const EN_JS = {
   'home.streakUnit': 'kills without dying',
   'home.playersTracked': 'survivors tracked',
 
+  // ticker (fio de notícias no topo)
+  'ticker.online': 'survivors online',
+  'ticker.killsWipe': '$1 kills this wipe',
+  'ticker.wipeIn': 'wipe in $1',
+  'ticker.topKiller': 'wipe leader: $1 · $2 kills',
+
   // stats
   'stats.noPeriod': 'No data for this period.', 'stats.noPlayers': 'No players found.',
   'stats.eloEmpty': 'Nobody with 5+ fights this wipe yet.',
@@ -190,6 +196,11 @@ const I18N = {
     'home.noData': 'Sem dados ainda.', 'home.noKills': 'Sem kills registadas ainda.',
     'home.streakUnit': 'kills sem morrer',
     'home.playersTracked': 'sobreviventes registados',
+
+    'ticker.online': 'sobreviventes online',
+    'ticker.killsWipe': '$1 kills nesta wipe',
+    'ticker.wipeIn': 'wipe em $1',
+    'ticker.topKiller': 'líder da wipe: $1 · $2 kills',
     // home (HTML)
     'home.tagline': 'Live stats · transparent staff · zero pay-to-win.',
     'home.playersOnline': 'jogadores online', 'home.untilWipe': 'até à próxima wipe',

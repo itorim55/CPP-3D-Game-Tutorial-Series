@@ -151,6 +151,85 @@ function applyBrand(s) {
 
 document.addEventListener('DOMContentLoaded', renderChrome);
 
+// ---------- ticker: fio de atividade ao vivo por baixo da nav ----------
+// Injetado em todas as páginas; dá vida ao site mesmo fora da home.
+async function renderTicker() {
+  const header = document.querySelector('header');
+  if (!header || document.querySelector('.ticker')) return;
+  try {
+    const [s, kf, lb] = await Promise.all([
+      siteStatus(),
+      api('/api/killfeed?limit=8').catch(() => null),
+      api('/api/leaderboard?by=kills&limit=1').catch(() => null),
+    ]);
+    const items = [];
+    const item = (tk, html) => items.push(
+      `<span class="ticker-item"><span class="tk">${tk}</span> ${html}</span>`);
+
+    const hb = s?.heartbeat;
+    if (hb) item('◉', `<b>${hb.players}/${hb.max_players}</b> ${t('ticker.online')}`);
+    if (s?.killsThisWipe) item('☠', t('ticker.killsWipe', `<b>${fmtNum(s.killsThisWipe)}</b>`));
+    if (s?.nextWipe) {
+      const ms = new Date(s.nextWipe).getTime() - Date.now();
+      if (ms > 0) {
+        const d = Math.floor(ms / 86400000), h = Math.floor(ms % 86400000 / 3600000);
+        item('⟳', t('ticker.wipeIn', `<b>${d}d ${String(h).padStart(2, '0')}h</b>`));
+      }
+    }
+    const top = lb?.rows?.[0];
+    if (top) item('★', t('ticker.topKiller', `<b>${esc(top.name)}</b>`, top.kills));
+    for (const k of kf?.rows || []) {
+      item('⚔', `<b>${esc(k.attacker_name || '?')}</b> ▸ ${esc(k.victim_name || '?')}` +
+        ` · ${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}` +
+        `${k.headshot ? ' · HS' : ''}`);
+    }
+    if (!items.length) return;
+
+    const bar = document.createElement('div');
+    bar.className = 'ticker';
+    bar.setAttribute('aria-hidden', 'true');
+    bar.innerHTML = `<div class="ticker-track">${items.join('')}</div>`;
+    header.insertAdjacentElement('afterend', bar);
+  } catch {}
+}
+document.addEventListener('DOMContentLoaded', renderTicker);
+
+// ---------- brasas: partículas a subir no hero (respeita reduced-motion) ----------
+function startEmbers(canvas) {
+  if (!canvas || reduceMotion) return;
+  const ctx = canvas.getContext('2d');
+  let W = 0, H = 0;
+  const resize = () => { W = canvas.width = canvas.offsetWidth; H = canvas.height = canvas.offsetHeight; };
+  resize();
+  window.addEventListener('resize', resize);
+
+  const spawn = (fresh) => ({
+    x: Math.random() * W,
+    y: fresh ? H + 4 : Math.random() * H,
+    r: 1 + Math.random() * 2,
+    vy: 0.2 + Math.random() * 0.55,
+    sway: 0.2 + Math.random() * 0.5,
+    phase: Math.random() * Math.PI * 2,
+    life: 0,
+    max: 260 + Math.random() * 220,
+    gold: Math.random() < 0.3,
+  });
+  const parts = Array.from({ length: 26 }, () => spawn(false));
+
+  const step = () => {
+    ctx.clearRect(0, 0, W, H);
+    for (const p of parts) {
+      p.life++; p.y -= p.vy; p.x += Math.sin(p.life / 46 + p.phase) * p.sway * 0.4;
+      if (p.life > p.max || p.y < -6) Object.assign(p, spawn(true));
+      const a = Math.max(0, 0.55 * (1 - p.life / p.max));
+      ctx.fillStyle = p.gold ? `rgba(255,176,32,${a})` : `rgba(255,91,38,${a})`;
+      ctx.fillRect(p.x, p.y, p.r, p.r); // quadradinhos: mais "terminal" que círculos
+    }
+    requestAnimationFrame(step);
+  };
+  step();
+}
+
 // Countdown para a próxima wipe — tique ao segundo (sensação "ao vivo").
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function startCountdown(el, isoDate) {
@@ -187,7 +266,7 @@ function countUp(el, target, { duration = 900, suffix = '', prefix = '' } = {}) 
 
 // ---- gráfico de área (série única) com crosshair + tooltip ----
 // data: [{hour: unixSeconds, players: n}]
-function renderAreaChart(container, data, { color = '#e0552e', maxY = null } = {}) {
+function renderAreaChart(container, data, { color = '#ff5b26', maxY = null } = {}) {
   container.innerHTML = '';
   if (!data || data.length < 2) {
     container.innerHTML = `<p style="color:var(--ink-muted);font-size:13px">${t('chart.empty')}</p>`;
@@ -207,8 +286,8 @@ function renderAreaChart(container, data, { color = '#e0552e', maxY = null } = {
   const gridLines = [0, 0.5, 1].map((f) => {
     const v = Math.round(topY * f);
     const yy = y(v);
-    return `<line x1="${PAD.l}" y1="${yy}" x2="${W - PAD.r}" y2="${yy}" stroke="#3a2f26" stroke-width="1"/>
-            <text x="${PAD.l - 6}" y="${yy + 4}" text-anchor="end" font-size="10" fill="#857a6e">${v}</text>`;
+    return `<line x1="${PAD.l}" y1="${yy}" x2="${W - PAD.r}" y2="${yy}" stroke="#252b35" stroke-width="1"/>
+            <text x="${PAD.l - 6}" y="${yy + 4}" text-anchor="end" font-size="10" fill="#5c6675">${v}</text>`;
   }).join('');
 
   const fmtHour = (ts) => {
@@ -217,7 +296,7 @@ function renderAreaChart(container, data, { color = '#e0552e', maxY = null } = {
   };
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => {
     const v = minX + (maxX - minX) * f;
-    return `<text x="${x(v)}" y="${H - 6}" text-anchor="middle" font-size="10" fill="#857a6e">${fmtHour(v)}</text>`;
+    return `<text x="${x(v)}" y="${H - 6}" text-anchor="middle" font-size="10" fill="#5c6675">${fmtHour(v)}</text>`;
   }).join('');
 
   const wrap = document.createElement('div');
@@ -228,8 +307,8 @@ function renderAreaChart(container, data, { color = '#e0552e', maxY = null } = {
       ${gridLines}${ticks}
       <path d="${area}" fill="${color}" opacity="0.14"/>
       <path d="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
-      <line class="xhair" x1="0" y1="${PAD.t}" x2="0" y2="${H - PAD.b}" stroke="#b8aca0" stroke-width="1" stroke-dasharray="3 3" style="display:none"/>
-      <circle class="pt" r="4" fill="${color}" stroke="#14100d" stroke-width="2" style="display:none"/>
+      <line class="xhair" x1="0" y1="${PAD.t}" x2="0" y2="${H - PAD.b}" stroke="#9aa4b2" stroke-width="1" stroke-dasharray="3 3" style="display:none"/>
+      <circle class="pt" r="4" fill="${color}" stroke="#0b0d11" stroke-width="2" style="display:none"/>
     </svg>
     <div class="chart-tip"></div>`;
   container.appendChild(wrap);

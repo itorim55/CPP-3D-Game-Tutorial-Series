@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rust Server — Home</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpolygon points='0,0 50,0 64,14 64,64 0,64' fill='%23ff5b26'/%3E%3Ctext x='32' y='47' font-family='Arial,sans-serif' font-size='40' font-weight='900' text-anchor='middle' fill='%230b0d11'%3ER%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Stencil+One&family=Saira+Condensed:wght@500;600;700;800;900&family=Barlow:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -15,6 +16,7 @@
 <main>
   <!-- ============ HERO EM BANDA ============ -->
   <section class="hero-band">
+    <canvas id="embers"></canvas>
     <div class="brand">
       <div class="meta-row">
         <span class="live-badge" id="live-badge" style="visibility:hidden"><span class="pulse"></span>LIVE</span>
@@ -24,8 +26,10 @@
       <div class="meta-row">
         <button class="connect" id="connect-btn">
           <span class="dot off" id="status-dot"></span>
+          <span class="prompt">&gt;</span>
           <span id="connect-text" data-i18n="loading">loading…</span>
-          <span style="color:var(--ink-muted)">⧉ <span data-i18n="home.copy">copy</span></span>
+          <span class="cursor"></span>
+          <span style="color:var(--ink-muted);margin-left:4px">⧉ <span data-i18n="home.copy">copy</span></span>
         </button>
       </div>
     </div>
@@ -41,7 +45,7 @@
   <section class="stat-row">
     <div class="stat">
       <span class="ico">⏱️</span>
-      <div class="num" id="wipe-countdown">—</div>
+      <div class="num clock" id="wipe-countdown">—</div>
       <div class="lbl" data-i18n="home.untilWipe">until next wipe</div>
     </div>
     <div class="stat">
@@ -211,6 +215,7 @@ async function refreshStreaks() {
 }
 
 (async () => {
+  startEmbers(document.getElementById('embers'));
   await refreshStatus(true);
   await refreshKillfeed(true);
   refreshStreaks();
