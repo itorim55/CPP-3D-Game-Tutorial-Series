@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Regras — LusoRust</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header>
+  <nav class="nav">
+    <a class="logo" href="/"><b>LUSO</b>RUST</a>
+    <div class="links">
+      <a href="/">Início</a>
+      <a href="/stats">Estatísticas</a>
+      <a href="/regras">Regras</a>
+      <a href="/staff">Staff</a>
+      <a href="/candidatura">Candidaturas</a>
+      <a class="cta" href="#" id="discord-link" target="_blank" rel="noopener">Discord</a>
+    </div>
+  </nav>
+</header>
+
+<main class="prose">
+  <h2 class="section" style="margin-top:6px">Regras do servidor</h2>
+  <p style="color:var(--ink-muted);font-size:13px">Última atualização: agosto 2026 · O desconhecimento das regras não é desculpa. Em caso de dúvida, pergunta no Discord antes de agir.</p>
+
+  <h3>1. Cheating e exploits — tolerância zero</h3>
+  <ul>
+    <li>Qualquer cheat, script, macro de recoil ou exploit = <b>ban permanente</b>, sem aviso.</li>
+    <li>Contas com VAC ban ou game ban com menos de 180 dias não podem jogar aqui.</li>
+    <li>Jogar em equipa com um cheater conhecido = ban por associação.</li>
+    <li>Todos os bans têm provas gravadas e aparecem na <a href="/staff">lista pública</a>. Podes contestar no Discord.</li>
+  </ul>
+
+  <h3>2. Limite de grupo</h3>
+  <ul>
+    <li>Máximo <b>4 jogadores</b> por equipa (base, aliança, roam — conta tudo).</li>
+    <li>Uma substituição de membro permitida por wipe. Anuncia no Discord para a staff registar.</li>
+    <li>Alianças entre grupos para contornar o limite = aviso, depois wipe da base.</li>
+  </ul>
+
+  <h3>3. Toxicidade</h3>
+  <ul>
+    <li>Provocação normal de Rust é aceitável — discurso de ódio, racismo, ameaças reais e doxxing não são.</li>
+    <li>Spam de voz/chat: mute. Reincidência: ban temporário.</li>
+    <li>Stream sniping de criadores de conteúdo = ban.</li>
+  </ul>
+
+  <h3>4. Jogo limpo</h3>
+  <ul>
+    <li>Não há "zonas seguras" além das do jogo — raid e roof camping fazem parte do Rust.</li>
+    <li>Bug abuse (glitches de construção, ver através de paredes, etc.) = mesma categoria que cheating.</li>
+    <li>Vendas de itens/bases por dinheiro real (RMT) = ban.</li>
+  </ul>
+
+  <h3>5. Wipes</h3>
+  <ul>
+    <li><b>Wipe de mapa</b>: todas as quintas-feiras de force wipe (primeira quinta do mês) e wipe intermédio quinzenal se anunciado.</li>
+    <li><b>Wipe de blueprints</b>: apenas no force wipe mensal.</li>
+    <li>O countdown está sempre na <a href="/">página inicial</a> e no Discord.</li>
+  </ul>
+
+  <h3>6. Staff</h3>
+  <ul>
+    <li>A staff cumpre o <a href="/staff">Código do Moderador</a> — zero vantagens in-game, provas em todos os bans.</li>
+    <li>Denúncias: usa F7 in-game ou abre ticket no Discord. Todas são investigadas.</li>
+    <li>Se achas que um admin abusou de poderes, reporta ao dono no Discord — levamos isso mais a sério do que tudo o resto.</li>
+  </ul>
+</main>
+
+<footer>
+  LusoRust · <a href="/regras">Regras</a> · <a href="/staff">Staff &amp; Transparência</a> · <a href="/candidatura">Junta-te à equipa</a>
+</footer>
+
+<script src="/js/common.js"></script>
+<script>
+(async () => {
+  try {
+    const s = await api('/api/status');
+    if (s.info.discord) document.getElementById('discord-link').href = s.info.discord;
+  } catch {}
+})();
+</script>
+</body>
+</html>

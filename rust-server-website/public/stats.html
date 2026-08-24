@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estatísticas — LusoRust</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header>
+  <nav class="nav">
+    <a class="logo" href="/"><b>LUSO</b>RUST</a>
+    <div class="links">
+      <a href="/">Início</a>
+      <a href="/stats">Estatísticas</a>
+      <a href="/regras">Regras</a>
+      <a href="/staff">Staff</a>
+      <a href="/candidatura">Candidaturas</a>
+      <a class="cta" href="#" id="discord-link" target="_blank" rel="noopener">Discord</a>
+    </div>
+  </nav>
+</header>
+
+<main>
+  <h2 class="section" style="margin-top:6px">Leaderboards</h2>
+
+  <div class="tabs" id="metric-tabs">
+    <button data-by="kills" class="active">Kills</button>
+    <button data-by="kd">K/D</button>
+    <button data-by="headshots">Headshots</button>
+    <button data-by="distance">Kill mais longa</button>
+    <button data-by="playtime">Tempo de jogo</button>
+    <span class="spacer"></span>
+    <button data-period="wipe" class="active period">Esta wipe</button>
+    <button data-period="all" class="period">Sempre</button>
+  </div>
+
+  <div style="margin:12px 0;max-width:360px">
+    <input type="text" id="search" placeholder="🔍 procurar jogador…" autocomplete="off">
+    <div id="search-results" class="feed" style="margin-top:8px"></div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Jogador</th>
+          <th class="num">Kills</th><th class="num">Mortes</th><th class="num">K/D</th>
+          <th class="num">Headshots</th><th class="num">Kill + longa</th><th class="num">Horas</th>
+        </tr>
+      </thead>
+      <tbody id="lb-body"><tr><td colspan="8">a carregar…</td></tr></tbody>
+    </table>
+  </div>
+
+  <h2 class="section">Killfeed completo</h2>
+  <div class="feed" id="killfeed">a carregar…</div>
+</main>
+
+<footer>
+  LusoRust · <a href="/regras">Regras</a> · <a href="/staff">Staff &amp; Transparência</a> · <a href="/candidatura">Junta-te à equipa</a>
+</footer>
+
+<script src="/js/common.js"></script>
+<script>
+let by = 'kills', period = 'wipe';
+
+async function loadBoard() {
+  const body = document.getElementById('lb-body');
+  body.innerHTML = '<tr><td colspan="8">a carregar…</td></tr>';
+  const lb = await api(`/api/leaderboard?by=${by}&period=${period}&limit=100`);
+  body.innerHTML = lb.rows.map((r, i) => `
+    <tr>
+      <td><span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
+      <td>${playerLink(r.steam_id, r.name)}</td>
+      <td class="num">${r.kills}</td>
+      <td class="num">${r.deaths}</td>
+      <td class="num">${r.kd.toFixed(2)}</td>
+      <td class="num">${r.headshots}</td>
+      <td class="num">${r.best_distance ? Math.round(r.best_distance) + 'm' : '—'}</td>
+      <td class="num">${Math.round(r.playtime_s / 3600)}</td>
+    </tr>`).join('') || '<tr><td colspan="8">Sem dados para este período.</td></tr>';
+}
+
+document.getElementById('metric-tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.by) {
+    by = b.dataset.by;
+    document.querySelectorAll('#metric-tabs button[data-by]').forEach((x) => x.classList.toggle('active', x === b));
+  } else if (b.dataset.period) {
+    period = b.dataset.period;
+    document.querySelectorAll('#metric-tabs button.period').forEach((x) => x.classList.toggle('active', x === b));
+  }
+  loadBoard();
+});
+
+let searchTimer = null;
+document.getElementById('search').addEventListener('input', (e) => {
+  clearTimeout(searchTimer);
+  const q = e.target.value.trim();
+  const out = document.getElementById('search-results');
+  if (q.length < 2) { out.innerHTML = ''; return; }
+  searchTimer = setTimeout(async () => {
+    const r = await api(`/api/search?q=${encodeURIComponent(q)}`);
+    out.innerHTML = r.rows.map((p) => `
+      <div class="row">
+        ${playerLink(p.steam_id, p.name)}
+        <span class="meta">visto ${timeAgo(p.last_seen)} · ${hours(p.playtime_s)}</span>
+      </div>`).join('') || '<p style="color:var(--ink-muted);font-size:13px">Nenhum jogador encontrado.</p>';
+  }, 250);
+});
+
+(async () => {
+  try {
+    const s = await api('/api/status');
+    if (s.info.discord) document.getElementById('discord-link').href = s.info.discord;
+  } catch {}
+  await loadBoard();
+  const kf = await api('/api/killfeed?limit=50');
+  document.getElementById('killfeed').innerHTML = kf.rows.map((k) => `
+    <div class="row">
+      <span class="who k">${k.attacker_name ? playerLink(k.attacker_id, k.attacker_name) : '?'}</span>
+      <span class="weapon">${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}</span>
+      ${k.headshot ? '<span class="hs">HS</span>' : ''}
+      <span class="who v">${k.victim_name ? playerLink(k.victim_id, k.victim_name) : '?'}</span>
+      <span class="meta">${timeAgo(k.ts)}</span>
+    </div>`).join('') || '<p style="color:var(--ink-muted)">Sem kills registadas.</p>';
+})();
+</script>
+</body>
+</html>

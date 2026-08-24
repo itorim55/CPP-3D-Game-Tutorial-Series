@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Candidatura a Moderador — LusoRust</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header>
+  <nav class="nav">
+    <a class="logo" href="/"><b>LUSO</b>RUST</a>
+    <div class="links">
+      <a href="/">Início</a>
+      <a href="/stats">Estatísticas</a>
+      <a href="/regras">Regras</a>
+      <a href="/staff">Staff</a>
+      <a href="/candidatura">Candidaturas</a>
+      <a class="cta" href="#" id="discord-link" target="_blank" rel="noopener">Discord</a>
+    </div>
+  </nav>
+</header>
+
+<main>
+  <h2 class="section" style="margin-top:6px">Candidatura a Moderador</h2>
+
+  <div class="prose" style="margin-bottom:22px">
+    <p>Procuramos pessoas que queiram moderar como o <b>camomo_10</b>: investigar denúncias a sério,
+    apanhar cheaters com provas gravadas, e nunca — <b>nunca</b> — abusar dos poderes de admin.</p>
+    <h3>O que oferecemos a quem modera bem</h3>
+    <ul>
+      <li>🏆 <b>Moderador do Mês</b> — destaque no site e no Discord, com estatísticas públicas de bans/tickets resolvidos;</li>
+      <li>🎖️ Progressão clara: <b>Helper → Moderador → Moderador Sénior → Admin</b>, cada nível com mais responsabilidades (e permissões mínimas — ninguém começa com poderes totais);</li>
+      <li>🎥 Os teus melhores "apanhados" de cheaters podem ser publicados no canal da comunidade — constróis reputação como o camomo;</li>
+      <li>🎁 Regalias de apoiante oferecidas (cosméticos, cor no chat, slot reservado) — nada de vantagens de loot;</li>
+      <li>📚 Formação: acesso às ferramentas (admin cam, WebRCON, BattleMetrics) e mentoria de um membro sénior durante o período experimental.</li>
+    </ul>
+    <h3>Requisitos mínimos</h3>
+    <ul>
+      <li>18+ anos;</li>
+      <li>Sem VAC bans ou game bans na conta Steam (vamos verificar);</li>
+      <li>Pelo menos ~100 h no nosso servidor (conhecer a comunidade conta mais do que horas totais de Rust);</li>
+      <li>PC capaz de correr Rust + Discord + software de gravação (OBS/ShadowPlay) — <b>todos os bans exigem provas gravadas</b>;</li>
+      <li>Calma sob pressão e disponibilidade regular.</li>
+    </ul>
+  </div>
+
+  <div id="form-area" class="card">
+    <form id="app-form">
+      <h3 style="margin-bottom:14px">A. Identidade e contacto</h3>
+      <div class="form-grid">
+        <div class="field"><label>Nome in-game *</label><input type="text" name="name" required maxlength="64"></div>
+        <div class="field"><label>SteamID64 *</label><input type="text" name="steamId" required pattern="7656119[0-9]{10}" placeholder="7656119…"><div class="hint">Encontra-o em steamid.io — começa por 7656119.</div></div>
+        <div class="field"><label>Discord *</label><input type="text" name="discord" required maxlength="64" placeholder="utilizador#0000 ou @utilizador"></div>
+        <div class="field"><label>Idade *</label><input type="number" name="age" required min="18" max="99"></div>
+        <div class="field"><label>País / fuso horário</label><input type="text" name="timezone" maxlength="64" placeholder="Portugal (UTC+0/+1)"></div>
+        <div class="field"><label>Horas de Rust (Steam)</label><input type="number" name="hoursPlayed" min="0" max="99999"></div>
+      </div>
+
+      <h3 style="margin:22px 0 14px">B. Disponibilidade e experiência</h3>
+      <div class="form-grid">
+        <div class="field full"><label>Disponibilidade semanal</label><input type="text" name="availability" maxlength="300" placeholder="ex.: 3-4 noites por semana, 20h-24h, fins de semana à tarde"></div>
+        <div class="field full"><label>Experiência anterior como staff</label><textarea name="experience" maxlength="4000" placeholder="Servidores onde foste staff, cargo, duração, motivo da saída. Ferramentas que dominas: admin cam, RCON, RustAdmin, BattleMetrics, Oxide/Carbon…"></textarea></div>
+      </div>
+
+      <h3 style="margin:22px 0 14px">C. Motivação</h3>
+      <div class="field full"><label>Porque queres ser moderador AQUI, e porque te devemos escolher? *</label><textarea name="motivation" required maxlength="4000"></textarea></div>
+
+      <h3 style="margin:22px 0 14px">D. Cenários <span style="color:var(--ink-muted);font-weight:400;font-size:13px">— a parte que mais pesa na avaliação</span></h3>
+      <div class="field full">
+        <label>1. Um clã é denunciado por cheating, mas não há provas claras. Descreve passo a passo o que fazes. *</label>
+        <textarea name="scenario1" required maxlength="4000"></textarea>
+      </div>
+      <div class="field full">
+        <label>2. Um amigo teu / colega de equipa é acusado de cheating. O que fazes? *</label>
+        <textarea name="scenario2" required maxlength="4000"></textarea>
+      </div>
+      <div class="field full">
+        <label>3. Um jogador acusa-te publicamente de admin abuse no chat. Como respondes?</label>
+        <textarea name="scenario3" maxlength="4000"></textarea>
+      </div>
+
+      <h3 style="margin:22px 0 14px">E. Declarações de integridade</h3>
+      <div class="field full" style="display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--ink-2)">
+        <label style="display:flex;gap:10px;align-items:flex-start;font-weight:400"><input type="checkbox" required style="width:auto;margin-top:3px"> Não tenho VAC bans nem game bans, e declaro todas as contas alternativas que possuo.</label>
+        <label style="display:flex;gap:10px;align-items:flex-start;font-weight:400"><input type="checkbox" required style="width:auto;margin-top:3px"> Aceito o <a href="/staff">Código do Moderador</a>: zero vantagens in-game, provas gravadas em todos os bans, bans públicos e contestáveis.</label>
+        <label style="display:flex;gap:10px;align-items:flex-start;font-weight:400"><input type="checkbox" required style="width:auto;margin-top:3px"> Aceito começar como Helper (período experimental) com permissões mínimas.</label>
+      </div>
+
+      <div style="margin-top:24px">
+        <button class="btn" type="submit">Enviar candidatura</button>
+        <p class="hint" style="color:var(--ink-muted);font-size:12px;margin-top:8px">Resposta em 3-7 dias via Discord. Boa sorte! 🍀</p>
+      </div>
+    </form>
+  </div>
+</main>
+
+<footer>
+  LusoRust · <a href="/regras">Regras</a> · <a href="/staff">Staff &amp; Transparência</a> · <a href="/candidatura">Junta-te à equipa</a>
+</footer>
+
+<script src="/js/common.js"></script>
+<script>
+(async () => {
+  try {
+    const s = await api('/api/status');
+    if (s.info.discord) document.getElementById('discord-link').href = s.info.discord;
+  } catch {}
+})();
+
+document.getElementById('app-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const data = Object.fromEntries(new FormData(form).entries());
+  data.age = parseInt(data.age, 10) || null;
+  data.hoursPlayed = parseInt(data.hoursPlayed, 10) || null;
+
+  const btn = form.querySelector('button[type=submit]');
+  btn.disabled = true; btn.textContent = 'a enviar…';
+  try {
+    await apiPost('/api/applications', data);
+    document.getElementById('form-area').innerHTML = `
+      <div class="notice ok" style="margin:0">
+        <b>✅ Candidatura recebida!</b><br>
+        Obrigado pelo interesse. A equipa vai analisar e responde-te no Discord em 3-7 dias.
+        Entretanto, mantém-te ativo no servidor — a atividade conta na avaliação.
+      </div>`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (err) {
+    btn.disabled = false; btn.textContent = 'Enviar candidatura';
+    let n = form.querySelector('.notice.err');
+    if (!n) { n = document.createElement('div'); n.className = 'notice err'; form.prepend(n); }
+    n.textContent = '⚠️ ' + err.message;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+});
+</script>
+</body>
+</html>

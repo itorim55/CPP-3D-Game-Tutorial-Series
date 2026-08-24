@@ -1,0 +1,3 @@
+# base de dados e chaves locais — nunca comitar
+data/
+server/config.json

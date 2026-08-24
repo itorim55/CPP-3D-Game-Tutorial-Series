@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LusoRust — Servidor de Rust PT</title>
+<meta name="description" content="Servidor português de Rust com estatísticas ao vivo, killfeed, leaderboards e staff transparente.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header>
+  <nav class="nav">
+    <a class="logo" href="/"><b>LUSO</b>RUST</a>
+    <div class="links">
+      <a href="/">Início</a>
+      <a href="/stats">Estatísticas</a>
+      <a href="/regras">Regras</a>
+      <a href="/staff">Staff</a>
+      <a href="/candidatura">Candidaturas</a>
+      <a class="cta" href="#" id="discord-link" target="_blank" rel="noopener">Discord</a>
+    </div>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <h1>LUSO<span>RUST</span></h1>
+    <p class="tag" id="server-tag">Servidor português de Rust — estatísticas ao vivo, staff transparente, zero pay-to-win.</p>
+    <button class="connect" id="connect-btn" title="Clica para copiar">
+      <span class="dot off" id="status-dot"></span>
+      <span id="connect-text">a carregar…</span>
+      <span style="color:var(--ink-muted)">⧉ copiar</span>
+    </button>
+  </section>
+
+  <section class="grid cols-4">
+    <div class="card tile" id="tile-players">
+      <div class="big" id="players-now">—</div>
+      <div class="label">jogadores online</div>
+    </div>
+    <div class="card tile">
+      <div class="big" id="wipe-countdown">—</div>
+      <div class="label">até à próxima wipe</div>
+    </div>
+    <div class="card tile">
+      <div class="big" id="kills-wipe">—</div>
+      <div class="label">kills esta wipe</div>
+    </div>
+    <div class="card tile">
+      <div class="big" id="server-fps">—</div>
+      <div class="label">FPS do servidor</div>
+    </div>
+  </section>
+
+  <h2 class="section">População <small>últimas 48 horas</small></h2>
+  <div class="card">
+    <div id="pop-chart"></div>
+  </div>
+
+  <div class="grid cols-2" style="margin-top:28px">
+    <div>
+      <h2 class="section" style="margin-top:0">Top da wipe <small><a href="/stats">ver tudo →</a></small></h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Jogador</th><th class="num">Kills</th><th class="num">K/D</th></tr></thead>
+          <tbody id="top-players"><tr><td colspan="4">a carregar…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <h2 class="section" style="margin-top:0">Killfeed ao vivo</h2>
+      <div class="feed" id="killfeed">a carregar…</div>
+    </div>
+  </div>
+
+  <h2 class="section">Porquê jogar aqui?</h2>
+  <div class="grid cols-3">
+    <div class="card">
+      <h3>🛡️ Anti-cheat a sério</h3>
+      <p style="color:var(--ink-2);font-size:14px">Moderação ativa ao estilo <b>camomo_10</b>: cheaters apanhados em direto, provas gravadas e banimentos públicos. Vê a <a href="/staff">lista de bans</a>.</p>
+    </div>
+    <div class="card">
+      <h3>📊 Estatísticas ao vivo</h3>
+      <p style="color:var(--ink-2);font-size:14px">Todas as kills, mortes, headshots e recursos registados em tempo real. Procura o teu nome e acompanha a tua evolução wipe a wipe.</p>
+    </div>
+    <div class="card">
+      <h3>⚖️ Zero pay-to-win</h3>
+      <p style="color:var(--ink-2);font-size:14px">Nada de kits pagos nem loot à venda. Os apoios ao servidor dão apenas cosméticos e cor no chat — o jogo é igual para todos.</p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  LusoRust · <a href="/regras">Regras</a> · <a href="/staff">Staff &amp; Transparência</a> · <a href="/candidatura">Junta-te à equipa</a>
+  <br>Este servidor não é afiliado à Facepunch Studios.
+</footer>
+
+<script src="/js/common.js"></script>
+<script>
+(async () => {
+  try {
+    const s = await api('/api/status');
+
+    if (s.info.discord) document.getElementById('discord-link').href = s.info.discord;
+    if (s.info.name) document.getElementById('server-tag').textContent = s.info.name;
+
+    const dot = document.getElementById('status-dot');
+    const tile = document.getElementById('tile-players');
+    if (s.online) { dot.className = 'dot on'; tile.classList.add('online'); }
+    else { dot.className = 'dot off'; }
+
+    const hb = s.heartbeat;
+    document.getElementById('players-now').textContent =
+      hb ? `${hb.players}/${hb.max_players}${hb.queued ? ` (+${hb.queued})` : ''}` : '—';
+    document.getElementById('kills-wipe').textContent = s.killsThisWipe.toLocaleString('pt-PT');
+    document.getElementById('server-fps').textContent = hb && hb.fps ? Math.round(hb.fps) : '—';
+
+    const ip = s.info.ip || 'client.connect <ip>:28015';
+    document.getElementById('connect-text').textContent = ip;
+    document.getElementById('connect-btn').addEventListener('click', () => {
+      navigator.clipboard.writeText(ip);
+      document.getElementById('connect-text').textContent = 'copiado! cola na consola F1';
+      setTimeout(() => { document.getElementById('connect-text').textContent = ip; }, 2000);
+    });
+
+    if (s.nextWipe) startCountdown(document.getElementById('wipe-countdown'), s.nextWipe);
+    renderAreaChart(document.getElementById('pop-chart'), s.history,
+      { maxY: hb ? hb.max_players : null });
+
+    const lb = await api('/api/leaderboard?by=kills&limit=5');
+    document.getElementById('top-players').innerHTML = lb.rows.map((r, i) => `
+      <tr>
+        <td><span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
+        <td>${playerLink(r.steam_id, r.name)}</td>
+        <td class="num">${r.kills}</td>
+        <td class="num">${r.kd.toFixed(2)}</td>
+      </tr>`).join('') || '<tr><td colspan="4">Sem dados ainda.</td></tr>';
+
+    const kf = await api('/api/killfeed?limit=8');
+    document.getElementById('killfeed').innerHTML = kf.rows.map((k) => `
+      <div class="row">
+        <span class="who k">${esc(k.attacker_name || '?')}</span>
+        <span class="weapon">${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}</span>
+        ${k.headshot ? '<span class="hs">HS</span>' : ''}
+        <span class="who v">${esc(k.victim_name || '?')}</span>
+        <span class="meta">${timeAgo(k.ts)}</span>
+      </div>`).join('') || '<p style="color:var(--ink-muted)">Sem kills registadas ainda.</p>';
+  } catch (e) {
+    console.error(e);
+  }
+})();
+</script>
+</body>
+</html>

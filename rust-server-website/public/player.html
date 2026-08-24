@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Perfil de jogador — LusoRust</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header>
+  <nav class="nav">
+    <a class="logo" href="/"><b>LUSO</b>RUST</a>
+    <div class="links">
+      <a href="/">Início</a>
+      <a href="/stats">Estatísticas</a>
+      <a href="/regras">Regras</a>
+      <a href="/staff">Staff</a>
+      <a href="/candidatura">Candidaturas</a>
+      <a class="cta" href="#" id="discord-link" target="_blank" rel="noopener">Discord</a>
+    </div>
+  </nav>
+</header>
+
+<main id="content">
+  <p style="color:var(--ink-muted)">a carregar perfil…</p>
+</main>
+
+<footer>
+  LusoRust · <a href="/regras">Regras</a> · <a href="/staff">Staff &amp; Transparência</a> · <a href="/candidatura">Junta-te à equipa</a>
+</footer>
+
+<script src="/js/common.js"></script>
+<script>
+(async () => {
+  const id = new URLSearchParams(location.search).get('id');
+  const el = document.getElementById('content');
+  if (!id) { el.innerHTML = '<p>Falta o parâmetro <code>id</code>.</p>'; return; }
+
+  try {
+    const s = await api('/api/status');
+    if (s.info.discord) document.getElementById('discord-link').href = s.info.discord;
+  } catch {}
+
+  let p;
+  try { p = await api(`/api/player?id=${encodeURIComponent(id)}`); }
+  catch (e) { el.innerHTML = `<p>😕 ${esc(e.message)}</p><p><a href="/stats">← voltar às estatísticas</a></p>`; return; }
+
+  document.title = `${p.name} — LusoRust`;
+  const w = p.wipe, a = p.allTime;
+
+  const statTile = (big, label) => `
+    <div class="card tile"><div class="big">${big}</div><div class="label">${label}</div></div>`;
+
+  const gatherNames = { 'wood': '🪵 Madeira', 'stone': '🪨 Pedra', 'metal.ore': '⛏️ Metal', 'sulfur.ore': '💥 Sulfur', 'hq.metal.ore': '✨ HQM' };
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:6px">
+      <h1 style="font-family:var(--font-display);font-size:44px;letter-spacing:2px">${esc(p.name)}</h1>
+      <span style="color:var(--ink-muted);font-size:13px">SteamID ${esc(p.steamId)} · visto ${timeAgo(p.lastSeen)}</span>
+    </div>
+
+    <h2 class="section">Esta wipe</h2>
+    <div class="grid cols-4">
+      ${statTile(w.kills, 'kills')}
+      ${statTile(w.deaths, 'mortes (PVP)')}
+      ${statTile(w.kd.toFixed(2), 'K/D')}
+      ${statTile(w.hsRate + '%', 'taxa de headshot')}
+      ${statTile(Math.round(w.bestDistance) + 'm', 'kill mais longa')}
+      ${statTile(w.pveDeaths, 'mortes PVE')}
+      ${statTile(hours(p.playtimeS), 'tempo de jogo (total)')}
+    </div>
+
+    <h2 class="section">Todas as wipes</h2>
+    <div class="grid cols-4">
+      ${statTile(a.kills, 'kills')}
+      ${statTile(a.deaths, 'mortes')}
+      ${statTile(a.kd.toFixed(2), 'K/D')}
+      ${statTile(a.headshots, 'headshots')}
+    </div>
+
+    <div class="grid cols-2" style="margin-top:28px">
+      <div class="card">
+        <h3>Armas favoritas (wipe)</h3>
+        ${p.weapons.length ? `<table><tbody>${p.weapons.map((x) => `
+          <tr><td>${esc(x.weapon)}</td><td class="num">${x.kills} kills</td></tr>`).join('')}</tbody></table>`
+          : '<p style="color:var(--ink-muted);font-size:13px">Sem kills nesta wipe.</p>'}
+      </div>
+      <div class="card">
+        <h3>Recursos recolhidos (wipe)</h3>
+        ${p.gather.length ? `<table><tbody>${p.gather.map((g) => `
+          <tr><td>${gatherNames[g.resource] || esc(g.resource)}</td><td class="num">${g.amount.toLocaleString('pt-PT')}</td></tr>`).join('')}</tbody></table>`
+          : '<p style="color:var(--ink-muted);font-size:13px">Sem dados de farm.</p>'}
+      </div>
+      <div class="card">
+        <h3>🎯 Vítimas frequentes</h3>
+        ${p.victims.length ? p.victims.map((v) => `
+          <p style="font-size:14px">${playerLink(v.steam_id, v.name || v.steam_id)} <span style="color:var(--ink-muted)">× ${v.n}</span></p>`).join('')
+          : '<p style="color:var(--ink-muted);font-size:13px">—</p>'}
+      </div>
+      <div class="card">
+        <h3>💀 Nemesis (quem mais te mata)</h3>
+        ${p.nemesis.length ? p.nemesis.map((v) => `
+          <p style="font-size:14px">${playerLink(v.steam_id, v.name || v.steam_id)} <span style="color:var(--ink-muted)">× ${v.n}</span></p>`).join('')
+          : '<p style="color:var(--ink-muted);font-size:13px">—</p>'}
+      </div>
+    </div>
+
+    <h2 class="section">Atividade recente</h2>
+    <div class="feed">
+      ${p.recent.map((k) => {
+        const isKill = k.attacker_id === p.steamId;
+        return `<div class="row">
+          <span class="who ${isKill ? 'k' : 'v'}">${isKill ? '⚔️ matou' : '💀 morreu para'}</span>
+          <span class="who k">${esc(isKill ? (k.victim_name || '?') : (k.attacker_name || '?'))}</span>
+          <span class="weapon">${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}</span>
+          ${k.headshot ? '<span class="hs">HS</span>' : ''}
+          <span class="meta">${timeAgo(k.ts)}</span>
+        </div>`;
+      }).join('') || '<p style="color:var(--ink-muted)">Sem atividade registada.</p>'}
+    </div>`;
+})();
+</script>
+</body>
+</html>

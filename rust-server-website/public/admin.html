@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestão de candidaturas — LusoRust</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header>
+  <nav class="nav">
+    <a class="logo" href="/"><b>LUSO</b>RUST</a>
+    <div class="links"><a href="/">← voltar ao site</a></div>
+  </nav>
+</header>
+
+<main>
+  <h2 class="section" style="margin-top:6px">Gestão de candidaturas <small>área da staff</small></h2>
+
+  <div class="card" id="login-card" style="max-width:420px">
+    <h3>Chave de administração</h3>
+    <input type="text" id="admin-key" placeholder="cola aqui a adminKey do config.json">
+    <button class="btn" style="margin-top:12px" id="load-btn">Entrar</button>
+    <p class="hint" style="color:var(--ink-muted);font-size:12px;margin-top:8px">A chave está em server/config.json (campo adminKey). Nunca a partilhes.</p>
+  </div>
+
+  <div id="apps" style="display:none">
+    <div class="tabs" id="filter-tabs">
+      <button data-f="" class="active">Todas</button>
+      <button data-f="pendente">Pendentes</button>
+      <button data-f="em análise">Em análise</button>
+      <button data-f="entrevista">Entrevista</button>
+      <button data-f="aprovada">Aprovadas</button>
+      <button data-f="recusada">Recusadas</button>
+    </div>
+    <div id="app-list" class="grid" style="grid-template-columns:1fr"></div>
+  </div>
+</main>
+
+<script src="/js/common.js"></script>
+<script>
+let KEY = sessionStorage.getItem('adminKey') || '';
+let ROWS = [];
+let FILTER = '';
+
+const STATUSES = ['pendente', 'em análise', 'entrevista', 'aprovada', 'recusada'];
+const BADGE = { 'pendente': 'var(--ink-muted)', 'em análise': 'var(--gold)', 'entrevista': 'var(--accent)', 'aprovada': 'var(--good)', 'recusada': 'var(--bad)' };
+
+async function load() {
+  const r = await fetch(`/api/admin/applications`, { headers: { 'X-Admin-Key': KEY } });
+  if (!r.ok) { alert('Chave inválida.'); return; }
+  sessionStorage.setItem('adminKey', KEY);
+  ROWS = (await r.json()).rows;
+  document.getElementById('login-card').style.display = 'none';
+  document.getElementById('apps').style.display = '';
+  render();
+}
+
+function render() {
+  const rows = FILTER ? ROWS.filter((a) => a.status === FILTER) : ROWS;
+  document.getElementById('app-list').innerHTML = rows.map((a) => `
+    <div class="card">
+      <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
+        <b style="font-size:17px">${esc(a.name)}</b>
+        <span style="color:var(--ink-muted);font-size:13px">${esc(a.discord)} · SteamID ${esc(a.steam_id)} · ${a.age ?? '?'} anos · ${a.hours_played ?? '?'}h Rust · ${esc(a.timezone || '—')}</span>
+        <span style="margin-left:auto;font-size:12px;font-weight:700;color:${BADGE[a.status] || 'var(--ink-muted)'}">${esc(a.status).toUpperCase()}</span>
+      </div>
+      <div style="color:var(--ink-muted);font-size:12px;margin:4px 0 10px">${new Date(a.ts * 1000).toLocaleString('pt-PT')} · disponibilidade: ${esc(a.availability || '—')}</div>
+      <details><summary style="cursor:pointer;color:var(--accent);font-size:13px">ver respostas completas</summary>
+        <div class="prose" style="margin-top:10px;font-size:13.5px">
+          <p><b>Experiência:</b> ${esc(a.experience || '—')}</p>
+          <p><b>Motivação:</b> ${esc(a.motivation || '—')}</p>
+          <p><b>Cenário 1 (clã suspeito sem provas):</b> ${esc(a.scenario1 || '—')}</p>
+          <p><b>Cenário 2 (amigo acusado):</b> ${esc(a.scenario2 || '—')}</p>
+          <p><b>Cenário 3 (acusado de admin abuse):</b> ${esc(a.scenario3 || '—')}</p>
+        </div>
+      </details>
+      <div class="tabs" style="margin:12px 0 0">
+        ${STATUSES.map((s) => `<button data-id="${a.id}" data-status="${s}" ${a.status === s ? 'class="active"' : ''}>${s}</button>`).join('')}
+      </div>
+    </div>`).join('') || '<p style="color:var(--ink-muted)">Sem candidaturas neste filtro.</p>';
+}
+
+document.getElementById('load-btn').addEventListener('click', () => {
+  KEY = document.getElementById('admin-key').value.trim();
+  if (KEY) load();
+});
+
+document.getElementById('filter-tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  FILTER = b.dataset.f;
+  document.querySelectorAll('#filter-tabs button').forEach((x) => x.classList.toggle('active', x === b));
+  render();
+});
+
+document.getElementById('app-list').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-status]'); if (!b) return;
+  await apiPost('/api/admin/applications', { id: parseInt(b.dataset.id, 10), status: b.dataset.status }, { 'X-Admin-Key': KEY });
+  const row = ROWS.find((x) => x.id === parseInt(b.dataset.id, 10));
+  if (row) row.status = b.dataset.status;
+  render();
+});
+
+if (KEY) { document.getElementById('admin-key').value = KEY; load(); }
+</script>
+</body>
+</html>
