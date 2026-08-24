@@ -67,11 +67,17 @@ async function load() {
 
 document.getElementById('options').addEventListener('click', async (e) => {
   const b = e.target.closest('button[data-id]');
-  if (!b) return;
+  if (!b || b.disabled) return;
+  b.disabled = true;
   try {
     await apiPost('/api/mapvote/vote', { optionId: parseInt(b.dataset.id, 10) });
-    load();
-  } catch (err) { alert('⚠️ ' + err.message); }
+    await load();
+  } catch (err) {
+    b.disabled = false;
+    // erro visível na página (um alert pode passar despercebido/ser bloqueado)
+    document.getElementById('state-banner').innerHTML =
+      `<div class="notice err" style="margin-top:16px">⚠️ ${t('map.voteFail', esc(err.message))}</div>`;
+  }
 });
 
 load().catch(console.error);

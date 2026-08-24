@@ -5,6 +5,7 @@
 const store = require('./db');
 const discord = require('./discord');
 const steam = require('./steam');
+const clips = require('./clips');
 
 function json(res, code, obj) {
   const body = JSON.stringify(obj);
@@ -430,15 +431,23 @@ function route(req, res, url, body, config, session) {
         case '/api/admin/posts/delete':
           store.deletePost(body.id); json(res, 200, { ok: true }); return true;
         case '/api/admin/owcases': {
-          const title = clean(body.title, 120), clip = clean(body.clipUrl, 300);
-          if (!title || !clip) { json(res, 400, { error: 'Title and clip URL are required' }); return true; }
-          store.addOwCase(title, clip);
+          const title = clean(body.title, 120);
+          const clip = clean(body.clipUrl, 300);
+          const clipFile = clean(body.clipFile, 80);
+          if (!title || (!clip && !clipFile)) {
+            json(res, 400, { error: 'Title and a clip (URL or uploaded file) are required' }); return true;
+          }
+          if (clipFile && !clips.NAME_RE.test(clipFile)) {
+            json(res, 400, { error: 'Invalid clip file reference' }); return true;
+          }
+          store.addOwCase(title, clip || null, clipFile || null);
           json(res, 200, { ok: true }); return true;
         }
         case '/api/admin/owcases/close': {
           const allowed = ['cheater', 'innocent', 'inconclusive'];
           if (!allowed.includes(body.verdict)) { json(res, 400, { error: 'Invalid verdict' }); return true; }
-          store.closeOwCase(body.id, body.verdict);
+          const gone = store.closeOwCase(body.id, body.verdict);
+          if (gone) clips.remove(gone); // clip alojado deixa de ser preciso — libertar disco
           json(res, 200, { ok: true }); return true;
         }
         case '/api/admin/mapvote':

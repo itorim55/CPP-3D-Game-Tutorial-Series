@@ -34,6 +34,7 @@ const SITE_URL = (config.siteUrl || `http://localhost:${config.port || 8080}`).r
 
 const store = require('./db');
 require('./steam').init(config.steamApiKey);
+const clips = require('./clips');
 for (const [k, v] of Object.entries({
   server_name: config.serverName, server_ip: config.serverIp,
   discord: config.discord, next_wipe: config.nextWipe,
@@ -144,6 +145,76 @@ function fail(res, code, msg) {
   } catch { /* já fechada */ }
 }
 
+// ---------- clips de overwatch (upload da staff + streaming com Range) ----------
+
+function keysMatch(given, expected) {
+  // hash antes de comparar: timingSafeEqual exige comprimentos iguais
+  const h = (s) => crypto.createHash('sha256').update(String(s || '')).digest();
+  return crypto.timingSafeEqual(h(given), h(expected));
+}
+
+// POST /api/admin/owclip — corpo é o ficheiro em bruto (sem multipart).
+// Escreve em streaming direto para o disco: nunca carrega o vídeo em memória.
+function handleClipUpload(req, res) {
+  if (req.method !== 'POST') { fail(res, 405, 'Method Not Allowed'); return; }
+  if (!config.adminKey || !keysMatch(req.headers['x-admin-key'], config.adminKey)) {
+    api.json(res, 401, { error: 'Invalid admin key' }); return;
+  }
+  const type = String(req.headers['content-type'] || '');
+  const ext = type.includes('webm') ? '.webm' : (type.includes('mp4') ? '.mp4' : null);
+  if (!ext) { api.json(res, 400, { error: 'Only MP4 or WebM videos are accepted.' }); return; }
+
+  const name = clips.newName(ext);
+  const tmp = path.join(clips.DIR, name + '.part');
+  const out = fs.createWriteStream(tmp);
+  let size = 0, dead = false;
+  const abort = (code, msg) => {
+    if (dead) return; dead = true;
+    out.destroy(); fs.unlink(tmp, () => {});
+    api.json(res, code, { error: msg });
+    req.destroy();
+  };
+  req.on('data', (c) => {
+    size += c.length;
+    if (size > clips.MAX_BYTES) abort(413, 'Clip too large (200 MB max). Trim or compress it first.');
+  });
+  req.on('error', () => { if (!dead) { dead = true; out.destroy(); fs.unlink(tmp, () => {}); } });
+  out.on('error', () => abort(500, 'Could not write the clip to disk.'));
+  out.on('finish', () => {
+    if (dead) return;
+    fs.rename(tmp, path.join(clips.DIR, name), (err) => {
+      if (err) { api.json(res, 500, { error: 'Could not save the clip.' }); return; }
+      api.json(res, 200, { ok: true, file: name, bytes: size });
+    });
+  });
+  req.pipe(out);
+}
+
+// GET /clips/<nome> — com suporte a Range para o browser poder saltar no vídeo.
+function serveClip(req, res, url) {
+  const name = url.pathname.slice('/clips/'.length);
+  if (!clips.NAME_RE.test(name)) { fail(res, 404, 'Not Found'); return; }
+  const file = path.join(clips.DIR, name);
+  fs.stat(file, (err, st) => {
+    if (err || !st.isFile()) { fail(res, 404, 'Not Found'); return; }
+    const type = name.endsWith('.webm') ? 'video/webm' : 'video/mp4';
+    const base = { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store' };
+    const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+    if (m && (m[1] || m[2])) {
+      const start = m[1] ? parseInt(m[1], 10) : Math.max(0, st.size - parseInt(m[2], 10));
+      const end = m[1] && m[2] ? Math.min(parseInt(m[2], 10), st.size - 1) : st.size - 1;
+      if (!Number.isFinite(start) || start < 0 || start > end || start >= st.size) {
+        res.writeHead(416, { 'Content-Range': `bytes */${st.size}` }); res.end(); return;
+      }
+      res.writeHead(206, { ...base, 'Content-Range': `bytes ${start}-${end}/${st.size}`, 'Content-Length': end - start + 1 });
+      fs.createReadStream(file, { start, end }).pipe(res);
+    } else {
+      res.writeHead(200, { ...base, 'Content-Length': st.size });
+      fs.createReadStream(file).pipe(res);
+    }
+  });
+}
+
 const server = http.createServer((req, res) => {
   let url;
   try { url = new URL(req.url, 'http://localhost'); }
@@ -156,6 +227,9 @@ const server = http.createServer((req, res) => {
       }).catch(() => fail(res, 500, 'Auth error'));
       return;
     }
+
+    if (url.pathname.startsWith('/clips/')) { serveClip(req, res, url); return; }
+    if (url.pathname === '/api/admin/owclip') { handleClipUpload(req, res); return; }
 
     if (!url.pathname.startsWith('/api/')) { serveStatic(req, res, url); return; }
 

@@ -125,7 +125,12 @@ async function renderOw() {
       <b>New case</b>
       <div class="form-grid" style="margin-top:10px">
         <div class="field"><label>Title (no player names!)</label><input name="title" required maxlength="120"></div>
-        <div class="field"><label>Clip URL (YouTube/Streamable)</label><input name="clipUrl" required maxlength="300"></div>
+        <div class="field"><label>Clip URL (YouTube/Streamable)</label><input name="clipUrl" maxlength="300" placeholder="leave empty if uploading a file"></div>
+        <div class="field"><label>…or upload the clip (MP4/WebM, 200 MB max)</label>
+          <input type="file" name="clipFile" accept="video/mp4,video/webm">
+          <p class="hint" style="color:var(--ink-muted);font-size:12px;margin-top:4px">
+            Hosted clips play directly on the site and are <b>deleted automatically</b> when you close the case — no disk build-up.</p>
+        </div>
       </div>
       <button class="btn" style="margin-top:12px">Publish case</button>
     </form>` +
@@ -133,7 +138,9 @@ async function renderOw() {
     <div class="card" style="margin-bottom:10px">
       <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
         <b>${esc(c.title)}</b> ${badge(c.status)}
-        <a href="${esc(c.clip_url)}" target="_blank" rel="noopener" style="font-size:13px">🎬 clip</a>
+        ${c.clip_url ? `<a href="${esc(c.clip_url)}" target="_blank" rel="noopener" style="font-size:13px">🎬 clip</a>` : ''}
+        ${c.clip_file ? `<a href="/clips/${esc(c.clip_file)}" target="_blank" style="font-size:13px">📼 hosted clip</a>` : ''}
+        ${!c.clip_url && !c.clip_file ? '<span style="font-size:12px;color:var(--ink-muted)">clip deleted</span>' : ''}
         <span style="margin-left:auto;font-size:13px;color:var(--ink-2)">
           🚨 ${c.tally.cheat} · 🤔 ${c.tally.unsure} · ✅ ${c.tally.clean}</span>
       </div>
@@ -146,8 +153,31 @@ async function renderOw() {
 
   document.getElementById('ow-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    await aPost('/api/admin/owcases', Object.fromEntries(new FormData(e.target).entries()));
-    renderOw();
+    const btn = e.target.querySelector('button.btn');
+    const fd = new FormData(e.target);
+    const file = fd.get('clipFile');
+    const data = { title: fd.get('title'), clipUrl: fd.get('clipUrl') };
+    if (!data.clipUrl && !(file && file.size)) { alert('Give a clip URL or upload a file.'); return; }
+    btn.disabled = true;
+    try {
+      if (file && file.size) {
+        btn.textContent = 'Uploading… (keep this tab open)';
+        // corpo = ficheiro em bruto; o servidor grava em streaming para o disco
+        const r = await fetch('/api/admin/owclip', {
+          method: 'POST',
+          headers: { ...H(), 'Content-Type': file.type || 'video/mp4' },
+          body: file,
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || `Upload failed (${r.status})`);
+        data.clipFile = d.file;
+      }
+      await aPost('/api/admin/owcases', data);
+      renderOw();
+    } catch (err) {
+      alert('⚠️ ' + err.message);
+      btn.disabled = false; btn.textContent = 'Publish case';
+    }
   });
 }
 

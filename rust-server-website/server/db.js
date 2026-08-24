@@ -265,6 +265,7 @@ for (const sql of [
   'ALTER TABLE kills ADD COLUMN pos_z REAL',
   'ALTER TABLE players ADD COLUMN avatar TEXT',
   'ALTER TABLE players ADD COLUMN avatar_ts INTEGER',
+  'ALTER TABLE ow_cases ADD COLUMN clip_file TEXT',
 ]) { try { db.exec(sql); } catch { /* coluna já existe */ } }
 
 // ---------- helpers ----------
@@ -484,12 +485,19 @@ function voteOw(steamId, caseId, vote) {
   return { ok: true, tally: owTally(caseId | 0) };
 }
 
-function addOwCase(title, clipUrl) {
-  db.prepare('INSERT INTO ow_cases (ts, title, clip_url) VALUES (?, ?, ?)').run(now(), title, clipUrl);
+function addOwCase(title, clipUrl, clipFile = null) {
+  // clip_url é NOT NULL no esquema original — string vazia quando só há ficheiro
+  db.prepare('INSERT INTO ow_cases (ts, title, clip_url, clip_file) VALUES (?, ?, ?, ?)')
+    .run(now(), title, clipUrl || '', clipFile);
 }
 
 function closeOwCase(id, verdict) {
-  db.prepare("UPDATE ow_cases SET status = 'closed', verdict = ? WHERE id = ?").run(verdict, id | 0);
+  // Devolve o clip alojado (se existir) para o chamador o apagar do disco;
+  // a referência sai já da BD para nunca ficar um <video> morto na página.
+  const row = db.prepare('SELECT clip_file FROM ow_cases WHERE id = ?').get(id | 0);
+  db.prepare("UPDATE ow_cases SET status = 'closed', verdict = ?, clip_file = NULL WHERE id = ?")
+    .run(verdict, id | 0);
+  return row?.clip_file || null;
 }
 
 function listOwCasesAdmin() {

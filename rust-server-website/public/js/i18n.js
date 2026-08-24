@@ -58,6 +58,10 @@ const EN_JS = {
   'ticker.wipeIn': 'wipe in $1',
   'ticker.topKiller': 'wipe leader: $1 · $2 kills',
 
+  // overwatch / mapa (JS)
+  'ow.clipGone': 'Clip removed after the verdict (frees server space).',
+  'map.voteFail': 'Your vote was not registered: $1',
+
   // stats
   'stats.noPeriod': 'No data for this period.', 'stats.noPlayers': 'No players found.',
   'stats.eloEmpty': 'Nobody with 5+ fights this wipe yet.',
@@ -201,6 +205,9 @@ const I18N = {
     'ticker.killsWipe': '$1 kills nesta wipe',
     'ticker.wipeIn': 'wipe em $1',
     'ticker.topKiller': 'líder da wipe: $1 · $2 kills',
+
+    'ow.clipGone': 'Clip removido após o veredicto (liberta espaço no servidor).',
+    'map.voteFail': 'O teu voto não ficou registado: $1',
     // home (HTML)
     'home.tagline': 'Live stats · transparent staff · zero pay-to-win.',
     'home.playersOnline': 'jogadores online', 'home.untilWipe': 'até à próxima wipe',
@@ -399,8 +406,8 @@ const I18N = {
     'rules.updated': 'Última atualização: agosto 2026 · O desconhecimento das regras não é desculpa. Em caso de dúvida, pergunta no Discord antes de agir.',
     'rules.s1': '1. Cheating e exploits — tolerância zero',
     'rules.s1l': '<li>Qualquer cheat, script, macro de recoil ou exploit = <b>ban permanente</b>, sem aviso.</li><li>Contas com VAC ban ou game ban com menos de 180 dias não podem jogar aqui.</li><li>Jogar em equipa com um cheater conhecido = ban por associação.</li><li>Todos os bans têm provas gravadas e aparecem na <a href="/staff">lista pública</a>. Podes contestar no Discord.</li>',
-    'rules.s2': '2. Limite de grupo',
-    'rules.s2l': '<li>Máximo <b>4 jogadores</b> por equipa (base, aliança, roam — conta tudo).</li><li>Uma substituição de membro permitida por wipe. Anuncia no Discord para a staff registar.</li><li>Alianças entre grupos para contornar o limite = aviso, depois wipe da base.</li>',
+    'rules.s2': '2. Grupos',
+    'rules.s2l': '<li><b>Sem limite de grupo</b> — full vanilla é mesmo isso: solo, duo, trio ou um clã inteiro, traz quem quiseres.</li><li>As equipas nativas do Rust aparecem automaticamente na <a href="/stats">página de stats</a> (Top equipas) — rivalidades são bem-vindas.</li>',
     'rules.s3': '3. Toxicidade',
     'rules.s3l': '<li>Provocação normal de Rust é aceitável — discurso de ódio, racismo, ameaças reais e doxxing não são.</li><li>Spam de voz/chat: mute. Reincidência: ban temporário.</li><li>Stream sniping de criadores de conteúdo = ban.</li>',
     'rules.s4': '4. Jogo limpo',
