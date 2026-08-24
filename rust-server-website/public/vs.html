@@ -107,10 +107,10 @@ async function load() {
 
   el.innerHTML = `
     <div class="vs-grid">
-      <div class="vs-name">${playerLink(c.a.steamId, c.a.name)}<br>
+      <div class="vs-name">${pfp(c.a.avatar, c.a.name, 52)}<br>${playerLink(c.a.steamId, c.a.name)}<br>
         <span style="font-size:14px;color:var(--gold);font-family:var(--font-body)">${c.a.elo ? `${esc(c.a.elo.tier)} · ${c.a.elo.rating}` : '—'}</span></div>
       <div class="vs-badge-mid">VS</div>
-      <div class="vs-name">${playerLink(c.b.steamId, c.b.name)}<br>
+      <div class="vs-name">${pfp(c.b.avatar, c.b.name, 52)}<br>${playerLink(c.b.steamId, c.b.name)}<br>
         <span style="font-size:14px;color:var(--gold);font-family:var(--font-body)">${c.b.elo ? `${esc(c.b.elo.tier)} · ${c.b.elo.rating}` : '—'}</span></div>
     </div>
 

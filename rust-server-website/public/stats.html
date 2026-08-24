@@ -127,7 +127,7 @@ async function loadBoard() {
     body.innerHTML = lb.rows.map((r, i) => `
       <tr>
         <td><span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
-        <td>${playerLink(r.steam_id, r.name)}</td>
+        <td>${playerCell(r.steam_id, r.name, r.avatar)}</td>
         <td>${esc(r.tier)}</td>
         <td class="num">${r.rating}</td>
         <td class="num">${r.games}</td>
@@ -143,7 +143,7 @@ async function loadBoard() {
   body.innerHTML = lb.rows.map((r, i) => `
     <tr>
       <td><span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
-      <td>${playerLink(r.steam_id, r.name)}</td>
+      <td>${playerCell(r.steam_id, r.name, r.avatar)}</td>
       <td class="num">${r.kills}</td>
       <td class="num">${r.deaths}</td>
       <td class="num">${r.kd.toFixed(2)}</td>

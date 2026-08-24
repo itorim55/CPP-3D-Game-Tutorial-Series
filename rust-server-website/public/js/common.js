@@ -53,6 +53,21 @@ function playerLink(steamId, name) {
   return `<a href="/player?id=${encodeURIComponent(steamId)}">${esc(name || steamId)}</a>`;
 }
 
+// Avatar Steam com fallback para a inicial do nome (estilo stencil).
+function pfp(url, name, size = 24, cls = '') {
+  const s = `width:${size}px;height:${size}px`;
+  if (url) {
+    return `<img class="pfp ${cls}" style="${s}" src="${esc(url)}" alt="" loading="lazy" referrerpolicy="no-referrer">`;
+  }
+  const ch = String(name || '?').trim().charAt(0).toUpperCase() || '?';
+  return `<span class="pfp fallback ${cls}" style="${s};font-size:${Math.round(size * 0.48)}px">${esc(ch)}</span>`;
+}
+
+// Célula "avatar + nome clicável" para tabelas e listas.
+function playerCell(steamId, name, avatar, size = 24) {
+  return `<span class="pcell">${pfp(avatar, name, size)}${playerLink(steamId, name)}</span>`;
+}
+
 // ---------- sessão ----------
 
 let _mePromise = null;
@@ -90,6 +105,7 @@ function renderChrome() {
         <div class="links">
           ${NAV_LINKS.map(([href, key]) =>
             `<a href="${href}" ${href === path || (href === '/' && path === '/index') ? 'class="active"' : ''}>${t(key)}</a>`).join('')}
+          <span class="sep"></span>
           <a href="/auth/steam" id="nav-user" class="user-chip">${t('nav.login')}</a>
           <a class="cta" href="#" id="discord-link" target="_blank" rel="noopener">Discord</a>
           <span class="lang-switch">${Object.entries(LANGS).map(([code, label]) =>
@@ -114,7 +130,10 @@ function renderChrome() {
     if (!chip) return;
     if (u.loggedIn) {
       chip.href = '/conta';
-      chip.innerHTML = `${esc(u.name || t('nav.account'))} · ${gems(u.wallet.gems)}`;
+      chip.classList.add('logged');
+      chip.innerHTML = `${pfp(u.avatar, u.name, 26)}` +
+        `<span class="cname">${esc(u.name || t('nav.account'))}</span>` +
+        `<span class="cgems">${fmtNum(u.wallet.gems)} 💎</span>`;
       chip.title = t('nav.account');
     } else {
       chip.href = '/auth/steam';

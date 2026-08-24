@@ -19,6 +19,7 @@
     "announcements": ""
   },
   "devLogin": false,
+  "steamApiKey": "",
   "apiKey": "SUBSTITUIR-gerada-automaticamente-no-primeiro-arranque",
   "adminKey": "SUBSTITUIR-gerada-automaticamente-no-primeiro-arranque",
   "sessionSecret": "SUBSTITUIR-gerada-automaticamente-no-primeiro-arranque"

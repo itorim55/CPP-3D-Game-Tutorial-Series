@@ -224,7 +224,7 @@ async function refreshStreaks() {
   document.getElementById('top-players').innerHTML = lb.rows.map((r, i) => `
     <tr>
       <td class="r ${i < 3 ? 'top' : ''}">${i + 1}</td>
-      <td>${playerLink(r.steam_id, r.name)}</td>
+      <td>${playerCell(r.steam_id, r.name, r.avatar)}</td>
       <td class="n">${r.kills}</td>
       <td class="kd">${r.kd.toFixed(2)} K/D</td>
     </tr>`).join('') || `<tr><td>${t('home.noData')}</td></tr>`;

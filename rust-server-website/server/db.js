@@ -263,6 +263,8 @@ CREATE INDEX IF NOT EXISTS idx_raid_events_wipe ON raid_events(wipe_id, ts);
 for (const sql of [
   'ALTER TABLE kills ADD COLUMN pos_x REAL',
   'ALTER TABLE kills ADD COLUMN pos_z REAL',
+  'ALTER TABLE players ADD COLUMN avatar TEXT',
+  'ALTER TABLE players ADD COLUMN avatar_ts INTEGER',
 ]) { try { db.exec(sql); } catch { /* coluna já existe */ } }
 
 // ---------- helpers ----------
@@ -289,6 +291,15 @@ function upsertPlayer(steamId, name, ts) {
       last_seen = $ts
   `);
   upsertPlayer.stmt.run({ id: steamId, name: name || null, ts });
+}
+
+// Cache de avatares Steam (preenchida por server/steam.js).
+function avatarInfo(steamId) {
+  return db.prepare('SELECT avatar, avatar_ts FROM players WHERE steam_id = ?').get(steamId) || null;
+}
+function setAvatar(steamId, url) {
+  db.prepare('UPDATE players SET avatar = ?, avatar_ts = ? WHERE steam_id = ?')
+    .run(url || null, now(), steamId);
 }
 
 function addPlaytime(steamId, seconds, wipeId = null) {
@@ -912,7 +923,7 @@ function comparePlayers(idA, idB) {
     const pw = db.prepare('SELECT seconds FROM playtime_wipe WHERE wipe_id = ? AND steam_id = ?').get(wipe.id, steamId);
     const eloRow = eloGet(wipe.id, steamId);
     return {
-      steamId, name: p.name, lastSeen: p.last_seen,
+      steamId, name: p.name, avatar: p.avatar, lastSeen: p.last_seen,
       wipe: {
         kills: k.kills, deaths: d.n,
         kd: Math.round((k.kills / Math.max(d.n, 1)) * 100) / 100,
@@ -999,7 +1010,7 @@ function eloTier(rating) {
 
 function eloLeaderboard(wipeId, limit = 50) {
   return db.prepare(`
-    SELECT p.steam_id, p.name, ROUND(e.rating) AS rating, e.games
+    SELECT p.steam_id, p.name, p.avatar, ROUND(e.rating) AS rating, e.games
     FROM elo e JOIN players p ON p.steam_id = e.steam_id
     WHERE e.wipe_id = ? AND e.games >= 5
     ORDER BY e.rating DESC LIMIT ?
@@ -1086,7 +1097,7 @@ function leaderboard(by = 'kills', scope = null, limit = 50) {
   }
 
   return db.prepare(`
-    SELECT p.steam_id, p.name, ${playtimeCol} AS playtime_s,
+    SELECT p.steam_id, p.name, p.avatar, ${playtimeCol} AS playtime_s,
       COALESCE(ka.kills, 0)  AS kills,
       COALESCE(ka.headshots, 0) AS headshots,
       COALESCE(ka.best_distance, 0) AS best_distance,
@@ -1165,7 +1176,7 @@ function playerProfile(steamId) {
   const eloRow = eloGet(wipe.id, steamId);
 
   return {
-    steamId: p.steam_id, name: p.name,
+    steamId: p.steam_id, name: p.name, avatar: p.avatar,
     firstSeen: p.first_seen, lastSeen: p.last_seen, playtimeS: p.playtime_s,
     wipe: agg(wipe.id), allTime: agg(null),
     weapons, victims, nemesis, gather: gatherRows, recent,
@@ -1273,6 +1284,7 @@ function startWipe({ mapSeed, mapSize, label }) {
 module.exports = {
   db, now, currentWipe, upsertPlayer, addPlaytime, recordKill, recordPveDeath,
   recordGather, recordHeartbeat, setInfo, getInfo, leaderboard, playerProfile,
+  avatarInfo, setAvatar,
   killfeed, searchPlayers, status, staffList, banList, banStats,
   addApplication, recentApplicationFromIp, listApplications, setApplicationStatus, startWipe,
   // gemas e loja

@@ -33,6 +33,7 @@ if (!config.sessionSecret) {
 const SITE_URL = (config.siteUrl || `http://localhost:${config.port || 8080}`).replace(/\/$/, '');
 
 const store = require('./db');
+require('./steam').init(config.steamApiKey);
 for (const [k, v] of Object.entries({
   server_name: config.serverName, server_ip: config.serverIp,
   discord: config.discord, next_wipe: config.nextWipe,

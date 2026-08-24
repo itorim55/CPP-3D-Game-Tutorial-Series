@@ -4,6 +4,7 @@
 
 const store = require('./db');
 const discord = require('./discord');
+const steam = require('./steam');
 
 function json(res, code, obj) {
   const body = JSON.stringify(obj);
@@ -259,7 +260,9 @@ function route(req, res, url, body, config, session) {
         if (by === 'elo') {
           // Elo é sazonal: sempre relativo a uma wipe
           const wid = wipeParam ? (parseInt(wipeParam, 10) || store.currentWipe().id) : store.currentWipe().id;
-          json(res, 200, { by, rows: store.eloLeaderboard(wid, limit) });
+          const eloRows = store.eloLeaderboard(wid, limit);
+          eloRows.slice(0, 12).forEach((r) => steam.refresh(r.steam_id));
+          json(res, 200, { by, rows: eloRows });
           return true;
         }
 
@@ -272,7 +275,9 @@ function route(req, res, url, body, config, session) {
           const wid = parseInt(wipeParam, 10);
           if (wid) scope = { type: 'wipe', wipeId: wid };
         }
-        json(res, 200, { by, rows: store.leaderboard(by, scope, limit) });
+        const rows = store.leaderboard(by, scope, limit);
+        rows.slice(0, 12).forEach((r) => steam.refresh(r.steam_id));
+        json(res, 200, { by, rows });
         return true;
       }
       case '/api/teams':
@@ -314,6 +319,7 @@ function route(req, res, url, body, config, session) {
         if (!id) { json(res, 400, { error: 'Missing id parameter' }); return true; }
         const prof = store.playerProfile(id);
         if (!prof) { json(res, 404, { error: 'Player not found' }); return true; }
+        steam.refresh(id);
         json(res, 200, prof); return true;
       }
       case '/api/search': {
@@ -338,10 +344,12 @@ function route(req, res, url, body, config, session) {
       case '/api/me': {
         if (!session) { json(res, 200, { loggedIn: false }); return true; }
         const prof = store.playerProfile(session.steamId);
+        steam.refresh(session.steamId);
         json(res, 200, {
           loggedIn: true,
           steamId: session.steamId,
           name: prof?.name || null,
+          avatar: prof?.avatar || null,
           playtimeS: prof?.playtimeS || 0,
           wallet: store.getWallet(session.steamId),
           voteWeight: store.voteWeight(session.steamId),

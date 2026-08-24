@@ -124,6 +124,29 @@ header::after { /* fio de perigo sob a nav */
   font-weight: 700; letter-spacing: .5px; border-bottom: 0; font-family: var(--font-body);
 }
 .nav .lang-switch a.active { color: #0b0d11; background: var(--accent); }
+.nav .sep { width: 1px; height: 20px; background: var(--line-2); margin: 0 6px; }
+
+/* chip de conta com avatar */
+.nav .links a.user-chip.logged {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 5px 12px 5px 6px; max-width: 260px;
+}
+.user-chip .cname {
+  color: var(--ink); font-weight: 600; max-width: 120px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.user-chip .cgems { color: var(--ember); border-left: 1px solid var(--line); padding-left: 9px; white-space: nowrap; }
+
+/* ------------------------------------------------------------ avatares */
+
+.pfp {
+  display: inline-flex; align-items: center; justify-content: center;
+  object-fit: cover; background: var(--surface-2);
+  border: 1px solid var(--line-2); border-radius: var(--radius); flex: none;
+}
+.pfp.fallback { color: var(--accent); background: var(--accent-soft); font-family: var(--font-stencil); line-height: 1; }
+.pfp-lg { border-width: 2px; border-color: var(--accent); box-shadow: 0 0 24px rgba(255, 91, 38, .25); }
+.pcell { display: inline-flex; align-items: center; gap: 9px; vertical-align: middle; }
 
 /* ------------------------------------------------------------ ticker */
 
