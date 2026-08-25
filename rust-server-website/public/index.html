@@ -59,14 +59,14 @@
       <div class="lbl" data-i18n="home.killsWipe">kills this wipe</div>
     </div>
     <div class="stat">
-      <span class="ico">📈</span>
-      <div class="num" id="server-fps">—</div>
-      <div class="lbl" data-i18n="home.serverFps">server FPS</div>
+      <span class="ico">⚡</span>
+      <div class="num" id="kills-hour">—</div>
+      <div class="lbl" data-i18n="home.killsHour">kills in the last hour</div>
     </div>
     <div class="stat">
-      <span class="ico">👥</span>
-      <div class="num" id="players-known">—</div>
-      <div class="lbl" data-i18n="home.playersTracked">survivors tracked</div>
+      <span class="ico">💥</span>
+      <div class="num" id="raids-wipe">—</div>
+      <div class="lbl" data-i18n="home.raidsWipe">raids this wipe</div>
     </div>
   </section>
 
@@ -155,13 +155,13 @@ const killKey = (k) => `${k.ts}|${k.attacker_id}|${k.victim_id}|${k.weapon}|${k.
 
 function renderKill(k, fresh) {
   return `<div class="kill${fresh ? ' fresh' : ''}">
-    ${pfp(k.attacker_avatar, k.attacker_name, 20)}
+    <span class="pa">${pfp(k.attacker_avatar, k.attacker_name, 22)}</span>
     <span class="k">${k.attacker_name ? playerLink(k.attacker_id, k.attacker_name) : '?'}</span>
-    <span class="wpn">${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}</span>
-    ${k.headshot ? '<span class="hs">HS</span>' : ''}
-    ${pfp(k.victim_avatar, k.victim_name, 20)}
+    <span class="x">▸</span>
+    <span class="pv">${pfp(k.victim_avatar, k.victim_name, 22)}</span>
     <span class="v">${k.victim_name ? playerLink(k.victim_id, k.victim_name) : '?'}</span>
     <span class="ago">${timeAgo(k.ts)}</span>
+    <span class="wpn">${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}${k.headshot ? ' <b class="hs">HS</b>' : ''}</span>
   </div>`;
 }
 
@@ -214,8 +214,6 @@ async function refreshStatus(first) {
       if (s.info.name) document.getElementById('server-tag').textContent = s.info.name;
       countUp(killsEl, s.killsThisWipe);
       killsEl.dataset.v = s.killsThisWipe;
-      countUp(document.getElementById('players-known'), s.playersKnown);
-      if (hb && hb.fps) countUp(document.getElementById('server-fps'), Math.round(hb.fps));
       if (s.nextWipe) startCountdown(document.getElementById('wipe-countdown'), s.nextWipe);
       renderAreaChart(document.getElementById('pop-chart'), s.history, { maxY: hb ? hb.max_players : null });
 
@@ -234,7 +232,6 @@ async function refreshStatus(first) {
         killsEl.dataset.v = s.killsThisWipe;
         bump(killsEl);
       }
-      if (hb && hb.fps) document.getElementById('server-fps').textContent = Math.round(hb.fps);
     }
   } catch {}
 }
@@ -252,10 +249,26 @@ async function refreshStreaks() {
   } catch {}
 }
 
-// ---------- alerta de raid: aparece quando há um raid nos últimos 20 min ----------
+// ---------- pulso: kills na última hora ----------
+async function refreshPulse() {
+  try {
+    const w = await api('/api/leaderboard?window=1h&limit=100');
+    const n = w.rows.reduce((a, r) => a + r.kills, 0);
+    const el = document.getElementById('kills-hour');
+    const prev = parseInt(el.dataset.v || '', 10);
+    if (!Number.isFinite(prev)) countUp(el, n);
+    else if (prev !== n) { countUp(el, n, { from: prev, duration: 600 }); bump(el); }
+    el.dataset.v = n;
+  } catch {}
+}
+
+// ---------- alerta de raid + contagem de raids da wipe ----------
 async function checkRaid() {
   try {
     const rows = (await api('/api/raids')).rows || [];
+    const rEl = document.getElementById('raids-wipe');
+    if (!rEl.dataset.v) { countUp(rEl, rows.length); rEl.dataset.v = '1'; }
+    else rEl.textContent = fmtNum(rows.length);
     const live = rows.find((x) => Date.now() / 1000 - (x.ts + x.durationS) < 1200);
     const el = document.getElementById('raid-alert');
     if (!live) { el.style.display = 'none'; return; }
@@ -301,9 +314,9 @@ function startSpotlight(items) {
   await refreshKillfeed(true);
   refreshStreaks();
 
-  const lb = await api('/api/leaderboard?by=kills&limit=8');
+  const lb = await api('/api/leaderboard?by=kills&limit=10');
   document.getElementById('top-players').innerHTML = lb.rows.map((r, i) => `
-    <tr class="${i < 5 ? `rk${i + 1}` : ''}">
+    <tr class="${i < 9 ? `rk${i + 1}` : ''}">
       <td class="r ${i < 3 ? 'top' : ''}">${i + 1}</td>
       <td>${playerCell(r.steam_id, r.name, r.avatar)}${i === 0 ? ' <span class="crown">👑</span>' : ''}</td>
       <td class="m mk">${r.kills}</td>
@@ -329,7 +342,9 @@ function startSpotlight(items) {
   setInterval(() => refreshStatus(false), 30000);
   setInterval(refreshStreaks, 60000);
   checkRaid();
+  refreshPulse();
   setInterval(checkRaid, 60000);
+  setInterval(refreshPulse, 60000);
 })();
 </script>
 </body>

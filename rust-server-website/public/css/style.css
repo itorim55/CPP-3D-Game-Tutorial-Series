@@ -229,7 +229,11 @@ body.tv main.tv-grid {
 .tv-big .l { color: var(--ink-muted); font-family: var(--font-mono); font-size: 10.5px; margin-top: 7px; text-transform: uppercase; letter-spacing: 1.5px; }
 .tv-main { min-height: 0; }
 .tv-kills { max-height: none; height: 100%; }
-.tv-kills .kill { font-size: 15.5px; padding: 10px 14px; }
+.tv-kills .kill {
+  font-size: 15.5px; padding: 10px 14px;
+  grid-template-columns: 28px minmax(0, 1fr) 18px 28px minmax(0, 1fr) 64px;
+}
+.tv-kills .kill .wpn { font-size: 12.5px; }
 .tv-rank { min-height: 0; overflow: hidden; }
 @media (max-width: 1100px) { body.tv main.tv-grid { grid-template-columns: 1fr; height: auto; } body.tv { overflow: auto; } }
 
@@ -446,20 +450,36 @@ h2.section + * { margin-top: 14px; }
 #top-table.ph-d .mk, #top-table.ph-d .mkd, #top-table.ph-d .h-k, #top-table.ph-d .h-kd { display: none; }
 #top-table.ph-k th.h-k, #top-table.ph-d th.h-d { color: var(--accent); }
 
-/* top 5 com tons de honra — o 1º é ouro, depois prata, bronze, brasa */
-.mini-lb tr.rk1 { background: linear-gradient(90deg, rgba(255, 176, 32, .13), transparent 65%); }
-.mini-lb tr.rk2 { background: linear-gradient(90deg, rgba(226, 238, 252, .14), transparent 60%); }
-.mini-lb tr.rk3 { background: linear-gradient(90deg, rgba(205, 127, 50, .10), transparent 60%); }
-.mini-lb tr.rk4 { background: linear-gradient(90deg, rgba(255, 91, 38, .05), transparent 55%); }
-.mini-lb tr.rk5 { background: linear-gradient(90deg, rgba(255, 91, 38, .03), transparent 50%); }
-.mini-lb tr.rk1 td:first-child { box-shadow: inset 3px 0 0 var(--ember); }
-.mini-lb tr.rk2 td:first-child { box-shadow: inset 3px 0 0 #eaf2ff; }
-.mini-lb tr.rk3 td:first-child { box-shadow: inset 3px 0 0 #cd7f32; }
-.mini-lb tr.rk1 .r { color: var(--ember); font-size: 18px; }
-.mini-lb tr.rk2 .r { color: #eaf2ff; text-shadow: 0 0 12px rgba(200, 222, 255, .65); }
-.mini-lb tr.rk3 .r { color: #cd7f32; }
+/* pódio de honra: ouro/prata/bronze intensos, depois decrescendo até ao 10º */
+.mini-lb tr.rk1 { background: linear-gradient(90deg, rgba(255, 176, 32, .24), rgba(255, 176, 32, .05) 55%, transparent 80%); }
+.mini-lb tr.rk2 { background: linear-gradient(90deg, rgba(226, 238, 252, .20), rgba(226, 238, 252, .04) 55%, transparent 80%); }
+.mini-lb tr.rk3 { background: linear-gradient(90deg, rgba(222, 143, 65, .20), rgba(222, 143, 65, .04) 55%, transparent 80%); }
+.mini-lb tr.rk1 td:first-child { box-shadow: inset 4px 0 0 var(--ember), 8px 0 18px -8px rgba(255, 176, 32, .8); }
+.mini-lb tr.rk2 td:first-child { box-shadow: inset 4px 0 0 #f2f7ff, 8px 0 18px -8px rgba(226, 238, 252, .8); }
+.mini-lb tr.rk3 td:first-child { box-shadow: inset 4px 0 0 #e59a52, 8px 0 18px -8px rgba(229, 154, 82, .8); }
+.mini-lb tr.rk1 .r { color: var(--ember); font-size: 20px; text-shadow: 0 0 14px rgba(255, 176, 32, .9); }
+.mini-lb tr.rk2 .r { color: #f2f7ff; font-size: 18px; text-shadow: 0 0 14px rgba(210, 230, 255, .9); }
+.mini-lb tr.rk3 .r { color: #e59a52; font-size: 17px; text-shadow: 0 0 12px rgba(229, 154, 82, .8); }
+.mini-lb tr.rk1 td a { color: var(--ember); }
+.mini-lb tr.rk2 td a { color: #f2f7ff; }
+.mini-lb tr.rk3 td a { color: #e59a52; }
 .mini-lb tr.rk1 td, .mini-lb tr.rk1 td a { font-weight: 800; }
-.crown { font-size: 13px; }
+.mini-lb tr.rk2 td, .mini-lb tr.rk2 td a, .mini-lb tr.rk3 td, .mini-lb tr.rk3 td a { font-weight: 700; }
+.crown { font-size: 14px; filter: drop-shadow(0 0 6px rgba(255, 176, 32, .8)); }
+
+/* 4º–9º: a honra esvai-se gradualmente; o 10º já é uma linha normal */
+.mini-lb tr.rk4 { background: linear-gradient(90deg, rgba(255, 91, 38, .105), transparent 60%); }
+.mini-lb tr.rk5 { background: linear-gradient(90deg, rgba(255, 91, 38, .085), transparent 58%); }
+.mini-lb tr.rk6 { background: linear-gradient(90deg, rgba(255, 91, 38, .065), transparent 56%); }
+.mini-lb tr.rk7 { background: linear-gradient(90deg, rgba(255, 91, 38, .048), transparent 54%); }
+.mini-lb tr.rk8 { background: linear-gradient(90deg, rgba(255, 91, 38, .032), transparent 52%); }
+.mini-lb tr.rk9 { background: linear-gradient(90deg, rgba(255, 91, 38, .016), transparent 50%); }
+.mini-lb tr.rk4 .r { color: rgba(255, 122, 69, .8); }
+.mini-lb tr.rk5 .r { color: rgba(255, 122, 69, .65); }
+.mini-lb tr.rk6 .r { color: rgba(255, 122, 69, .52); }
+.mini-lb tr.rk7 .r { color: rgba(255, 122, 69, .42); }
+.mini-lb tr.rk8 .r { color: rgba(255, 122, 69, .34); }
+.mini-lb tr.rk9 .r { color: rgba(255, 122, 69, .27); }
 
 /* medidor de intensidade de combate (LEDs inclinados) */
 .heat { display: inline-flex; gap: 3px; align-items: center; }
@@ -555,8 +575,12 @@ h2.section + * { margin-top: 14px; }
 .kill-list { display: flex; flex-direction: column; gap: 6px; max-height: 560px; overflow-y: auto; padding-right: 2px; }
 .kill-list::-webkit-scrollbar { width: 8px; }
 .kill-list::-webkit-scrollbar-thumb { background: var(--line); }
+/* linha de kill em grelha fixa: nunca parte linha, todas com a mesma altura.
+   Linha 1: [avatar] atacante ▸ [avatar] vítima · há X | Linha 2: arma · distância · HS */
 .kill {
-  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 16px 24px minmax(0, 1fr) 56px;
+  column-gap: 8px; row-gap: 3px; align-items: center;
   background: var(--inset); border: 1px solid var(--line); border-left: 3px solid var(--accent);
   padding: 8px 12px; font-size: 13.5px;
 }
@@ -566,11 +590,17 @@ h2.section + * { margin-top: 14px; }
   55% { background: var(--accent-soft); border-left-color: var(--ember); }
   to { opacity: 1; transform: translateX(0); }
 }
+.kill .pa, .kill .pv { display: flex; }
+.kill .k, .kill .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kill .k, .kill .k a { font-weight: 700; color: var(--ink); }
 .kill .v, .kill .v a { color: var(--ink-2); }
-.kill .wpn { color: var(--accent); font-size: 12.5px; font-family: var(--font-mono); }
-.kill .hs { color: var(--ember); font-size: 10.5px; border: 1px solid var(--ember); padding: 0 5px; font-weight: 700; font-family: var(--font-mono); }
-.kill .ago { color: var(--ink-muted); font-size: 11px; margin-left: auto; font-family: var(--font-mono); }
+.kill .x { color: var(--accent); text-align: center; font-size: 12px; }
+.kill .ago { color: var(--ink-muted); font-size: 10.5px; font-family: var(--font-mono); justify-self: end; white-space: nowrap; }
+.kill .wpn {
+  grid-column: 2 / -1; color: var(--accent); font-size: 11.5px; font-family: var(--font-mono);
+  display: flex; align-items: center; gap: 7px; min-height: 16px;
+}
+.kill .hs { color: var(--ember); font-size: 10px; border: 1px solid var(--ember); padding: 0 4px; font-weight: 700; font-family: var(--font-mono); }
 
 /* mini leaderboard */
 .mini-lb { width: 100%; border-collapse: collapse; font-size: 14.5px; }

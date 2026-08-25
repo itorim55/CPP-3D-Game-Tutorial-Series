@@ -87,7 +87,7 @@
   </div>
 
   <h2 class="section" data-i18n="stats.killfeedTitle">Full killfeed</h2>
-  <div class="feed" id="killfeed" data-i18n="loading">loading…</div>
+  <div class="kill-list" id="killfeed" style="max-height:none" data-i18n="loading">loading…</div>
 </main>
 
 <footer></footer>
@@ -302,14 +302,14 @@ async function loadRaids() {
   loadMapEvents().catch(console.error);
   const kf = await api('/api/killfeed?limit=50');
   document.getElementById('killfeed').innerHTML = kf.rows.map((k) => `
-    <div class="row">
-      ${pfp(k.attacker_avatar, k.attacker_name, 20)}
-      <span class="who k">${k.attacker_name ? playerLink(k.attacker_id, k.attacker_name) : '?'}</span>
-      <span class="weapon">${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}</span>
-      ${k.headshot ? '<span class="hs">HS</span>' : ''}
-      ${pfp(k.victim_avatar, k.victim_name, 20)}
-      <span class="who v">${k.victim_name ? playerLink(k.victim_id, k.victim_name) : '?'}</span>
-      <span class="meta">${timeAgo(k.ts)}</span>
+    <div class="kill">
+      <span class="pa">${pfp(k.attacker_avatar, k.attacker_name, 22)}</span>
+      <span class="k">${k.attacker_name ? playerLink(k.attacker_id, k.attacker_name) : '?'}</span>
+      <span class="x">▸</span>
+      <span class="pv">${pfp(k.victim_avatar, k.victim_name, 22)}</span>
+      <span class="v">${k.victim_name ? playerLink(k.victim_id, k.victim_name) : '?'}</span>
+      <span class="ago">${timeAgo(k.ts)}</span>
+      <span class="wpn">${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}${k.headshot ? ' <b class="hs">HS</b>' : ''}</span>
     </div>`).join('') || `<p style="color:var(--ink-muted)">${t('stats.noKills')}</p>`;
 })();
 </script>

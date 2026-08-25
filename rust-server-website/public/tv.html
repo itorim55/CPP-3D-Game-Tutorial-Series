@@ -93,13 +93,13 @@ async function feed(first) {
     const kf = await api('/api/killfeed?limit=18');
     document.getElementById('killfeed').innerHTML = kf.rows.map((k) => `
       <div class="kill${!first && !seen.has(kkey(k)) ? ' fresh' : ''}">
-        ${pfp(k.attacker_avatar, k.attacker_name, 26)}
+        <span class="pa">${pfp(k.attacker_avatar, k.attacker_name, 26)}</span>
         <span class="k">${esc(k.attacker_name || '?')}</span>
-        <span class="wpn">${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}</span>
-        ${k.headshot ? '<span class="hs">HS</span>' : ''}
-        ${pfp(k.victim_avatar, k.victim_name, 26)}
+        <span class="x">▸</span>
+        <span class="pv">${pfp(k.victim_avatar, k.victim_name, 26)}</span>
         <span class="v">${esc(k.victim_name || '?')}</span>
         <span class="ago">${timeAgo(k.ts)}</span>
+        <span class="wpn">${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}${k.headshot ? ' <b class="hs">HS</b>' : ''}</span>
       </div>`).join('');
     // kills de destaque nunca vistas entram na fila do banner
     if (!first && !reduceMotion) {
