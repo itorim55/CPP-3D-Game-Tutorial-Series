@@ -266,20 +266,19 @@ async function checkRaid() {
   } catch {}
 }
 
-// ---------- wipe top: as 3 colunas ficam fixas e alinhadas; o destaque
-// (cor + brilho) roda Kills → Deaths → K/D a cada 3 s ----------
+// ---------- wipe top em fases: nomes + SÓ Kills → SÓ Deaths → tudo junto ----------
 function startTopMetrics() {
   const tbl = document.getElementById('top-table');
   if (!tbl) return;
-  const cls = ['hot-k', 'hot-d', 'hot-kd'];
+  const phases = ['ph-k', 'ph-d', 'ph-all'];
+  if (reduceMotion) { tbl.classList.add('ph-all'); return; } // estático e completo
   let i = 0;
-  tbl.classList.add(cls[0]);
-  if (reduceMotion) return; // sem ciclo: as três colunas ficam legíveis na mesma
+  tbl.classList.add(phases[0]);
   setInterval(() => {
-    tbl.classList.remove(...cls);
-    i = (i + 1) % 3;
-    tbl.classList.add(cls[i]);
-  }, 3000);
+    tbl.classList.remove(...phases);
+    i = (i + 1) % phases.length;
+    tbl.classList.add(phases[i]);
+  }, 3500);
 }
 
 // ---------- spotlight: destaques a rodar no hero ----------
@@ -304,9 +303,9 @@ function startSpotlight(items) {
 
   const lb = await api('/api/leaderboard?by=kills&limit=8');
   document.getElementById('top-players').innerHTML = lb.rows.map((r, i) => `
-    <tr>
+    <tr class="${i < 5 ? `rk${i + 1}` : ''}">
       <td class="r ${i < 3 ? 'top' : ''}">${i + 1}</td>
-      <td>${playerCell(r.steam_id, r.name, r.avatar)}</td>
+      <td>${playerCell(r.steam_id, r.name, r.avatar)}${i === 0 ? ' <span class="crown">👑</span>' : ''}</td>
       <td class="m mk">${r.kills}</td>
       <td class="m md">${r.deaths}</td>
       <td class="m mkd">${r.kd.toFixed(2)}</td>

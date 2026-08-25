@@ -435,15 +435,31 @@ h2.section + * { margin-top: 14px; }
 .mini-lb td.m {
   text-align: right; width: 56px;
   font-family: var(--font-display); font-weight: 700; font-size: 16px;
-  font-variant-numeric: tabular-nums; color: var(--ink-muted);
-  transition: color .35s ease, text-shadow .35s ease;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+  animation: flipin .45s cubic-bezier(.2, .7, .2, 1);
 }
-#top-table.hot-k td.mk, #top-table.hot-d td.md, #top-table.hot-kd td.mkd {
-  color: var(--ink); text-shadow: 0 0 14px rgba(255, 91, 38, .45);
-}
-#top-table.hot-k th.h-k, #top-table.hot-d th.h-d, #top-table.hot-kd th.h-kd {
-  color: var(--accent);
-}
+.mini-lb th.mh { animation: flipin .45s cubic-bezier(.2, .7, .2, 1); }
+@keyframes flipin { from { opacity: 0; transform: translateY(9px); } }
+
+/* fases: mostrar só a coluna da vez (a que entra anima ao aparecer) */
+#top-table.ph-k .md, #top-table.ph-k .mkd, #top-table.ph-k .h-d, #top-table.ph-k .h-kd { display: none; }
+#top-table.ph-d .mk, #top-table.ph-d .mkd, #top-table.ph-d .h-k, #top-table.ph-d .h-kd { display: none; }
+#top-table.ph-k th.h-k, #top-table.ph-d th.h-d { color: var(--accent); }
+
+/* top 5 com tons de honra — o 1º é ouro, depois prata, bronze, brasa */
+.mini-lb tr.rk1 { background: linear-gradient(90deg, rgba(255, 176, 32, .13), transparent 65%); }
+.mini-lb tr.rk2 { background: linear-gradient(90deg, rgba(201, 212, 227, .09), transparent 60%); }
+.mini-lb tr.rk3 { background: linear-gradient(90deg, rgba(205, 127, 50, .10), transparent 60%); }
+.mini-lb tr.rk4 { background: linear-gradient(90deg, rgba(255, 91, 38, .05), transparent 55%); }
+.mini-lb tr.rk5 { background: linear-gradient(90deg, rgba(255, 91, 38, .03), transparent 50%); }
+.mini-lb tr.rk1 td:first-child { box-shadow: inset 3px 0 0 var(--ember); }
+.mini-lb tr.rk2 td:first-child { box-shadow: inset 3px 0 0 #c9d4e3; }
+.mini-lb tr.rk3 td:first-child { box-shadow: inset 3px 0 0 #cd7f32; }
+.mini-lb tr.rk1 .r { color: var(--ember); font-size: 18px; }
+.mini-lb tr.rk2 .r { color: #c9d4e3; }
+.mini-lb tr.rk3 .r { color: #cd7f32; }
+.mini-lb tr.rk1 td, .mini-lb tr.rk1 td a { font-weight: 800; }
+.crown { font-size: 13px; }
 
 /* medidor de intensidade de combate (LEDs inclinados) */
 .heat { display: inline-flex; gap: 3px; align-items: center; }
