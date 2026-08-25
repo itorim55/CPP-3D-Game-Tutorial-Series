@@ -19,6 +19,22 @@
 .cmp-row .val.win { color: var(--good); font-weight: 800; }
 .h2h-banner { text-align: center; padding: 22px; }
 .h2h-banner .score { font-family: var(--font-display); font-size: 54px; letter-spacing: 3px; }
+
+/* fight card: os dois lados embatem, o VS carimba-se no meio */
+.vs-grid .vs-name:first-child { animation: clashL .5s cubic-bezier(.2, 1.2, .3, 1) backwards; }
+.vs-grid .vs-name:last-child { animation: clashR .5s cubic-bezier(.2, 1.2, .3, 1) backwards; }
+.vs-badge-mid { animation: stamp .45s cubic-bezier(.2, 1.4, .3, 1) .35s backwards; position: relative; padding: 10px 0; }
+@keyframes clashL { from { opacity: 0; transform: translateX(-46px); } }
+@keyframes clashR { from { opacity: 0; transform: translateX(46px); } }
+.vs-name .pfp.leads { border: 2px solid var(--ember); box-shadow: 0 0 22px rgba(255, 176, 32, .5); }
+
+/* tale of the tape: barras espelhadas por métrica */
+.cmp-bars { grid-column: 1 / -1; display: flex; justify-content: center; gap: 2px; height: 4px; margin-top: 2px; }
+.cmp-bars i { display: block; background: var(--line-2); max-width: 50%; animation: cmpgrow .7s cubic-bezier(.2, .7, .2, 1) backwards; }
+.cmp-bars i:first-child { transform-origin: right; }
+.cmp-bars i:last-child { transform-origin: left; }
+.cmp-bars i.w { background: var(--accent); box-shadow: 0 0 8px rgba(255, 91, 38, .5); }
+@keyframes cmpgrow { from { transform: scaleX(0); } }
 </style>
 </head>
 <body>
@@ -91,19 +107,28 @@ async function load() {
   try { c = await api(`/api/compare?a=${encodeURIComponent(A)}&b=${encodeURIComponent(B)}`); }
   catch (e) { el.innerHTML = `<div class="notice err">⚠️ ${esc(e.message)}</div>`; return; }
 
+  let rowIdx = 0;
   const row = (label, va, vb, fmt = (x) => x, higherWins = true) => {
     const winA = higherWins ? va > vb : va < vb;
     const winB = higherWins ? vb > va : vb < va;
+    const tot = (Number(va) + Number(vb)) || 1;
+    const pa = Math.round(Number(va) / tot * 100);
+    const delay = (rowIdx++) * 70;
     return `<div class="cmp-row">
       <div class="val ${winA ? 'win' : ''}">${fmt(va)}</div>
       <div class="metric">${label}</div>
       <div class="val ${winB ? 'win' : ''}">${fmt(vb)}</div>
+      <div class="cmp-bars">
+        <i class="${winA ? 'w' : ''}" style="width:${pa}%;animation-delay:${delay}ms"></i>
+        <i class="${winB ? 'w' : ''}" style="width:${100 - pa}%;animation-delay:${delay}ms"></i>
+      </div>
     </div>`;
   };
 
   const total = c.h2h.aKilledB + c.h2h.bKilledA;
   const leader = c.h2h.aKilledB > c.h2h.bKilledA ? c.a.name
     : c.h2h.bKilledA > c.h2h.aKilledB ? c.b.name : null;
+  const leadSide = c.h2h.aKilledB > c.h2h.bKilledA ? 0 : c.h2h.bKilledA > c.h2h.aKilledB ? 1 : -1;
 
   el.innerHTML = `
     <div class="vs-grid">
@@ -156,6 +181,12 @@ async function load() {
           </div>`).join('')}
       </div>
     </div>` : ''}`;
+
+  // moldura âmbar no avatar de quem domina o head-to-head
+  if (leadSide >= 0) {
+    const pfps = el.querySelectorAll('.vs-name .pfp');
+    if (pfps[leadSide]) pfps[leadSide].classList.add('leads');
+  }
 }
 
 if (A && B) load();

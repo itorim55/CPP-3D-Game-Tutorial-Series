@@ -179,8 +179,67 @@ function applyBrand(s) {
 
 document.addEventListener('DOMContentLoaded', renderChrome);
 
+// ---------- esqueletos de carregamento (substituem o "loading…" cinzento) ----------
+function skelHTML(rows = 3) {
+  return `<div class="skel" role="status" aria-label="${esc(t('loading'))}">${'<i></i>'.repeat(rows)}</div>`;
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-i18n="loading"]').forEach((el) => { el.innerHTML = skelHTML(3); });
+});
+
+// ---------- "descodificação" dos títulos de secção ----------
+function scramble(el) {
+  if (reduceMotion) return;
+  const node = [...el.childNodes].find((n) => n.nodeType === 3 && n.textContent.trim());
+  const tgt = node || (el.children.length ? null : el);
+  if (!tgt) return;
+  const fin = tgt.textContent;
+  const chars = 'ABCDEFGHIKLMNOPRSTUVXZ0123456789#/';
+  let f = 0;
+  const total = 14;
+  const id = setInterval(() => {
+    f++;
+    tgt.textContent = fin.split('').map((c, i) =>
+      c === ' ' || i < fin.length * f / total ? c : chars[Math.random() * chars.length | 0]).join('');
+    if (f >= total) { tgt.textContent = fin; clearInterval(id); }
+  }, 30);
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('h2.section').forEach(scramble);
+});
+
 // ---------- ticker: fio de atividade ao vivo por baixo da nav ----------
 // Injetado em todas as páginas; dá vida ao site mesmo fora da home.
+// Conteúdo do ticker; marca kills nunca vistas com .tk-new (brilham a âmbar).
+const tickerSeen = new Set();
+function buildTickerItems(s, kf, lb) {
+  const items = [];
+  const item = (tk, html, cls = '') => items.push(
+    `<span class="ticker-item${cls}"><span class="tk">${tk}</span> ${html}</span>`);
+
+  const hb = s?.heartbeat;
+  if (hb) item('◉', `<b>${hb.players}/${hb.max_players}</b> ${t('ticker.online')}`);
+  if (s?.killsThisWipe) item('☠', t('ticker.killsWipe', `<b>${fmtNum(s.killsThisWipe)}</b>`));
+  if (s?.nextWipe) {
+    const ms = new Date(s.nextWipe).getTime() - Date.now();
+    if (ms > 0) {
+      const d = Math.floor(ms / 86400000), h = Math.floor(ms % 86400000 / 3600000);
+      item('⟳', t('ticker.wipeIn', `<b>${d}d ${String(h).padStart(2, '0')}h</b>`));
+    }
+  }
+  const top = lb?.rows?.[0];
+  if (top) item('★', t('ticker.topKiller', `<b>${esc(top.name)}</b>`, top.kills));
+  for (const k of kf?.rows || []) {
+    const key = `${k.ts}|${k.attacker_id}|${k.victim_id}`;
+    const fresh = tickerSeen.size > 0 && !tickerSeen.has(key);
+    tickerSeen.add(key);
+    item('⚔', `<b>${esc(k.attacker_name || '?')}</b> ▸ ${esc(k.victim_name || '?')}` +
+      ` · ${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}` +
+      `${k.headshot ? ' · HS' : ''}`, fresh ? ' tk-new' : '');
+  }
+  return items;
+}
+
 async function renderTicker() {
   const header = document.querySelector('header');
   if (!header || document.querySelector('.ticker')) return;
@@ -190,37 +249,66 @@ async function renderTicker() {
       api('/api/killfeed?limit=8').catch(() => null),
       api('/api/leaderboard?by=kills&limit=1').catch(() => null),
     ]);
-    const items = [];
-    const item = (tk, html) => items.push(
-      `<span class="ticker-item"><span class="tk">${tk}</span> ${html}</span>`);
-
-    const hb = s?.heartbeat;
-    if (hb) item('◉', `<b>${hb.players}/${hb.max_players}</b> ${t('ticker.online')}`);
-    if (s?.killsThisWipe) item('☠', t('ticker.killsWipe', `<b>${fmtNum(s.killsThisWipe)}</b>`));
-    if (s?.nextWipe) {
-      const ms = new Date(s.nextWipe).getTime() - Date.now();
-      if (ms > 0) {
-        const d = Math.floor(ms / 86400000), h = Math.floor(ms % 86400000 / 3600000);
-        item('⟳', t('ticker.wipeIn', `<b>${d}d ${String(h).padStart(2, '0')}h</b>`));
-      }
-    }
-    const top = lb?.rows?.[0];
-    if (top) item('★', t('ticker.topKiller', `<b>${esc(top.name)}</b>`, top.kills));
-    for (const k of kf?.rows || []) {
-      item('⚔', `<b>${esc(k.attacker_name || '?')}</b> ▸ ${esc(k.victim_name || '?')}` +
-        ` · ${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}` +
-        `${k.headshot ? ' · HS' : ''}`);
-    }
+    const items = buildTickerItems(s, kf, lb);
     if (!items.length) return;
 
     const bar = document.createElement('div');
     bar.className = 'ticker';
     bar.setAttribute('aria-hidden', 'true');
-    bar.innerHTML = `<div class="ticker-track">${items.join('')}</div>`;
+    // conteúdo duplicado = loop contínuo sem intervalo morto
+    const html = items.join('');
+    bar.innerHTML = `<div class="ticker-track">${html}${html}</div>`;
     header.insertAdjacentElement('afterend', bar);
+    const track = bar.querySelector('.ticker-track');
+    track.style.animationDuration = `${Math.max(30, track.scrollWidth / 260)}s`;
+
+    // refresh silencioso: troca o conteúdo mantendo a fase da animação
+    setInterval(async () => {
+      if (document.hidden) return;
+      try {
+        const [s2, kf2, lb2] = await Promise.all([
+          api('/api/status').catch(() => null),
+          api('/api/killfeed?limit=8').catch(() => null),
+          api('/api/leaderboard?by=kills&limit=1').catch(() => null),
+        ]);
+        const fresh = buildTickerItems(s2, kf2, lb2);
+        if (!fresh.length) return;
+        const h = fresh.join('');
+        track.innerHTML = h + h;
+        track.style.animationDuration = `${Math.max(30, track.scrollWidth / 260)}s`;
+      } catch {}
+    }, 60000);
   } catch {}
 }
 document.addEventListener('DOMContentLoaded', renderTicker);
+
+// ---------- delta flutuante (+2 / -1 a subir de um número que mudou) ----------
+function floatDelta(anchor, diff, cls = '') {
+  if (!diff || reduceMotion || !anchor) return;
+  const f = document.createElement('span');
+  f.className = `delta ${diff > 0 ? 'up' : 'down'}${cls ? ' ' + cls : ''}`;
+  f.textContent = (diff > 0 ? '+' : '') + diff;
+  if (getComputedStyle(anchor).position === 'static') anchor.style.position = 'relative';
+  anchor.appendChild(f);
+  f.addEventListener('animationend', () => f.remove());
+}
+
+// LED da nav atualiza-se sozinho em todas as páginas (com delta a flutuar)
+setInterval(async () => {
+  if (document.hidden) return;
+  const led = document.getElementById('nav-live');
+  if (!led) return;
+  const s = await api('/api/status').catch(() => null);
+  if (!s?.online || !s.heartbeat) { led.style.display = 'none'; return; }
+  led.style.display = '';
+  const b = led.querySelector('b');
+  const prev = parseInt(b.textContent, 10);
+  b.textContent = s.heartbeat.players;
+  if (Number.isFinite(prev) && prev !== s.heartbeat.players) {
+    bump(b);
+    floatDelta(led, s.heartbeat.players - prev);
+  }
+}, 45000);
 
 // ---------- brasas: partículas a subir no hero (respeita reduced-motion) ----------
 function startEmbers(canvas) {
@@ -265,6 +353,9 @@ function startCountdown(el, isoDate) {
   if (Number.isNaN(target)) { el.textContent = '—'; return; }
   const tick = () => {
     let ms = target - Date.now();
+    // o relógio muda de carácter à medida que a wipe se aproxima
+    el.classList.toggle('cd-soon', ms < 86400000 && ms >= 3600000);
+    el.classList.toggle('cd-crit', ms > 0 && ms < 3600000);
     if (ms <= 0) { el.textContent = t('countdown.wipe'); return; }
     const d = Math.floor(ms / 86400000); ms -= d * 86400000;
     const h = Math.floor(ms / 3600000); ms -= h * 3600000;

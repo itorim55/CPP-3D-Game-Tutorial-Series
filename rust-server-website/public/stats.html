@@ -44,6 +44,9 @@
     <div id="search-results" class="feed" style="margin-top:8px"></div>
   </div>
 
+  <div id="podium" class="podium"></div>
+  <div id="me-chip"></div>
+
   <div class="table-wrap">
     <table>
       <thead id="lb-head">
@@ -117,40 +120,86 @@ async function loadWipes() {
   } catch {}
 }
 
+// coluna da BD correspondente a cada métrica das tabs
+const KEYMAP = { kills: 'kills', deaths: 'deaths', kd: 'kd', headshots: 'headshots',
+                 distance: 'best_distance', playtime: 'playtime_s', elo: 'rating' };
+
+// pódio dos 3 primeiros da métrica ativa (ouro/prata/bronze)
+function renderPodium(rows, metricKey, labelText) {
+  const el = document.getElementById('podium');
+  el.innerHTML = rows.slice(0, 3).map((r, i) => `
+    <div class="p-card p${i + 1}">
+      ${pfp(r.avatar, r.name, 54, i === 0 ? 'pfp-lg' : '')}
+      <div class="p-name">${playerLink(r.steam_id, r.name)}</div>
+      <b class="p-num"></b>
+      <span class="p-metric">${esc(labelText)}</span>
+      <span class="p-rank">${i + 1}</span>
+    </div>`).join('');
+  el.querySelectorAll('.p-card').forEach((card, i) => {
+    const r = rows[i], v = r[metricKey], numEl = card.querySelector('.p-num');
+    if (metricKey === 'kd') numEl.textContent = r.kd.toFixed(2);
+    else if (metricKey === 'best_distance') numEl.textContent = `${Math.round(v || 0)}m`;
+    else if (metricKey === 'playtime_s') numEl.textContent = `${Math.round((v || 0) / 3600)}h`;
+    else countUp(numEl, v);
+  });
+}
+
 async function loadBoard() {
   const body = document.getElementById('lb-body');
   const head = document.getElementById('lb-head');
-  body.innerHTML = `<tr><td colspan="8">${t('loading')}</td></tr>`;
+  body.innerHTML = `<tr><td colspan="8">${skelHTML(4)}</td></tr>`;
   const lb = await api(`/api/leaderboard?by=${by}&${periodQuery()}&limit=100`);
+  const u = await me();
+
+  const metricKey = KEYMAP[by] || 'kills';
+  const tabEl = document.querySelector('#metric-tabs button.active');
+  renderPodium(lb.rows, metricKey, tabEl ? tabEl.textContent : '');
+
+  // a tua posição: chip que salta para a tua linha destacada
+  const meIdx = u.loggedIn ? lb.rows.findIndex((r) => r.steam_id === u.steamId) : -1;
+  document.getElementById('me-chip').innerHTML = meIdx >= 0
+    ? `<button class="me-chip">${t('stats.youRank', meIdx + 1)}</button>` : '';
+  if (meIdx >= 0) {
+    document.querySelector('#me-chip .me-chip').addEventListener('click', () =>
+      document.getElementById('me-row')?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }));
+  }
+  const rowAttrs = (i) => i === meIdx ? ' id="me-row" class="me-row"' : '';
+
+  // barra proporcional ao líder, embutida na célula da métrica ativa
+  const max = Number(lb.rows[0]?.[metricKey]) || 1;
+  const barTd = (v, shown) =>
+    `<td class="num bar" style="--w:${Math.max(0, Math.min(100, Number(v) / max * 100)).toFixed(1)}%">${shown}</td>`;
 
   if (by === 'elo') {
-    head.innerHTML = `<tr><th>#</th><th>${t('stats.thPlayer')}</th><th>${t('stats.thTier')}</th><th class="num">${t('stats.thRating')}</th><th class="num">${t('stats.thFights')}</th></tr>`;
+    head.innerHTML = `<tr><th>#</th><th>${t('stats.thPlayer')}</th><th>${t('stats.thTier')}</th><th class="num sorted">${t('stats.thRating')}</th><th class="num">${t('stats.thFights')}</th></tr>`;
     body.innerHTML = lb.rows.map((r, i) => `
-      <tr>
+      <tr${rowAttrs(i)}>
         <td><span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
         <td>${playerCell(r.steam_id, r.name, r.avatar)}</td>
         <td>${esc(r.tier)}</td>
-        <td class="num">${r.rating}</td>
+        ${barTd(r.rating, r.rating)}
         <td class="num">${r.games}</td>
       </tr>`).join('') || `<tr><td colspan="5">${t('stats.eloEmpty')}</td></tr>`;
     return;
   }
 
+  const S = (k) => by === k ? ' class="num sorted"' : ' class="num"';
   head.innerHTML = `<tr>
     <th>#</th><th>${t('stats.thPlayer')}</th>
-    <th class="num">${t('stats.thKills')}</th><th class="num">${t('stats.thDeaths')}</th><th class="num">K/D</th>
-    <th class="num">${t('stats.thHeadshots')}</th><th class="num">${t('stats.thLongest')}</th><th class="num">${t('stats.thHours')}</th>
+    <th${S('kills')}>${t('stats.thKills')}</th><th${S('deaths')}>${t('stats.thDeaths')}</th><th${S('kd')}>K/D</th>
+    <th${S('headshots')}>${t('stats.thHeadshots')}</th><th${S('distance')}>${t('stats.thLongest')}</th><th${S('playtime')}>${t('stats.thHours')}</th>
   </tr>`;
+  const cell = (k, v, shown) => k === by ? barTd(v, shown) : `<td class="num">${shown}</td>`;
   body.innerHTML = lb.rows.map((r, i) => `
-    <tr>
+    <tr${rowAttrs(i)}>
       <td><span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
       <td>${playerCell(r.steam_id, r.name, r.avatar)}</td>
-      <td class="num">${r.kills}</td>
-      <td class="num">${r.deaths}</td>
-      <td class="num">${r.kd.toFixed(2)}</td>
-      <td class="num">${r.headshots}</td>
-      <td class="num">${r.best_distance ? Math.round(r.best_distance) + 'm' : '—'}</td>
-      <td class="num">${Math.round(r.playtime_s / 3600 * 10) / 10}</td>
+      ${cell('kills', r.kills, r.kills)}
+      ${cell('deaths', r.deaths, r.deaths)}
+      ${cell('kd', r.kd, r.kd.toFixed(2))}
+      ${cell('headshots', r.headshots, r.headshots)}
+      ${cell('distance', r.best_distance, r.best_distance ? Math.round(r.best_distance) + 'm' : '—')}
+      ${cell('playtime', r.playtime_s, Math.round(r.playtime_s / 3600 * 10) / 10)}
     </tr>`).join('') || `<tr><td colspan="8">${t('stats.noPeriod')}</td></tr>`;
 }
 
@@ -238,6 +287,16 @@ async function loadRaids() {
 (async () => {
   await loadWipes();
   await loadBoard();
+
+  // quem está em streak agora — /api/streaks não era usado nesta página
+  api('/api/streaks').then((st) => {
+    if (!st.rows.length) return;
+    document.getElementById('metric-tabs').insertAdjacentHTML('afterend',
+      `<div class="hot-strip"><span class="hot-lbl">${t('stats.hotNow')}</span>` +
+      st.rows.map((r) => `<span class="hot-chip">${pfp(r.avatar, r.name, 20)}${playerLink(r.steam_id, r.name)}<b>🔥${r.streak}</b></span>`).join('') +
+      '</div>');
+  }).catch(() => {});
+
   loadTeams().catch(console.error);
   loadRaids().catch(console.error);
   loadMapEvents().catch(console.error);

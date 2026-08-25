@@ -43,6 +43,9 @@
     </div>
   </section>
 
+  <!-- alerta de raid a decorrer (aparece sozinho quando há) -->
+  <div id="raid-alert" class="raid-alert" style="display:none"></div>
+
   <!-- ============ ESTATÍSTICAS AO VIVO ============ -->
   <section class="stat-row">
     <div class="stat">
@@ -98,6 +101,7 @@
         <div class="panel-head">
           <h3 data-i18n="home.liveKillfeed">Live killfeed</h3>
           <span class="spacer"></span>
+          <span class="heat" id="combat-heat" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           <span class="live-badge"><span class="pulse"></span>LIVE</span>
         </div>
         <div class="panel-body">
@@ -165,6 +169,14 @@ async function refreshKillfeed(first) {
       return renderKill(k, fresh);
     }).join('');
     kf.rows.forEach((k) => seenKills.add(killKey(k)));
+
+    // intensidade de combate: kills nos últimos 10 minutos -> 0-5 segmentos
+    const n = kf.rows.filter((k) => Date.now() / 1000 - k.ts < 600).length;
+    const lit = Math.min(5, Math.ceil(n / 2));
+    const h = document.getElementById('combat-heat');
+    [...h.children].forEach((seg, i) => seg.classList.toggle('on', i < lit));
+    h.classList.toggle('max', lit === 5);
+    h.title = t('home.combatHeat');
   } catch {}
 }
 
@@ -181,7 +193,12 @@ async function refreshStatus(first) {
     const playersEl = document.getElementById('players-now');
     if (hb) {
       const txt = `${hb.players}/${hb.max_players}${hb.queued ? ` +${hb.queued}` : ''}`;
-      if (playersEl.textContent !== txt && !first) bump(playersEl);
+      if (playersEl.textContent !== txt && !first) {
+        bump(playersEl);
+        const prev = parseInt(playersEl.dataset.n || '', 10);
+        if (Number.isFinite(prev)) floatDelta(playersEl.parentElement, hb.players - prev);
+      }
+      playersEl.dataset.n = hb.players;
       playersEl.textContent = txt;
       playersEl.style.color = s.online ? 'var(--live)' : 'var(--ink-muted)';
     }
@@ -225,6 +242,20 @@ async function refreshStreaks() {
         <b>🔥 ${s.streak}</b> ${playerLink(s.steam_id, s.name)}
         <span class="lbl">${t('home.streakUnit')}</span>
       </div>`).join('');
+  } catch {}
+}
+
+// ---------- alerta de raid: aparece quando há um raid nos últimos 20 min ----------
+async function checkRaid() {
+  try {
+    const rows = (await api('/api/raids')).rows || [];
+    const live = rows.find((x) => Date.now() / 1000 - (x.ts + x.durationS) < 1200);
+    const el = document.getElementById('raid-alert');
+    if (!live) { el.style.display = 'none'; return; }
+    el.innerHTML = `<span class="siren">⚠</span> ${t('home.raidLive')} <b>${esc(live.grid || '?')}</b>` +
+      ` · ${live.destroyed} ${t('home.raidWalls')}` +
+      `${live.raiders && live.raiders[0] ? ` · ${esc(live.raiders[0].name)}` : ''}`;
+    el.style.display = 'flex';
   } catch {}
 }
 
@@ -298,6 +329,8 @@ function startSpotlight(items) {
   setInterval(() => refreshKillfeed(false), 8000);
   setInterval(() => refreshStatus(false), 30000);
   setInterval(refreshStreaks, 60000);
+  checkRaid();
+  setInterval(checkRaid, 60000);
 })();
 </script>
 </body>

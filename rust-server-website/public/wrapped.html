@@ -66,6 +66,10 @@
             ${w.kills ? t('wr.rank', w.rank, w.totalKillers) : t('wr.peaceful')}
             ${w.elo ? ` · ${esc(w.elo.tier)} · ${w.elo.rating} Elo` : ''}</div>
         </div>
+        ${w.kills && w.totalKillers > 1 ? (() => {
+          const pct = Math.max(1, Math.round(w.rank / w.totalKillers * 100));
+          return `<div class="wr-top ${pct <= 10 ? 'hot' : ''}">${t('wr.topPct', pct)}</div>`;
+        })() : ''}
         <button class="btn" id="share" style="margin-left:auto">⧉ ${t('wr.share')}</button>
       </div>
     </section>

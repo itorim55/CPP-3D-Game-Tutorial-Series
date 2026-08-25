@@ -51,7 +51,10 @@
     <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px">
       ${pfp(p.avatar, p.name, 64, 'pfp-lg')}
       <h1 style="font-family:var(--font-display);font-size:44px;letter-spacing:2px">${esc(p.name)}</h1>
-      ${p.elo ? `<span style="font-size:15px;font-weight:700;color:var(--gold)">${esc(p.elo.tier)} · ${p.elo.rating} Elo</span>` : ''}
+      ${p.elo ? `<span class="tier-stamp">${esc(p.elo.tier)} · ${p.elo.rating}</span>` : ''}
+      ${Date.now() / 1000 - p.lastSeen < 600
+        ? `<span class="live-badge"><span class="pulse"></span>${t('player.onlineNow')}</span>`
+        : ''}
       <span style="color:var(--ink-muted);font-size:13px">SteamID ${esc(p.steamId)} · ${t('seen', timeAgo(p.lastSeen))}</span>
     </div>
 

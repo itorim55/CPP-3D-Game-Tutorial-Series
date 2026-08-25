@@ -50,20 +50,53 @@ async function load() {
   }
 
   const total = state.options.reduce((s, o) => s + o.votes, 0) || 1;
-  document.getElementById('options').innerHTML = state.options.map((o) => `
-    <div class="card map-option ${state.myVote === o.id ? 'voted' : ''}">
-      <b style="font-size:15.5px">${esc(o.label)}</b>
+  const maxVotes = Math.max(...state.options.map((o) => o.votes), 0);
+  document.getElementById('options').innerHTML = state.options.map((o) => {
+    const pct = Math.round((o.votes / total) * 100);
+    return `
+    <div class="card map-option ${state.myVote === o.id ? 'voted' : ''}" data-opt="${o.id}">
+      <b style="font-size:15.5px">${esc(o.label)}
+        ${o.votes && o.votes === maxVotes ? `<span class="lead-chip">${t('map.leading')}</span>` : ''}</b>
       <p style="color:var(--ink-muted);font-size:12.5px;margin:4px 0 2px">
         ${o.seed ? t('map.seed', esc(o.seed)) : ''} ${o.size ? `· ${o.size}` : ''}
         ${o.seed && o.size ? `· <a href="https://rustmaps.com/map/${o.size}_${esc(o.seed)}" target="_blank" rel="noopener">${t('map.viewMap')}</a>` : ''}
       </p>
-      <div class="vote-bar"><div style="width:${Math.round((o.votes / total) * 100)}%"></div></div>
-      <p style="color:var(--ink-2);font-size:13px;margin:6px 0 12px">${t('map.points', o.votes, o.voters)}</p>
+      <div class="vote-bar"><div style="width:0%" data-pct="${pct}"></div></div>
+      <p style="color:var(--ink-2);font-size:13px;margin:6px 0 12px">
+        ${t('map.points', `<span class="votes-n">${o.votes}</span>`, o.voters)}
+        <span class="pct">${pct}%</span></p>
       ${state.open ? `<button class="btn ${state.myVote === o.id ? '' : 'ghost'}" data-id="${o.id}">
         ${state.myVote === o.id ? t('map.yourVote') : t('map.voteThis')}</button>` : ''}
-    </div>`).join('') ||
+    </div>`;
+  }).join('') ||
     `<p style="color:var(--ink-muted)">${t('map.noOptions')}</p>`;
+
+  // barras varrem da esquerda até à percentagem real (transição CSS)
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.querySelectorAll('#options .vote-bar > div').forEach((b) => {
+      b.style.width = `${b.dataset.pct}%`;
+    });
+  }));
 }
+
+// corrida ao vivo: repolling silencioso a cada 25 s, sem re-render (barras deslizam)
+setInterval(async () => {
+  if (document.hidden) return;
+  const s = await api('/api/mapvote').catch(() => null);
+  if (!s || !s.options.length) return;
+  const total = s.options.reduce((a, o) => a + o.votes, 0) || 1;
+  for (const o of s.options) {
+    const card = document.querySelector(`[data-opt="${o.id}"]`);
+    if (!card) continue;
+    const n = card.querySelector('.votes-n');
+    if (n && n.textContent !== String(o.votes)) { n.textContent = o.votes; bump(n); }
+    const pct = Math.round((o.votes / total) * 100);
+    const bar = card.querySelector('.vote-bar > div');
+    if (bar) bar.style.width = `${pct}%`;
+    const pctEl = card.querySelector('.pct');
+    if (pctEl) pctEl.textContent = `${pct}%`;
+  }
+}, 25000);
 
 document.getElementById('options').addEventListener('click', async (e) => {
   const b = e.target.closest('button[data-id]');

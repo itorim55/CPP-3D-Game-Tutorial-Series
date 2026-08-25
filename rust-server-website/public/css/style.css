@@ -195,6 +195,20 @@ header::after { /* fio de perigo sob a nav */
 .wr-sub { color: var(--ink-muted); font-size: 12.5px; margin-top: 5px; }
 .wr-duel { padding: 20px; }
 
+/* carimbos stencil (tier no perfil, TOP % no wrapped) */
+.tier-stamp {
+  font-family: var(--font-stencil); text-transform: uppercase; color: var(--ember);
+  border: 3px solid var(--ember); padding: 4px 14px; letter-spacing: 2px; font-size: 15px;
+  transform: rotate(-7deg); text-shadow: 0 0 18px rgba(255, 176, 32, .4);
+  animation: stamp .5s cubic-bezier(.2, 1.4, .3, 1) .25s backwards;
+}
+.wr-top {
+  font-family: var(--font-stencil); font-size: clamp(22px, 3vw, 34px); color: var(--accent);
+  border: 3px solid var(--accent); padding: 6px 18px; transform: rotate(6deg); letter-spacing: 2px;
+  animation: stamp .5s cubic-bezier(.2, 1.4, .3, 1) .4s backwards;
+}
+.wr-top.hot { color: var(--ember); border-color: var(--ember); text-shadow: 0 0 24px rgba(255, 176, 32, .55); }
+
 /* ----------------------------------------------------------- modo TV */
 
 body.tv { overflow: hidden; }
@@ -219,6 +233,26 @@ body.tv main.tv-grid {
 .tv-rank { min-height: 0; overflow: hidden; }
 @media (max-width: 1100px) { body.tv main.tv-grid { grid-template-columns: 1fr; height: auto; } body.tv { overflow: auto; } }
 
+/* banner takeover de kills de destaque (modo TV) */
+.tv-main .panel { position: relative; }
+.tv-banner {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 12px;
+  background: rgba(11, 13, 17, .9);
+  animation: slam .5s cubic-bezier(.2, 1.4, .3, 1), bannerout .4s ease 2.3s forwards;
+}
+.tv-banner::before, .tv-banner::after {
+  content: ""; height: 5px; width: 60%;
+  background: repeating-linear-gradient(-55deg, var(--accent) 0 12px, transparent 12px 24px); opacity: .6;
+}
+.tv-banner .bt {
+  font-family: var(--font-stencil); font-size: 64px; color: var(--accent);
+  text-shadow: 0 0 40px rgba(255, 91, 38, .6); letter-spacing: 3px;
+}
+.tv-banner .bn { font-family: var(--font-display); font-size: 26px; letter-spacing: 1px; }
+@keyframes slam { from { opacity: 0; transform: scale(1.25); } }
+@keyframes bannerout { to { opacity: 0; } }
+
 /* ------------------------------------------------------------ ticker */
 
 .ticker {
@@ -232,10 +266,11 @@ body.tv main.tv-grid {
 .ticker::after { right: 0; background: linear-gradient(-90deg, var(--bg), transparent); }
 .ticker-track {
   display: flex; gap: 44px; white-space: nowrap; will-change: transform;
-  animation: ticker 55s linear infinite; padding-left: 100%;
+  animation: ticker 55s linear infinite; padding-right: 44px;
 }
 .ticker:hover .ticker-track { animation-play-state: paused; }
-@keyframes ticker { to { transform: translateX(-100%); } }
+@keyframes ticker { to { transform: translateX(-50%); } }
+.ticker-item.tk-new b, .ticker-item.tk-new .tk { color: var(--ember); }
 .ticker-item {
   font-family: var(--font-mono); font-size: 12px; color: var(--ink-2);
   display: inline-flex; gap: 8px; align-items: center;
@@ -401,6 +436,27 @@ h2.section + * { margin-top: 14px; }
 @keyframes flipin { from { opacity: 0; transform: translateY(9px); } }
 .mini-lb .kd { font-size: 11.5px; white-space: nowrap; }
 
+/* medidor de intensidade de combate (LEDs inclinados) */
+.heat { display: inline-flex; gap: 3px; align-items: center; }
+.heat i {
+  width: 6px; height: 14px; background: var(--inset); border: 1px solid var(--line);
+  transform: skewX(-12deg); transition: background .3s ease, border-color .3s ease;
+}
+.heat i.on { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 8px rgba(255, 91, 38, .5); }
+.heat.max i.on { animation: heatflick .9s ease-in-out infinite alternate; }
+@keyframes heatflick { to { opacity: .55; } }
+
+/* alerta de raid a decorrer */
+.raid-alert {
+  display: flex; gap: 12px; align-items: center;
+  border: 1px solid var(--bad);
+  background: repeating-linear-gradient(-55deg, rgba(255, 93, 93, .09) 0 12px, rgba(255, 93, 93, .02) 12px 24px);
+  font-family: var(--font-mono); font-size: 13px; padding: 10px 16px; margin-bottom: 20px;
+}
+.raid-alert b { color: var(--bad); }
+.raid-alert .siren { color: var(--bad); font-size: 16px; animation: sirenblink 1s steps(1) infinite; }
+@keyframes sirenblink { 50% { opacity: .25; } }
+
 /* badge LIVE */
 .live-badge {
   display: inline-flex; align-items: center; gap: 7px;
@@ -531,6 +587,60 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 td .rank { color: var(--ink-muted); width: 28px; display: inline-block; font-family: var(--font-display); font-weight: 700; }
 td .rank.top { color: var(--ember); }
 
+/* pódio dos 3 primeiros */
+.podium { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 0 0 14px; }
+@media (max-width: 700px) { .podium { grid-template-columns: 1fr; } }
+.p-card {
+  position: relative; background: var(--surface); border: 1px solid var(--line);
+  clip-path: var(--chamfer); padding: 16px 18px; overflow: hidden;
+  display: flex; flex-direction: column; gap: 6px; align-items: flex-start;
+}
+.p-card::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--pc); }
+.p1 { --pc: var(--ember); box-shadow: 0 0 34px rgba(255, 176, 32, .14); }
+.p2 { --pc: #c9d4e3; }
+.p3 { --pc: #cd7f32; }
+.p-name { font-weight: 700; font-size: 15px; }
+.p-num { font-family: var(--font-display); font-weight: 900; font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+.p-metric { font-family: var(--font-mono); font-size: 10px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 1.5px; }
+.p-rank {
+  position: absolute; right: 8px; bottom: -18px; font-family: var(--font-stencil);
+  font-size: 90px; line-height: 1; color: var(--pc, var(--ink)); opacity: .1; pointer-events: none;
+}
+
+/* barras de dados na coluna ordenada */
+td.bar { position: relative; z-index: 0; }
+td.bar::before {
+  content: ""; position: absolute; top: 24%; bottom: 24%; right: 10px;
+  width: var(--w); max-width: calc(100% - 20px);
+  background: linear-gradient(90deg, transparent, rgba(255, 91, 38, .3));
+  z-index: -1; transform-origin: right;
+  animation: barin .6s cubic-bezier(.2, .7, .2, 1) backwards;
+}
+@keyframes barin { from { transform: scaleX(0); } }
+th.sorted { color: var(--accent); }
+
+/* faixa ON FIRE + chip da tua posição */
+.hot-strip {
+  display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
+  background: var(--inset); border: 1px solid var(--line); border-left: 3px solid var(--ember);
+  padding: 8px 12px; margin: -4px 0 12px; position: relative;
+}
+.hot-strip::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: repeating-linear-gradient(-55deg, var(--ember) 0 8px, transparent 8px 16px); opacity: .4;
+}
+.hot-lbl { font-family: var(--font-mono); font-size: 10.5px; color: var(--ember); letter-spacing: 1.5px; }
+.hot-chip { display: inline-flex; gap: 7px; align-items: center; font-size: 13.5px; }
+.hot-chip b { color: var(--ember); font-family: var(--font-display); display: inline-block; animation: flick 1.7s ease-in-out infinite; }
+.me-row td { background: var(--accent-soft); }
+.me-row td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.me-chip {
+  font-family: var(--font-mono); font-size: 12px; color: var(--ember);
+  background: var(--surface); border: 1px solid var(--ember);
+  padding: 5px 12px; cursor: pointer; margin: 0 0 10px;
+}
+.me-chip:hover { background: var(--surface-2); }
+
 /* --------------------------------------------------------- tabs/chips */
 
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0; }
@@ -602,6 +712,26 @@ textarea { min-height: 96px; resize: vertical; }
 }
 .chart-tip b { color: var(--accent); }
 
+/* heatmap: zona quente + inspeção com mira */
+.hotzone { position: absolute; transform: translate(-50%, -50%); pointer-events: none; z-index: 4; }
+.hotzone i {
+  display: block; width: 34px; height: 34px; border: 1px solid var(--ember);
+  border-radius: 50%; animation: ringping 2s ease-out infinite;
+}
+@keyframes ringping {
+  from { transform: scale(.4); opacity: .9; }
+  to { transform: scale(1.6); opacity: 0; }
+}
+.hotzone b {
+  position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  font: 600 10px var(--font-mono); letter-spacing: 1px; color: var(--ember);
+  white-space: nowrap; text-shadow: 0 0 8px #000;
+}
+.xh-v, .xh-h { position: absolute; background: var(--accent); opacity: .3; pointer-events: none; display: none; z-index: 3; }
+.xh-v { top: 0; bottom: 0; width: 1px; }
+.xh-h { left: 0; right: 0; height: 1px; }
+.cell-tip { display: none; }
+
 /* ---------------------------------------------------------- badges */
 
 .badge {
@@ -632,6 +762,13 @@ textarea { min-height: 96px; resize: vertical; }
 .vote-bar { background: var(--inset); height: 8px; overflow: hidden; margin-top: 10px; border: 1px solid var(--line); }
 .vote-bar > div { background: var(--accent); height: 100%; min-width: 2px; transition: width .5s ease; }
 .map-option.voted { border-color: var(--accent); }
+.lead-chip {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px;
+  color: var(--accent); border: 1px solid var(--accent); padding: 1px 7px;
+  margin-left: 8px; vertical-align: 2px; animation: pulse 1.8s infinite;
+}
+.vote-bar > div { transition: width .8s cubic-bezier(.2, .7, .2, 1); }
+.pct { font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted); margin-left: 6px; }
 .map-option.voted::before, .map-option.voted::after { opacity: 1; }
 
 /* ---------------------------------------------------------- overwatch */
@@ -696,6 +833,37 @@ footer {
 footer a { color: var(--ink-2); }
 footer a:hover { color: var(--accent); }
 
+/* esqueletos de carregamento: barras de aço varridas por um brilho laranja */
+.skel { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
+.skel i {
+  display: block; height: 13px;
+  background: linear-gradient(100deg, var(--surface-2) 40%, rgba(255, 91, 38, .16) 50%, var(--surface-2) 60%);
+  background-size: 200% 100%; clip-path: var(--chamfer);
+  animation: skel-sweep 1.2s linear infinite;
+}
+.skel i:nth-child(odd) { width: 85%; }
+.skel i:nth-child(3n) { width: 62%; }
+@keyframes skel-sweep { to { background-position: -200% 0; } }
+
+/* countdown com urgência: âmbar nas últimas 24h, laranja a pulsar na última hora */
+.cd-soon { color: var(--ember) !important; }
+.cd-crit { color: var(--accent) !important; animation: critglow 1s ease-in-out infinite; }
+@keyframes critglow { 50% { text-shadow: 0 0 22px rgba(255, 91, 38, .8); } }
+
+/* delta flutuante (+2/-1) */
+.delta {
+  position: absolute; right: -8px; top: -8px; z-index: 3;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+  pointer-events: none; animation: deltafloat 1.4s ease forwards;
+}
+.delta.up { color: var(--live); }
+.delta.down { color: var(--bad); }
+@keyframes deltafloat {
+  from { opacity: 0; transform: translateY(8px); }
+  20% { opacity: 1; }
+  to { opacity: 0; transform: translateY(-22px); }
+}
+
 /* ------------------------------------------------------- vida/movimento */
 
 /* entrada em cascata: cada bloco do main sobe ao aparecer (também vale
@@ -736,5 +904,4 @@ tbody tr:hover td:first-child, .mini-lb tr:hover td:first-child {
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
-  .ticker-track { padding-left: 0; }
 }
