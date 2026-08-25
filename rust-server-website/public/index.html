@@ -81,6 +81,7 @@
       <div class="panel">
         <div class="panel-head">
           <h3 data-i18n="home.topWipe">Wipe top</h3>
+          <span class="metric-flip" id="lb-metric"></span>
           <span class="spacer"></span>
           <a href="/stats" style="font-size:13px" data-i18n="home.viewAll">view all →</a>
         </div>
@@ -227,6 +228,30 @@ async function refreshStreaks() {
   } catch {}
 }
 
+// ---------- wipe top: métrica em destaque roda Kills → Deaths → K/D ----------
+function startTopMetrics(rows) {
+  if (!rows.length) return;
+  const METRICS = [
+    { lbl: () => t('stats.mKills'), val: (r) => r.kills },
+    { lbl: () => t('stats.mDeaths'), val: (r) => r.deaths },
+    { lbl: () => 'K/D', val: (r) => r.kd.toFixed(2) },
+  ];
+  let mi = 0;
+  const paint = () => {
+    const m = METRICS[mi % METRICS.length];
+    document.getElementById('lb-metric').innerHTML = `<span class="flip">${m.lbl()}</span>`;
+    document.querySelectorAll('#top-players tr').forEach((tr, i) => {
+      const r = rows[i];
+      const cell = tr.querySelector('.n');
+      if (r && cell) cell.innerHTML = `<span class="flip">${m.val(r)}</span>`;
+    });
+    mi++;
+  };
+  paint();
+  // com reduced-motion fica estático nas kills; a tripla ao lado mostra tudo
+  if (!reduceMotion) setInterval(paint, 3000);
+}
+
 // ---------- spotlight: destaques a rodar no hero ----------
 function startSpotlight(items) {
   const el = document.getElementById('spotlight');
@@ -252,9 +277,10 @@ function startSpotlight(items) {
     <tr>
       <td class="r ${i < 3 ? 'top' : ''}">${i + 1}</td>
       <td>${playerCell(r.steam_id, r.name, r.avatar)}</td>
-      <td class="n">${r.kills}</td>
-      <td class="kd">${r.kd.toFixed(2)} K/D</td>
+      <td class="n"></td>
+      <td class="kd">${r.kills} · ${r.deaths} · ${r.kd.toFixed(2)}</td>
     </tr>`).join('') || `<tr><td>${t('home.noData')}</td></tr>`;
+  startTopMetrics(lb.rows);
 
   // spotlight com os dados já em mãos + a kill mais longa da wipe
   try {

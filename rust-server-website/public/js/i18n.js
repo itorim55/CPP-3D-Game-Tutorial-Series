@@ -68,6 +68,7 @@ const EN_JS = {
   'player.wrapped': 'Wipe Wrapped',
   'player.progress': 'Progress this wipe',
   'player.progressHint': 'Cumulative K/D, day by day — the story of your wipe.',
+  'stats.mKills': 'Kills', 'stats.mDeaths': 'Deaths',
   'sum.myWrapped': 'My Wipe Wrapped',
 
   // spotlight do hero (JS)
