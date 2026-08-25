@@ -429,11 +429,11 @@ h2.section + * { margin-top: 14px; }
 .mini-lb th.mh {
   font-family: var(--font-mono); font-size: 9.5px; font-weight: 600;
   color: var(--ink-muted); text-transform: uppercase; letter-spacing: 1px;
-  text-align: right; padding: 4px 24px 6px 8px; border-bottom: 1px solid var(--line);
+  text-align: right; padding: 4px 38px 6px 8px; border-bottom: 1px solid var(--line);
   background: transparent; transition: color .35s ease; width: 56px; white-space: nowrap;
 }
 .mini-lb td.m {
-  text-align: right; width: 56px; padding-right: 24px;
+  text-align: right; width: 56px; padding-right: 38px;
   font-family: var(--font-display); font-weight: 700; font-size: 16px;
   font-variant-numeric: tabular-nums; color: var(--ink);
   animation: flipin .45s cubic-bezier(.2, .7, .2, 1);
@@ -448,15 +448,15 @@ h2.section + * { margin-top: 14px; }
 
 /* top 5 com tons de honra — o 1º é ouro, depois prata, bronze, brasa */
 .mini-lb tr.rk1 { background: linear-gradient(90deg, rgba(255, 176, 32, .13), transparent 65%); }
-.mini-lb tr.rk2 { background: linear-gradient(90deg, rgba(201, 212, 227, .09), transparent 60%); }
+.mini-lb tr.rk2 { background: linear-gradient(90deg, rgba(226, 238, 252, .14), transparent 60%); }
 .mini-lb tr.rk3 { background: linear-gradient(90deg, rgba(205, 127, 50, .10), transparent 60%); }
 .mini-lb tr.rk4 { background: linear-gradient(90deg, rgba(255, 91, 38, .05), transparent 55%); }
 .mini-lb tr.rk5 { background: linear-gradient(90deg, rgba(255, 91, 38, .03), transparent 50%); }
 .mini-lb tr.rk1 td:first-child { box-shadow: inset 3px 0 0 var(--ember); }
-.mini-lb tr.rk2 td:first-child { box-shadow: inset 3px 0 0 #c9d4e3; }
+.mini-lb tr.rk2 td:first-child { box-shadow: inset 3px 0 0 #eaf2ff; }
 .mini-lb tr.rk3 td:first-child { box-shadow: inset 3px 0 0 #cd7f32; }
 .mini-lb tr.rk1 .r { color: var(--ember); font-size: 18px; }
-.mini-lb tr.rk2 .r { color: #c9d4e3; }
+.mini-lb tr.rk2 .r { color: #eaf2ff; text-shadow: 0 0 12px rgba(200, 222, 255, .65); }
 .mini-lb tr.rk3 .r { color: #cd7f32; }
 .mini-lb tr.rk1 td, .mini-lb tr.rk1 td a { font-weight: 800; }
 .crown { font-size: 13px; }
