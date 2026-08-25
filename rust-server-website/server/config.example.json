@@ -10,6 +10,7 @@
   "nextWipe": "2026-09-03T18:00:00Z",
   "gemsPerHour": 1000,
   "anomalyKillsPerHour": 15,
+  "reportAlertThreshold": 3,
   "trustProxy": false,
   "mapImage": "",
   "discordWebhooks": {

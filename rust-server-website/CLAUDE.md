@@ -9,7 +9,7 @@ do dono desta máquina. Idioma base: inglês, com seletor EN|PT (i18n em
 
 - **Zero dependências**: Node 22+ apenas (usa `node:sqlite`). Sem npm install, sem build.
 - `server/app.js` — HTTP + estáticos + injeção de Open Graph dinâmico + rotas de login Steam (OpenID)
-- `server/api.js` — todas as rotas /api/* (públicas, autenticadas por sessão, plugin via X-API-Key, admin via X-Admin-Key) + alertas de anomalia de kills
+- `server/api.js` — todas as rotas /api/* (públicas, autenticadas por sessão, plugin via X-API-Key, admin via X-Admin-Key) + alertas de anomalia de kills e de pressão de reports F7; watchlist anti-cheat em db.js
 - `server/db.js` — esquema SQLite e todas as consultas (leaderboards com janelas de tempo, Elo sazonal, equipas, raids agrupados, streaks, conquistas, heatmap, resumo de wipe)
 - `server/auth.js` — Steam OpenID 2.0 + cookie de sessão HMAC
 - `server/og.js` — meta tags Open Graph por rota com dados ao vivo
@@ -19,7 +19,7 @@ do dono desta máquina. Idioma base: inglês, com seletor EN|PT (i18n em
 - `public/` — 16 páginas HTML em inglês com `data-i18n`; `js/i18n.js` (dicionário PT), `js/common.js` (nav/rodapé injetados, helpers)
 - `plugin/StatsHub.cs` — plugin Oxide/uMod que corre NO SERVIDOR DE JOGO e envia eventos para o site; também entrega recompensas da loja (polling)
 - `deploy/` — guia DEPLOY.md + scripts de arranque (Windows/Linux) + backup + exemplo cloudflared
-- `docs/` — análise da concorrência, estudo de hospedagem, sistema de gemas, roadmap (em PT, para o dono)
+- `docs/` — análise da concorrência, estudo de hospedagem, sistema de gemas, roadmap, playbook de moderação anti-cheat (em PT, para o dono)
 
 ## Comandos
 

@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("StatsHub", "Rustworthy", "1.2.0")]
+    [Info("StatsHub", "Rustworthy", "1.3.0")]
     [Description("Sends kills, sessions, farming and heartbeats to the stats website and delivers store rewards")]
     public class StatsHub : RustPlugin
     {
@@ -155,6 +155,24 @@ namespace Oxide.Plugins
                 ["ts"] = Now(),
                 ["steamId"] = player.UserIDString,
                 ["name"] = player.displayName,
+            });
+        }
+
+        // Report F7 dentro do jogo -> fila de prioridade da staff no site/Discord
+        private void OnPlayerReported(BasePlayer reporter, string targetName, string targetId, string subject, string message, string type)
+        {
+            if (reporter == null || string.IsNullOrEmpty(targetId)) return;
+            Enqueue(new Dictionary<string, object>
+            {
+                ["type"] = "report",
+                ["ts"] = Now(),
+                ["reporterId"] = reporter.UserIDString,
+                ["reporterName"] = reporter.displayName,
+                ["targetId"] = targetId,
+                ["targetName"] = targetName,
+                ["subject"] = subject,
+                ["message"] = message,
+                ["rtype"] = type,
             });
         }
 

@@ -103,11 +103,51 @@ function handleIngest(body, config) {
         accepted++;
         break;
       }
+      case 'report': {
+        // report F7 feito dentro do jogo — vai para a fila da staff
+        if (!e.reporterId || !e.targetId) break;
+        store.upsertPlayer(String(e.reporterId), clean(e.reporterName, 64), ts);
+        store.upsertPlayer(String(e.targetId), clean(e.targetName, 64), ts);
+        store.addReport({
+          ts, wipeId: wipe.id,
+          reporterId: String(e.reporterId), targetId: String(e.targetId),
+          subject: clean(e.subject, 120), message: clean(e.message, 1000),
+          rtype: clean(e.rtype, 32),
+        });
+        checkReportPressure(String(e.targetId), clean(e.targetName, 64), config);
+        accepted++;
+        break;
+      }
     }
   }
   if (killLines.length) discord.killfeed(config.discordWebhooks?.killfeed, killLines);
   if (killLines.length) checkKillAnomalies(config);
   return { ok: true, accepted };
+}
+
+// ---------- alerta de pressão de reports ----------
+// Quando N jogadores DIFERENTES reportam o mesmo alvo em 24 h, a staff
+// recebe prioridade máxima no Discord para ir para o spectate.
+
+const _reportAlerted = new Map(); // targetId -> ts do último alerta
+
+function checkReportPressure(targetId, targetName, config) {
+  const threshold = config.reportAlertThreshold ?? 3;
+  const url = config.discordWebhooks?.staff;
+  if (!threshold || !url) return;
+  const n = store.reportPressure(targetId);
+  if (n < threshold) return;
+  const last = _reportAlerted.get(targetId) || 0;
+  if (store.now() - last < 6 * 3600) return;
+  _reportAlerted.set(targetId, store.now());
+  discord.send(url, {
+    embeds: [{
+      color: 0xff5d5d,
+      title: '🚨 Report pressure — spectate priority',
+      description: `**${targetName || targetId}** was reported by **${n} different players in 24h**.\n` +
+        `Get someone in spectate.\nProfile: /player?id=${targetId} · Admin: /admin (Reports tab)`,
+    }],
+  });
 }
 
 // ---------- alerta automático de anomalias ----------
@@ -411,6 +451,12 @@ function route(req, res, url, body, config, session) {
         case '/api/admin/appeals': json(res, 200, { rows: store.listAppeals() }); return true;
         case '/api/admin/redemptions': json(res, 200, { rows: store.listRedemptions() }); return true;
         case '/api/admin/owcases': json(res, 200, { rows: store.listOwCasesAdmin() }); return true;
+        case '/api/admin/reports': {
+          const target = url.searchParams.get('target');
+          json(res, 200, { rows: store.reportsAdmin(target ? clean(target, 20) : null) }); return true;
+        }
+        case '/api/admin/watchlist':
+          json(res, 200, { rows: store.watchlist(store.currentWipe().id) }); return true;
         case '/api/admin/bans': json(res, 200, { rows: store.listBansAdmin() }); return true;
       }
     }

@@ -266,7 +266,23 @@ for (const sql of [
   'ALTER TABLE players ADD COLUMN avatar TEXT',
   'ALTER TABLE players ADD COLUMN avatar_ts INTEGER',
   'ALTER TABLE ow_cases ADD COLUMN clip_file TEXT',
+  'ALTER TABLE players ADD COLUMN steam_flags TEXT',
 ]) { try { db.exec(sql); } catch { /* coluna já existe */ } }
+
+// reports F7 vindos do jogo (via plugin)
+db.exec(`
+CREATE TABLE IF NOT EXISTS reports (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts          INTEGER NOT NULL,
+  wipe_id     INTEGER NOT NULL,
+  reporter_id TEXT NOT NULL,
+  target_id   TEXT NOT NULL,
+  subject     TEXT,
+  message     TEXT,
+  rtype       TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_id, ts);
+`);
 
 // ---------- helpers ----------
 
@@ -314,6 +330,46 @@ function avatarInfo(steamId) {
 function setAvatar(steamId, url) {
   db.prepare('UPDATE players SET avatar = ?, avatar_ts = ? WHERE steam_id = ?')
     .run(url || null, now(), steamId);
+}
+
+function setSteamFlags(steamId, json) {
+  db.prepare('UPDATE players SET steam_flags = ? WHERE steam_id = ?').run(json || null, steamId);
+}
+
+// ---------- reports F7 ----------
+
+function addReport(r) {
+  db.prepare(`
+    INSERT INTO reports (ts, wipe_id, reporter_id, target_id, subject, message, rtype)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`)
+    .run(r.ts, r.wipeId, r.reporterId, r.targetId, r.subject, r.message, r.rtype);
+}
+
+/** Nº de equipas/jogadores distintos que reportaram o alvo nas últimas 24 h. */
+function reportPressure(targetId) {
+  return db.prepare(
+    'SELECT COUNT(DISTINCT reporter_id) n FROM reports WHERE target_id = ? AND ts > ?')
+    .get(targetId, now() - 86400).n;
+}
+
+function reportsAdmin(targetId = null) {
+  if (targetId) {
+    return db.prepare(`
+      SELECT r.*, p.name reporter_name FROM reports r
+      LEFT JOIN players p ON p.steam_id = r.reporter_id
+      WHERE r.target_id = ? ORDER BY r.ts DESC LIMIT 30`).all(targetId);
+  }
+  return db.prepare(`
+    SELECT r.target_id, p.name, p.avatar,
+           COUNT(*) total,
+           COUNT(DISTINCT r.reporter_id) reporters,
+           SUM(r.ts > $cut) recent24h,
+           COUNT(DISTINCT CASE WHEN r.ts > $cut THEN r.reporter_id END) reporters24h,
+           MAX(r.ts) last_ts
+    FROM reports r
+    LEFT JOIN players p ON p.steam_id = r.target_id
+    GROUP BY r.target_id
+    ORDER BY reporters24h DESC, last_ts DESC LIMIT 50`).all({ cut: now() - 86400 });
 }
 
 function addPlaytime(steamId, seconds, wipeId = null) {
@@ -717,6 +773,61 @@ function achievements(steamId, wipeId) {
   if (supporter.n > 0) add('💎', 'Supporter', 'Redeemed the supporter badge in the store');
 
   return out;
+}
+
+// ---------- watchlist: radar de risco anti-cheat para a staff ----------
+// Não bane ninguém — ordena quem merece spectate primeiro, com as razões.
+function watchlist(wipeId) {
+  const base = db.prepare(`
+    SELECT p.steam_id, p.name, p.avatar, p.steam_flags, p.first_seen, p.playtime_s,
+           COUNT(*) kills, COALESCE(SUM(k.headshot), 0) hs,
+           COALESCE(SUM(k.distance >= 150), 0) far,
+           COALESCE(MAX(k.distance), 0) maxd
+    FROM kills k JOIN players p ON p.steam_id = k.attacker_id
+    WHERE k.wipe_id = ? GROUP BY k.attacker_id HAVING kills >= 10`).all(wipeId);
+
+  const bursts = Object.fromEntries(db.prepare(`
+    SELECT steam_id, MAX(n) b FROM (
+      SELECT attacker_id steam_id, COUNT(*) n FROM kills WHERE wipe_id = ? GROUP BY attacker_id, ts / 3600
+    ) GROUP BY steam_id`).all(wipeId).map((r) => [r.steam_id, r.b]));
+
+  const reps = Object.fromEntries(db.prepare(`
+    SELECT target_id, COUNT(DISTINCT reporter_id) n FROM reports
+    WHERE ts > ? GROUP BY target_id`).all(now() - 86400).map((r) => [r.target_id, r.n]));
+
+  const out = [];
+  for (const r of base) {
+    const reasons = [];
+    let score = 0;
+    const hsRate = r.kills ? Math.round((r.hs / r.kills) * 100) : 0;
+
+    if (hsRate >= 70 && r.kills >= 15) { score += 40; reasons.push(`${hsRate}% headshots over ${r.kills} kills`); }
+    else if (hsRate >= 55 && r.kills >= 15) { score += 20; reasons.push(`${hsRate}% headshot rate`); }
+    if (r.far >= 5) { score += 15; reasons.push(`${r.far} kills beyond 150m`); }
+    const burst = bursts[r.steam_id] || 0;
+    if (burst >= 12) { score += 15; reasons.push(`${burst} kills in a single hour`); }
+    const hours = (r.playtime_s || 0) / 3600;
+    if (hours >= 1 && r.kills / hours >= 8) { score += 10; reasons.push(`${Math.round(r.kills / hours)} kills/hour played`); }
+    const nReps = reps[r.steam_id] || 0;
+    if (nReps) { score += Math.min(30, nReps * 10); reasons.push(`reported by ${nReps} player(s) in 24h`); }
+
+    let flags = null;
+    try { flags = r.steam_flags ? JSON.parse(r.steam_flags) : null; } catch { flags = null; }
+    if (flags && (flags.vac || flags.gameBans > 0)) {
+      const days = flags.daysSinceLastBan ?? 9999;
+      if (days < 365) { score += 30; reasons.push(`Steam ban ${days} days ago`); }
+      else { score += 15; reasons.push('previous Steam ban on record'); }
+    }
+
+    if (score >= 15) {
+      out.push({
+        steamId: r.steam_id, name: r.name, avatar: r.avatar,
+        kills: r.kills, hsRate, maxDistance: Math.round(r.maxd),
+        hours: Math.round(hours), score: Math.min(100, score), reasons,
+      });
+    }
+  }
+  return out.sort((a, b) => b.score - a.score).slice(0, 30);
 }
 
 // ---------- progresso diário de um jogador (gráfico no perfil) ----------
@@ -1492,6 +1603,7 @@ module.exports = {
   db, now, currentWipe, upsertPlayer, addPlaytime, recordKill, recordPveDeath,
   recordGather, recordHeartbeat, setInfo, getInfo, leaderboard, playerProfile,
   avatarInfo, setAvatar, ensureWebPlayer, achievementsCatalog, wrapped,
+  setSteamFlags, addReport, reportPressure, reportsAdmin, watchlist,
   killfeed, searchPlayers, status, staffList, banList, banStats,
   addApplication, recentApplicationFromIp, listApplications, setApplicationStatus, startWipe,
   // gemas e loja

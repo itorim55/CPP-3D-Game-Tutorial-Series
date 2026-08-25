@@ -50,7 +50,26 @@ function refresh(steamId) {
 
   inflight.add(steamId);
   fetchProfile(steamId)
-    .then((prof) => store.setAvatar(steamId, prof?.avatar || null))
+    .then(async (prof) => {
+      store.setAvatar(steamId, prof?.avatar || null);
+      // com steamApiKey também refrescamos o registo de bans (watchlist)
+      if (apiKey) {
+        try {
+          const r = await fetch(
+            `https://api.steampowered.com/ISteamUser/GetPlayerBans/v1/?key=${apiKey}&steamids=${steamId}`,
+            { signal: AbortSignal.timeout(6000) });
+          const b = (await r.json())?.players?.[0];
+          if (b) {
+            store.setSteamFlags(steamId, JSON.stringify({
+              vac: !!b.VACBanned,
+              gameBans: b.NumberOfGameBans | 0,
+              daysSinceLastBan: b.DaysSinceLastBan | 0,
+              community: !!b.CommunityBanned,
+            }));
+          }
+        } catch { /* bans ficam por refrescar */ }
+      }
+    })
     // Falha de rede: mantém o avatar antigo mas carimba a tentativa,
     // para não martelar a Steam a cada pedido.
     .catch(() => store.setAvatar(steamId, info.avatar || null))
