@@ -122,8 +122,11 @@ async function renderRedemptions() {
 }
 
 async function renderOw() {
-  const { rows } = await aGet('/api/admin/owcases');
+  const { rows, clipBytes } = await aGet('/api/admin/owcases');
   body().innerHTML = `
+    <p style="color:var(--ink-muted);font-size:12.5px;margin-bottom:10px">
+      📼 Hosted clips on disk: <b>${((clipBytes || 0) / 1048576).toFixed(1)} MB</b>
+      — clips are deleted automatically when a case closes (unless you keep them for the hall of shame).</p>` + `
     <form id="ow-form" class="card" style="margin-bottom:14px">
       <b>New case</b>
       <div class="form-grid" style="margin-top:10px">

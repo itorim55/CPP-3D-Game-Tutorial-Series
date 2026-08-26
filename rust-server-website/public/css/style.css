@@ -467,18 +467,18 @@ h2.section + * { margin-top: 14px; }
 #top-table.ph-k th.h-k, #top-table.ph-d th.h-d { color: var(--accent); }
 
 /* pódio de honra: ouro/prata/bronze intensos, depois decrescendo até ao 10º */
-.mini-lb tr.rk1 { background: linear-gradient(90deg, rgba(255, 176, 32, .24), rgba(255, 176, 32, .05) 55%, transparent 80%); }
+.mini-lb tr.rk1 { background: linear-gradient(90deg, rgba(255, 200, 60, .26), rgba(255, 200, 60, .05) 55%, transparent 80%); }
 .mini-lb tr.rk2 { background: linear-gradient(90deg, rgba(226, 238, 252, .20), rgba(226, 238, 252, .04) 55%, transparent 80%); }
-.mini-lb tr.rk3 { background: linear-gradient(90deg, rgba(222, 143, 65, .20), rgba(222, 143, 65, .04) 55%, transparent 80%); }
-.mini-lb tr.rk1 td:first-child { box-shadow: inset 4px 0 0 var(--ember), 8px 0 18px -8px rgba(255, 176, 32, .8); }
+.mini-lb tr.rk3 { background: linear-gradient(90deg, rgba(160, 84, 38, .24), rgba(160, 84, 38, .04) 55%, transparent 80%); }
+.mini-lb tr.rk1 td:first-child { box-shadow: inset 4px 0 0 #ffc83c, 8px 0 18px -8px rgba(255, 200, 60, .85); }
 .mini-lb tr.rk2 td:first-child { box-shadow: inset 4px 0 0 #f2f7ff, 8px 0 18px -8px rgba(226, 238, 252, .8); }
-.mini-lb tr.rk3 td:first-child { box-shadow: inset 4px 0 0 #e59a52, 8px 0 18px -8px rgba(229, 154, 82, .8); }
-.mini-lb tr.rk1 .r { color: var(--ember); font-size: 20px; text-shadow: 0 0 14px rgba(255, 176, 32, .9); }
+.mini-lb tr.rk3 td:first-child { box-shadow: inset 4px 0 0 #b5642f, 8px 0 18px -8px rgba(181, 100, 47, .8); }
+.mini-lb tr.rk1 .r { color: #ffc83c; font-size: 20px; text-shadow: 0 0 14px rgba(255, 200, 60, .9); }
 .mini-lb tr.rk2 .r { color: #f2f7ff; font-size: 18px; text-shadow: 0 0 14px rgba(210, 230, 255, .9); }
-.mini-lb tr.rk3 .r { color: #e59a52; font-size: 17px; text-shadow: 0 0 12px rgba(229, 154, 82, .8); }
-.mini-lb tr.rk1 td a { color: var(--ember); }
+.mini-lb tr.rk3 .r { color: #c97a42; font-size: 17px; text-shadow: 0 0 12px rgba(181, 100, 47, .8); }
+.mini-lb tr.rk1 td a { color: #ffc83c; }
 .mini-lb tr.rk2 td a { color: #f2f7ff; }
-.mini-lb tr.rk3 td a { color: #e59a52; }
+.mini-lb tr.rk3 td a { color: #c97a42; }
 .mini-lb tr.rk1 td, .mini-lb tr.rk1 td a { font-weight: 800; }
 .mini-lb tr.rk2 td, .mini-lb tr.rk2 td a, .mini-lb tr.rk3 td, .mini-lb tr.rk3 td a { font-weight: 700; }
 .crown { font-size: 14px; filter: drop-shadow(0 0 6px rgba(255, 176, 32, .8)); }

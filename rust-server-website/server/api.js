@@ -578,7 +578,16 @@ function route(req, res, url, body, config, session) {
         case '/api/admin/applications': json(res, 200, { rows: store.listApplications() }); return true;
         case '/api/admin/appeals': json(res, 200, { rows: store.listAppeals() }); return true;
         case '/api/admin/redemptions': json(res, 200, { rows: store.listRedemptions() }); return true;
-        case '/api/admin/owcases': json(res, 200, { rows: store.listOwCasesAdmin() }); return true;
+        case '/api/admin/owcases': {
+          // total de disco ocupado pelos clips alojados (visível no separador)
+          let clipBytes = 0;
+          try {
+            for (const f of require('node:fs').readdirSync(clips.DIR)) {
+              clipBytes += require('node:fs').statSync(require('node:path').join(clips.DIR, f)).size;
+            }
+          } catch { /* pasta vazia */ }
+          json(res, 200, { rows: store.listOwCasesAdmin(), clipBytes }); return true;
+        }
         case '/api/admin/reports': {
           const target = url.searchParams.get('target');
           json(res, 200, { rows: store.reportsAdmin(target ? clean(target, 20) : null) }); return true;
