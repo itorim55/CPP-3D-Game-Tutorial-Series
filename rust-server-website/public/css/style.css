@@ -561,10 +561,15 @@ h2.section + * { margin-top: 14px; }
 .stat .num.leader {
   font-size: 24px; padding-top: 12px;
   display: flex; align-items: center; gap: 10px; min-width: 0;
+  flex-wrap: nowrap; white-space: nowrap; /* tudo numa só linha, sempre */
 }
-.stat .num.leader a { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.stat .num.leader a:hover { color: var(--accent); }
+.stat .num.leader .lname { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .stat .num.leader .lk { color: var(--ember); font-size: 21px; flex: none; }
+
+/* o cartão inteiro é clicável — leva direto ao perfil do líder */
+a.stat.leader-tile { display: block; color: var(--ink); }
+a.stat.leader-tile:hover { border-color: var(--accent); }
+a.stat.leader-tile:hover .lname { color: var(--accent); }
 .stat .lbl {
   color: var(--ink-muted); font-family: var(--font-mono); font-size: 10.5px;
   margin-top: 8px; text-transform: uppercase; letter-spacing: 1.5px;
