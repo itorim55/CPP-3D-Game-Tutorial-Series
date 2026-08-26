@@ -97,4 +97,20 @@ function wipeSummaryPost(url, s, siteUrl) {
   });
 }
 
-module.exports = { send, killfeed, banAnnounce, newApplication, wipeSummaryPost };
+/** Novidade publicada no admin → embed no canal de announcements. */
+function newsPost(url, { title, body, siteUrl = '' }) {
+  const text = body.length > 1800 ? body.slice(0, 1800) + '…' : body;
+  send(url, {
+    embeds: [{
+      author: { name: 'RUSTWORTHY · NEWS' },
+      title: `📰 ${title}`,
+      description: text,
+      color: ORANGE,
+      ...(siteUrl ? { url: `${siteUrl}/novidades` } : {}),
+      footer: { text: 'Full changelog on the site → /novidades' },
+      timestamp: new Date().toISOString(),
+    }],
+  });
+}
+
+module.exports = { send, killfeed, banAnnounce, newApplication, wipeSummaryPost, newsPost };

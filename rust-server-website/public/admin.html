@@ -72,6 +72,19 @@
 .ov-tile.warn { --tc: var(--ember); }
 .ov-tile.hot { --tc: var(--bad); }
 
+/* composer: formulário de criação com cabeçalho próprio */
+.composer {
+  background: var(--surface); border: 1px solid var(--line); border-top: 2px solid var(--accent);
+  padding: 18px 20px 16px; margin-bottom: 18px; box-shadow: var(--shadow);
+}
+.composer .c-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.composer .c-head b {
+  font-family: var(--font-display); font-weight: 800; font-size: 14px;
+  letter-spacing: 1.5px; text-transform: uppercase;
+}
+.composer .c-head .sub { font-size: 12px; color: var(--ink-muted); }
+.field .count { line-height: 1; }
+
 @media (max-width: 900px) {
   .ad-wrap { grid-template-columns: 1fr; }
   .ad-side { position: static; display: flex; flex-wrap: wrap; padding: 6px; }
@@ -213,18 +226,23 @@ async function renderOw() {
     <p style="color:var(--ink-muted);font-size:12.5px;margin-bottom:10px">
       📼 Hosted clips on disk: <b>${((clipBytes || 0) / 1048576).toFixed(1)} MB</b>
       — clips are deleted automatically when a case closes (unless you keep them for the hall of shame).</p>` + `
-    <form id="ow-form" class="card" style="margin-bottom:14px">
-      <b>New case</b>
-      <div class="form-grid" style="margin-top:10px">
-        <div class="field"><label>Title (no player names!)</label><input name="title" required maxlength="120"></div>
-        <div class="field"><label>Clip URL (YouTube/Streamable)</label><input name="clipUrl" maxlength="300" placeholder="leave empty if uploading a file"></div>
+    <form id="ow-form" class="composer">
+      <div class="c-head"><b>🕵️ New case</b>
+        <span class="sub">the community votes blind — never put player names in the title</span></div>
+      <div class="form-grid">
+        <div class="field full"><label>Title (no player names!) <span class="count"></span></label>
+          <input name="title" required maxlength="120" placeholder="e.g. Case #14 — AK spray, 180 m"></div>
+        <div class="field"><label>Clip URL (YouTube/Streamable)</label>
+          <input name="clipUrl" maxlength="300" placeholder="leave empty if uploading a file"></div>
         <div class="field"><label>…or upload the clip (MP4/WebM, 200 MB max)</label>
           <input type="file" name="clipFile" accept="video/mp4,video/webm">
-          <p class="hint" style="color:var(--ink-muted);font-size:12px;margin-top:4px">
-            Hosted clips play directly on the site and are <b>deleted automatically</b> when you close the case — no disk build-up.</p>
+          <p class="hint">Hosted clips play directly on the site and are <b>deleted automatically</b> when you close the case — no disk build-up.</p>
         </div>
       </div>
-      <button class="btn" style="margin-top:12px">Publish case</button>
+      <div class="form-foot">
+        <span class="hint">Appears on the public <a href="/overwatch" target="_blank">Overwatch page</a> for community verdicts.</span>
+        <button class="btn">Publish case</button>
+      </div>
     </form>` +
     rows.map((c) => `
     <div class="card" style="margin-bottom:10px">
@@ -244,6 +262,7 @@ async function renderOw() {
         </div>` : `<p style="font-size:13px;margin-top:6px">Verdict: <b>${esc(c.verdict)}</b></p>`}
     </div>`).join('');
 
+  wireCounts(document.getElementById('ow-form'));
   document.getElementById('ow-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector('button.btn');
@@ -277,21 +296,23 @@ async function renderOw() {
 async function renderBans() {
   const { rows } = await aGet('/api/admin/bans');
   body().innerHTML = `
-    <p style="color:var(--ink-muted);font-size:13px;margin-bottom:10px">
-      This list feeds the public transparency page and the Discord webhook.
-      Publish only the in-game name — never personal data.</p>
-    <form id="ban-form" class="card" style="margin-bottom:14px">
-      <b>Record a ban</b>
-      <div class="form-grid" style="margin-top:10px">
-        <div class="field"><label>Player name *</label><input name="steamName" required maxlength="64"></div>
-        <div class="field"><label>Responsible admin *</label><input name="staffName" required maxlength="64"></div>
-        <div class="field full"><label>Reason *</label><input name="reason" required maxlength="300" placeholder="e.g.: Confirmed aimbot (recording published)"></div>
-        <div class="field full"><label>Evidence link (optional)</label><input name="evidence" maxlength="300" placeholder="https://youtu.be/…"></div>
-        <div class="field full"><label>SteamID64 (optional)</label><input name="steamId" maxlength="20" placeholder="7656119…">
-          <p class="hint" style="color:var(--ink-muted);font-size:12px;margin-top:4px">
-            With the SteamID, everyone who reported this player gets an automatic in-game thank-you.</p></div>
+
+    <form id="ban-form" class="composer">
+      <div class="c-head"><b>🔨 Record a ban</b>
+        <span class="sub">publish only the in-game name — never personal data</span></div>
+      <div class="form-grid">
+        <div class="field"><label>Player name *</label><input name="steamName" required maxlength="64" placeholder="in-game name"></div>
+        <div class="field"><label>Responsible admin *</label><input name="staffName" required maxlength="64" placeholder="who pulled the trigger"></div>
+        <div class="field full"><label>Reason * <span class="count"></span></label>
+          <input name="reason" required maxlength="300" placeholder="e.g.: Confirmed aimbot (recording published)"></div>
+        <div class="field"><label>Evidence link</label><input name="evidence" maxlength="300" placeholder="https://youtu.be/…"></div>
+        <div class="field"><label>SteamID64</label><input name="steamId" maxlength="20" placeholder="7656119…">
+          <p class="hint">With the SteamID, everyone who reported this player gets an automatic in-game thank-you + gem bounty.</p></div>
       </div>
-      <button class="btn" style="margin-top:12px">Record ban</button>
+      <div class="form-foot">
+        <span class="hint">Goes live on the public <a href="/staff" target="_blank">transparency page</a> and fires the Discord <b>#ban-log</b> embed.</span>
+        <button class="btn">Record ban</button>
+      </div>
     </form>` +
     rows.map((b) => `
       <div class="card" style="margin-bottom:8px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
@@ -302,9 +323,11 @@ async function renderBans() {
         <button class="btn ghost" data-del-ban="${b.id}" style="margin-left:auto;padding:4px 12px;font-size:12px">remove</button>
       </div>`).join('');
 
-  document.getElementById('ban-form').addEventListener('submit', async (e) => {
+  const banForm = document.getElementById('ban-form');
+  wireCounts(banForm);
+  banForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    await aPost('/api/admin/bans', Object.fromEntries(new FormData(e.target).entries()));
+    await aPost('/api/admin/bans', Object.fromEntries(new FormData(banForm).entries()));
     renderBans();
   });
 }
@@ -319,14 +342,18 @@ async function renderMap() {
         <button class="btn ghost" data-map-action="new_round">New round (clears options)</button>
       </div>
     </div>
-    <form id="map-form" class="card" style="margin-bottom:14px">
-      <b>Add candidate map</b>
-      <div class="form-grid" style="margin-top:10px">
+    <form id="map-form" class="composer">
+      <div class="c-head"><b>🗺️ Add candidate map</b>
+        <span class="sub">preview seeds on rustmaps.com before adding</span></div>
+      <div class="form-grid" style="grid-template-columns:2fr 1fr 1fr">
         <div class="field"><label>Name/description</label><input name="label" required maxlength="80" placeholder="Map A — classic, 2 lakes"></div>
-        <div class="field"><label>Seed</label><input name="seed" maxlength="20"></div>
+        <div class="field"><label>Seed</label><input name="seed" maxlength="20" placeholder="1847395"></div>
         <div class="field"><label>Size</label><input name="size" type="number" min="1000" max="6000" placeholder="3800"></div>
       </div>
-      <button class="btn" style="margin-top:12px">Add</button>
+      <div class="form-foot">
+        <span class="hint">Players rank the candidates on the public <a href="/mapa" target="_blank">map page</a> while voting is open.</span>
+        <button class="btn">Add map</button>
+      </div>
     </form>` +
     state.options.map((o) => `
       <div class="card" style="margin-bottom:8px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap">
@@ -346,26 +373,43 @@ async function renderMap() {
 async function renderPosts() {
   const { rows } = await api('/api/posts');
   body().innerHTML = `
-    <form id="post-form" class="card" style="margin-bottom:14px">
-      <b>New post</b>
-      <div class="field" style="margin-top:10px"><label>Title</label><input name="title" required maxlength="120"></div>
-      <div class="field" style="margin-top:10px"><label>Body</label><textarea name="body" required maxlength="8000"></textarea></div>
-      <button class="btn" style="margin-top:12px">Publish</button>
-    </form>` +
-    rows.map((p) => `
+    <form id="post-form" class="composer">
+      <div class="c-head"><b>✍️ Compose</b>
+        <span class="sub">goes live instantly on the public News page — write like a changelog entry</span></div>
+      <div class="field"><label>Title <span class="count"></span></label>
+        <input name="title" required maxlength="120" placeholder="e.g. Sept 3rd force wipe — new map chosen by vote"></div>
+      <div class="field" style="margin-top:12px"><label>Body <span class="count"></span></label>
+        <textarea name="body" required maxlength="8000" style="min-height:240px"
+          placeholder="What changed, when, and what players should do about it. Plain text — line breaks are kept."></textarea></div>
+      <div class="form-foot">
+        <span class="hint">Publishes on <a href="/novidades" target="_blank">/novidades</a> and posts to Discord <b>#announcements</b>.</span>
+        <button class="btn">Publish</button>
+      </div>
+    </form>
+    <div style="display:flex;align-items:baseline;gap:10px;margin:4px 0 10px">
+      <b style="font-family:var(--font-display);letter-spacing:1.5px;text-transform:uppercase;font-size:13px;color:var(--ink-2)">Published</b>
+      <span style="font-size:12px;color:var(--ink-muted)">${rows.length} post${rows.length === 1 ? '' : 's'}</span>
+    </div>` +
+    (rows.map((p) => `
       <div class="card post" style="margin-bottom:10px">
-        <div style="display:flex;gap:10px;align-items:baseline">
+        <div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap">
           <h3 style="margin:0">${esc(p.title)}</h3>
           <span style="color:var(--ink-muted);font-size:12px">${fmtDate(p.ts)}</span>
           <button class="btn ghost" data-del-post="${p.id}" style="margin-left:auto;padding:4px 12px;font-size:12px">delete</button>
         </div>
-        <p style="margin-top:8px">${esc(p.body)}</p>
-      </div>`).join('');
+        <p style="margin-top:8px;white-space:pre-line">${esc(p.body)}</p>
+      </div>`).join('') || '<p style="color:var(--ink-muted)">Nothing published yet.</p>');
 
-  document.getElementById('post-form').addEventListener('submit', async (e) => {
+  const form = document.getElementById('post-form');
+  wireCounts(form);
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    await aPost('/api/admin/posts', Object.fromEntries(new FormData(e.target).entries()));
-    renderPosts();
+    const btn = form.querySelector('.btn');
+    btn.disabled = true; btn.textContent = 'Publishing…';
+    try {
+      await aPost('/api/admin/posts', Object.fromEntries(new FormData(form).entries()));
+      renderPosts();
+    } catch (err) { alert('⚠️ ' + err.message); btn.disabled = false; btn.textContent = 'Publish'; }
   });
 }
 
@@ -375,13 +419,18 @@ async function renderTeam() {
     <p style="color:var(--ink-muted);font-size:13px;margin-bottom:12px">
       Site roles. Mods see the <b>MOD</b> nav link, the staff chat, /mod (watchlist + reports)
       and can delete chat messages. They do NOT get this admin panel — that stays adminKey-only.</p>
-    <form id="role-form" class="card" style="margin-bottom:14px">
-      <div class="form-grid">
+    <form id="role-form" class="composer">
+      <div class="c-head"><b>👥 Grant a site role</b>
+        <span class="sub">the player must log in with Steam at least once to show a name</span></div>
+      <div class="form-grid" style="grid-template-columns:2fr 1fr">
         <div class="field"><label>SteamID64 *</label><input name="steamId" required maxlength="20" placeholder="7656119…"></div>
         <div class="field"><label>Role</label>
           <select name="role"><option value="mod">mod</option><option value="admin">admin</option></select></div>
       </div>
-      <button class="btn" style="margin-top:12px">Add / update</button>
+      <div class="form-foot">
+        <span class="hint">Unlocks /mod, staff chat and chat moderation — <b>not</b> this admin panel (adminKey only).</span>
+        <button class="btn">Add / update</button>
+      </div>
     </form>` +
     (rows.map((r) => `
     <div class="card" style="margin-bottom:8px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
@@ -523,6 +572,20 @@ async function updateBadges() {
     t.textContent = total > 0 ? total : '';
     t.classList.toggle('hot', (sum.reportsPriority || 0) + (sum.watchHigh || 0) > 0);
   } catch {}
+}
+
+// contador de caracteres em campos com maxlength + <span class="count">
+function wireCounts(form) {
+  form.querySelectorAll('.field [maxlength]').forEach((el) => {
+    const c = el.closest('.field')?.querySelector('.count');
+    if (!c) return;
+    const upd = () => {
+      c.textContent = `${el.value.length}/${el.maxLength}`;
+      c.classList.toggle('warn', el.value.length > el.maxLength * 0.9);
+    };
+    el.addEventListener('input', upd);
+    upd();
+  });
 }
 
 const SECTIONS = { overview: renderOverview, apps: renderApps, reports: renderReports, watch: renderWatchlist, team: renderTeam, appeals: renderAppeals, redemptions: renderRedemptions, ow: renderOw, bans: renderBans, map: renderMap, posts: renderPosts };

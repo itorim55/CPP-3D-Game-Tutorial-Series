@@ -29,7 +29,7 @@ api('/api/posts').then((data) => {
     <div class="card post">
       <h3>${esc(p.title)}</h3>
       <div class="date">${fmtDate(p.ts)}</div>
-      <p>${esc(p.body)}</p>
+      <p style="white-space:pre-line">${esc(p.body)}</p>
     </div>`).join('') || `<p style="color:var(--ink-muted)">${t('news.empty')}</p>`;
 }).catch(console.error);
 </script>

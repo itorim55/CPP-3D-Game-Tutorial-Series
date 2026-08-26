@@ -21,6 +21,12 @@ function clean(s, max = 200) {
   return s.replace(/[\x00-\x1f\x7f]/g, '').slice(0, max).trim() || null;
 }
 
+// igual a clean(), mas preserva quebras de linha (corpo de posts/news)
+function cleanText(s, max = 8000) {
+  if (typeof s !== 'string') return null;
+  return s.replace(/\r/g, '').replace(/[\x00-\x09\x0b-\x1f\x7f]/g, '').slice(0, max).trim() || null;
+}
+
 // ---------- ingestão (plugin Oxide -> site) ----------
 
 function handleIngest(body, config) {
@@ -621,9 +627,10 @@ function route(req, res, url, body, config, session) {
           json(res, 200, { ok: true }); return true;
         }
         case '/api/admin/posts': {
-          const title = clean(body.title, 120), text = clean(body.body, 8000);
+          const title = clean(body.title, 120), text = cleanText(body.body, 8000);
           if (!title || !text) { json(res, 400, { error: 'Title and body are required' }); return true; }
           store.addPost(title, text);
+          discord.newsPost(config.discordWebhooks?.announcements, { title, body: text, siteUrl: config.siteUrl });
           json(res, 200, { ok: true }); return true;
         }
         case '/api/admin/posts/delete':
