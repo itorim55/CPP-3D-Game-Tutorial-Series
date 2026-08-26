@@ -59,16 +59,6 @@
       <div class="num" id="kills-wipe">—</div>
       <div class="lbl" data-i18n="home.killsWipe">kills this wipe</div>
     </div>
-    <div class="stat">
-      <span class="ico">⚡</span>
-      <div class="num" id="kills-hour">—</div>
-      <div class="lbl" data-i18n="home.killsHour">kills in the last hour</div>
-    </div>
-    <div class="stat">
-      <span class="ico">💥</span>
-      <div class="num" id="raids-wipe">—</div>
-      <div class="lbl" data-i18n="home.raidsWipe">raids this wipe</div>
-    </div>
   </section>
 
   <!-- ============ DASHBOARD ============ -->
@@ -265,26 +255,10 @@ async function refreshStreaks() {
   } catch {}
 }
 
-// ---------- pulso: kills na última hora ----------
-async function refreshPulse() {
-  try {
-    const w = await api('/api/leaderboard?window=1h&limit=100');
-    const n = w.rows.reduce((a, r) => a + r.kills, 0);
-    const el = document.getElementById('kills-hour');
-    const prev = parseInt(el.dataset.v || '', 10);
-    if (!Number.isFinite(prev)) countUp(el, n);
-    else if (prev !== n) { countUp(el, n, { from: prev, duration: 600 }); bump(el); }
-    el.dataset.v = n;
-  } catch {}
-}
-
 // ---------- alerta de raid + contagem de raids da wipe ----------
 async function checkRaid() {
   try {
     const rows = (await api('/api/raids')).rows || [];
-    const rEl = document.getElementById('raids-wipe');
-    if (!rEl.dataset.v) { countUp(rEl, rows.length); rEl.dataset.v = '1'; }
-    else rEl.textContent = fmtNum(rows.length);
     const live = rows.find((x) => Date.now() / 1000 - (x.ts + x.durationS) < 1200);
     const el = document.getElementById('raid-alert');
     if (!live) { el.style.display = 'none'; return; }
@@ -359,9 +333,7 @@ function startSpotlight(items) {
   setInterval(() => refreshStatus(false), 30000);
   setInterval(refreshStreaks, 60000);
   checkRaid();
-  refreshPulse();
   setInterval(checkRaid, 60000);
-  setInterval(refreshPulse, 60000);
 })();
 </script>
 </body>
