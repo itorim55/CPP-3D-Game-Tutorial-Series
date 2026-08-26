@@ -70,6 +70,16 @@ function wipeSummaryPost(url, s, siteUrl) {
   if (s.topFarmer) f.push({ name: '🌾 Top farmer', value: `${s.topFarmer.name}`, inline: true });
   if (s.topHours) f.push({ name: '⏱️ Most hours', value: `${s.topHours.name} (${Math.round(s.topHours.seconds / 3600)} h)`, inline: true });
   if (s.topDeaths) f.push({ name: '🧲 Punching bag', value: `${s.topDeaths.name} (${s.topDeaths.n} deaths)`, inline: true });
+  // prova de trabalho da moderação — os jogadores VEEM a limpeza a acontecer
+  if (s.modStats) {
+    const m = s.modStats;
+    f.push({
+      name: '🛡️ Moderation this wipe',
+      value: `${m.bans} cheater ban(s) · ${m.reports} F7 report(s) processed · ` +
+        `${m.appealsAnswered} appeal(s) answered · ${m.owClosed} overwatch verdict(s)`,
+      inline: false,
+    });
+  }
   send(url, {
     embeds: [{
       color: ORANGE,

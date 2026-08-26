@@ -58,3 +58,81 @@ Estas correm no servidor de jogo, não no site — instalar quando o servidor ex
 "steamApiKey": "",              // ativa verificação de bans Steam na watchlist
 "discordWebhooks": { "staff": "..." , "bans": "..." }
 ```
+
+---
+
+# Estratégia avançada (fase 150–400 jogadores)
+
+Análise das táticas dos servidores de topo — o que implementámos, o que fica
+para depois, e onde a informação corrente anda errada.
+
+## Inspeções por screen share — política, com pés atrás
+
+A prática existe nos servidores grandes: 90% de certeza + clip inconclusivo →
+convite para sala privada de Discord, inspeção ao PC (Echo é a ferramenta
+usada profissionalmente; recusa = ban por política publicada).
+
+**⚠️ Correção importante ao que se lê por aí: screen shares NÃO detetam DMA
+cheats.** Cheats DMA correm num segundo PC ligado por hardware — por definição
+não deixam rasto na máquina inspecionada. O screen share apanha cheats de
+software, macros e scripts de recoil. Contra DMA, o que funciona é a análise
+de padrão (a nossa watchlist + analytics de pontaria) e o spectate atento.
+
+Regras se fores usar screen shares:
+1. Política **pública** nas regras antes do primeiro uso ("suspeitas fortes
+   podem levar a verificação por Discord; recusar = ban").
+2. Sempre 2 staff presentes, sessão gravada.
+3. Nunca pedir passwords nem aceder a contas — só observar.
+4. É o último recurso, não a rotina — jogadores legítimos detestam.
+
+## Analytics de pontaria — IMPLEMENTADO ✅
+
+Melhor do que o "recoil analytics" vago que se sugere por aí: o plugin agora
+conta **tiros disparados vs. acertos PvP vs. headshots** por jogador e por
+arma (agregado de 5 em 5 min — zero impacto de performance, nunca por tiro).
+A watchlist ganhou dois sinais novos:
+- ≥50% dos tiros a acertar com 200+ tiros → +30 risco
+- ≥50% dos acertos na cabeça com 60+ acertos → +30 risco
+
+O separador Watchlist do /admin mostra a coluna "Aim" (% acerto e amostra).
+Limiares conservadores de propósito: um bom jogador anda nos 20–35% de
+acerto em spray; >50% sustentado é quase sempre soft-aim.
+
+## Obrigado a quem reporta — IMPLEMENTADO ✅
+
+Ao registares um ban no /admin com o **SteamID64** do banido, todos os que o
+reportaram por F7 nos últimos 30 dias recebem automaticamente in-game:
+"✅ The player you reported was banned. Thanks for keeping the server clean!"
+(entregue pelo plugin quando o jogador estiver online). É o ciclo de
+confiança: reporto → acontece alguma coisa → reporto outra vez.
+
+## Prova de trabalho — IMPLEMENTADO ✅
+
+- Página /staff: secção "The receipts" com os números da wipe (bans, reports
+  processados, apelos respondidos, veredictos overwatch) — pública.
+- O post de fim de wipe no Discord inclui agora o bloco de moderação
+  automaticamente. Zero trabalho manual.
+
+## Hall of shame — IMPLEMENTADO ✅
+
+Ao fechar um caso Overwatch como cheater há agora o botão
+"close: cheater · keep clip 🎬" — o vídeo fica público na página como prova
+viva. Casos sem interesse continuam a apagar o clip (poupa disco).
+
+## VIP / fila de espera — PLANO (quando houver fila)
+
+A regra de ouro mantém-se: **zero vantagem in-game**. O aceitável:
+- Skip queue (a loja de gemas já tem o item "Queue skip 24h" — a versão
+  paga usa o mesmo mecanismo de permissão no servidor de jogo)
+- Cor no chat + cargo Discord + badge no site (a loja já suporta)
+Implementação quando chegar a hora: Tebex (o standard, trata de IVA e
+chargebacks) + plugin de queue bypass por permissão. A política da Facepunch
+permite monetizar queue skip em servidores comunitários.
+
+## Clips de moderação como marketing — PLANO (precisa de staff ativa)
+
+- Toda a verificação por spectate é gravada (já é política) → os melhores
+  momentos viram TikTok/Shorts/Reels ("POV: apanhado a voar às 3 da manhã").
+- O hall of shame do Overwatch é a versão site disto — linka os clips nos
+  posts.
+- Regra: nunca mostrar nomes reais/Discord do banido além do nick in-game.

@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("StatsHub", "Rustworthy", "1.3.0")]
+    [Info("StatsHub", "Rustworthy", "1.4.0")]
     [Description("Sends kills, sessions, farming and heartbeats to the stats website and delivers store rewards")]
     public class StatsHub : RustPlugin
     {
@@ -63,6 +63,8 @@ namespace Oxide.Plugins
 
         private readonly List<Dictionary<string, object>> _queue = new List<Dictionary<string, object>>();
         private readonly Dictionary<ulong, float> _lastCredit = new Dictionary<ulong, float>();
+        // pontaria: (jogador|arma) -> [tiros, acertos PvP, headshots] — enviado agregado no Flush
+        private readonly Dictionary<string, int[]> _aim = new Dictionary<string, int[]>();
         private readonly Dictionary<ulong, Dictionary<string, int>> _gather = new Dictionary<ulong, Dictionary<string, int>>();
 
         private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -85,6 +87,8 @@ namespace Oxide.Plugins
             timer.Every(_config.CreditInterval, SendTeams);
             if (_config.ExecuteRedemptions)
                 timer.Every(_config.RedemptionPollInterval, PollRedemptions);
+            if (!string.IsNullOrEmpty(_config.ApiKey))
+                timer.Every(_config.RedemptionPollInterval, PollNotices);
             SendHeartbeat();
         }
 
@@ -156,6 +160,91 @@ namespace Oxide.Plugins
                 ["steamId"] = player.UserIDString,
                 ["name"] = player.displayName,
             });
+        }
+
+        // ---- pontaria: tiros disparados e acertos PvP (agregado, nunca por tiro) ----
+
+        private void OnWeaponFired(BaseProjectile projectile, BasePlayer player)
+        {
+            if (player == null || projectile == null || player.IsNpc) return;
+            var weapon = projectile.ShortPrefabName ?? "unknown";
+            var key = player.UserIDString + "|" + weapon;
+            int[] a;
+            if (!_aim.TryGetValue(key, out a)) _aim[key] = a = new int[3];
+            a[0]++;
+        }
+
+        private void OnPlayerAttack(BasePlayer attacker, HitInfo info)
+        {
+            if (attacker == null || info == null || attacker.IsNpc) return;
+            var victim = info.HitEntity as BasePlayer;
+            if (victim == null || victim.IsNpc || victim == attacker) return;
+            var weapon = info.Weapon?.ShortPrefabName ?? "unknown";
+            var key = attacker.UserIDString + "|" + weapon;
+            int[] a;
+            if (!_aim.TryGetValue(key, out a)) _aim[key] = a = new int[3];
+            a[1]++;
+            if (info.isHeadshot) a[2]++;
+        }
+
+        private void FlushAim()
+        {
+            foreach (var kv in _aim)
+            {
+                if (kv.Value[0] < 20) continue; // amostras pequenas não interessam
+                var parts = kv.Key.Split('|');
+                Enqueue(new Dictionary<string, object>
+                {
+                    ["type"] = "accuracy",
+                    ["ts"] = Now(),
+                    ["steamId"] = parts[0],
+                    ["weapon"] = parts.Length > 1 ? parts[1] : "unknown",
+                    ["shots"] = kv.Value[0],
+                    ["hits"] = kv.Value[1],
+                    ["headshots"] = kv.Value[2],
+                });
+            }
+            _aim.Clear();
+        }
+
+        // ---- notices: mensagens do site para jogadores (ex.: obrigado por reportar) ----
+
+        private class NoticeRow
+        {
+            [JsonProperty("id")] public int Id;
+            [JsonProperty("steam_id")] public string SteamId;
+            [JsonProperty("text")] public string Text;
+        }
+
+        private class NoticeResponse
+        {
+            [JsonProperty("rows")] public List<NoticeRow> Rows;
+        }
+
+        private void PollNotices()
+        {
+            var url = _config.SiteUrl.TrimEnd('/') + "/api/plugin/notices";
+            var headers = new Dictionary<string, string> { ["X-API-Key"] = _config.ApiKey };
+            webrequest.Enqueue(url, null, (code, response) =>
+            {
+                if (code < 200 || code >= 300 || string.IsNullOrEmpty(response)) return;
+                NoticeResponse data;
+                try { data = JsonConvert.DeserializeObject<NoticeResponse>(response); }
+                catch { return; }
+                if (data?.Rows == null || data.Rows.Count == 0) return;
+                var delivered = new List<int>();
+                foreach (var n in data.Rows)
+                {
+                    ulong uid;
+                    if (!ulong.TryParse(n.SteamId, out uid)) { delivered.Add(n.Id); continue; }
+                    var target = BasePlayer.FindByID(uid);
+                    if (target == null || !target.IsConnected) continue; // fica pendente até estar online
+                    target.ChatMessage(n.Text);
+                    delivered.Add(n.Id);
+                }
+                if (delivered.Count > 0)
+                    Post("/api/plugin/notices/ack", new Dictionary<string, object> { ["ids"] = delivered });
+            }, this, RequestMethod.GET, headers, 10f);
         }
 
         // Report F7 dentro do jogo -> fila de prioridade da staff no site/Discord
@@ -416,6 +505,7 @@ namespace Oxide.Plugins
 
         private void Flush()
         {
+            FlushAim();
             // agregar farm acumulado como eventos "gather"
             foreach (var kv in _gather)
             {

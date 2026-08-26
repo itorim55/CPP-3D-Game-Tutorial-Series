@@ -17,7 +17,7 @@ do dono desta máquina. Idioma base: inglês, com seletor EN|PT (i18n em
 - `server/steam.js` — avatares Steam com cache na tabela players (XML público ou steamApiKey opcional)
 - `server/clips.js` + rotas em app.js — clips de Overwatch alojados em `data/clips/` (upload raw da staff, streaming com Range, apagados automaticamente ao fechar o caso)
 - `public/` — 16 páginas HTML em inglês com `data-i18n`; `js/i18n.js` (dicionário PT), `js/common.js` (nav/rodapé injetados, helpers)
-- `plugin/StatsHub.cs` — plugin Oxide/uMod que corre NO SERVIDOR DE JOGO e envia eventos para o site; também entrega recompensas da loja (polling)
+- `plugin/StatsHub.cs` — plugin Oxide/uMod que corre NO SERVIDOR DE JOGO e envia eventos para o site; entrega recompensas da loja e mensagens/notices (polling); agrega analytics de pontaria (tiros/acertos/headshots)
 - `deploy/` — guia DEPLOY.md + scripts de arranque (Windows/Linux) + backup + exemplo cloudflared
 - `docs/` — análise da concorrência, estudo de hospedagem, sistema de gemas, roadmap, playbook de moderação anti-cheat (em PT, para o dono)
 

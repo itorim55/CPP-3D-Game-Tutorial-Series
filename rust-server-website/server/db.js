@@ -267,7 +267,32 @@ for (const sql of [
   'ALTER TABLE players ADD COLUMN avatar_ts INTEGER',
   'ALTER TABLE ow_cases ADD COLUMN clip_file TEXT',
   'ALTER TABLE players ADD COLUMN steam_flags TEXT',
+  'ALTER TABLE bans ADD COLUMN steam_id TEXT',
 ]) { try { db.exec(sql); } catch { /* coluna já existe */ } }
+
+// estatística de pontaria agregada pelo plugin (tiros vs acertos vs headshots)
+db.exec(`
+CREATE TABLE IF NOT EXISTS accuracy (
+  wipe_id   INTEGER NOT NULL,
+  steam_id  TEXT NOT NULL,
+  weapon    TEXT NOT NULL,
+  shots     INTEGER NOT NULL DEFAULT 0,
+  hits      INTEGER NOT NULL DEFAULT 0,
+  headshots INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (wipe_id, steam_id, weapon)
+);
+`);
+
+// mensagens para entregar in-game (ex.: obrigado a quem reportou um banido)
+db.exec(`
+CREATE TABLE IF NOT EXISTS notices (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  steam_id   TEXT NOT NULL,
+  text       TEXT NOT NULL,
+  created_ts INTEGER NOT NULL,
+  delivered_ts INTEGER
+);
+`);
 
 // reports F7 vindos do jogo (via plugin)
 db.exec(`
@@ -370,6 +395,55 @@ function reportsAdmin(targetId = null) {
     LEFT JOIN players p ON p.steam_id = r.target_id
     GROUP BY r.target_id
     ORDER BY reporters24h DESC, last_ts DESC LIMIT 50`).all({ cut: now() - 86400 });
+}
+
+// ---------- pontaria (agregados do plugin) ----------
+
+function recordAccuracy(wipeId, steamId, weapon, shots, hits, headshots) {
+  db.prepare(`
+    INSERT INTO accuracy (wipe_id, steam_id, weapon, shots, hits, headshots)
+    VALUES ($w, $id, $wp, $s, $h, $hs)
+    ON CONFLICT(wipe_id, steam_id, weapon) DO UPDATE SET
+      shots = shots + $s, hits = hits + $h, headshots = headshots + $hs
+  `).run({ w: wipeId, id: steamId, wp: weapon, s: shots, h: hits, hs: headshots });
+}
+
+// ---------- notices (mensagens a entregar in-game pelo plugin) ----------
+
+function addNotice(steamId, text) {
+  db.prepare('INSERT INTO notices (steam_id, text, created_ts) VALUES (?, ?, ?)')
+    .run(steamId, text, now());
+}
+
+function pendingNotices(limit = 50) {
+  return db.prepare(
+    'SELECT id, steam_id, text FROM notices WHERE delivered_ts IS NULL ORDER BY id LIMIT ?').all(limit);
+}
+
+function markNoticesDelivered(ids) {
+  const stmt = db.prepare('UPDATE notices SET delivered_ts = ? WHERE id = ?');
+  for (const id of ids) stmt.run(now(), id | 0);
+}
+
+/** Reporters distintos de um alvo nos últimos 30 dias (para agradecer após ban). */
+function reportersOf(targetId, windowS = 30 * 86400) {
+  return db.prepare(`
+    SELECT DISTINCT reporter_id FROM reports WHERE target_id = ? AND ts > ?`)
+    .all(targetId, now() - windowS).map((r) => r.reporter_id);
+}
+
+// ---------- prova de trabalho da moderação (público, por wipe) ----------
+
+function modStats(sinceTs) {
+  const one = (sql) => db.prepare(sql).get(sinceTs).n;
+  return {
+    bans: one('SELECT COUNT(*) n FROM bans WHERE ts >= ?'),
+    reports: one('SELECT COUNT(*) n FROM reports WHERE ts >= ?'),
+    appealsAnswered: db.prepare(
+      "SELECT COUNT(*) n FROM appeals WHERE ts >= ? AND status != 'pending'").get(sinceTs).n,
+    owClosed: db.prepare(
+      "SELECT COUNT(*) n FROM ow_cases WHERE ts >= ? AND status = 'closed'").get(sinceTs).n,
+  };
 }
 
 function addPlaytime(steamId, seconds, wipeId = null) {
@@ -560,10 +634,15 @@ function addOwCase(title, clipUrl, clipFile = null) {
     .run(now(), title, clipUrl || '', clipFile);
 }
 
-function closeOwCase(id, verdict) {
-  // Devolve o clip alojado (se existir) para o chamador o apagar do disco;
-  // a referência sai já da BD para nunca ficar um <video> morto na página.
+function closeOwCase(id, verdict, keepClip = false) {
+  // Por omissão o clip alojado é apagado ao fechar (poupa disco) — devolvemos
+  // o nome para o chamador o remover. Com keepClip o vídeo fica público como
+  // "hall of shame" (casos confirmados são marketing de moderação).
   const row = db.prepare('SELECT clip_file FROM ow_cases WHERE id = ?').get(id | 0);
+  if (keepClip) {
+    db.prepare("UPDATE ow_cases SET status = 'closed', verdict = ? WHERE id = ?").run(verdict, id | 0);
+    return null;
+  }
   db.prepare("UPDATE ow_cases SET status = 'closed', verdict = ?, clip_file = NULL WHERE id = ?")
     .run(verdict, id | 0);
   return row?.clip_file || null;
@@ -795,6 +874,11 @@ function watchlist(wipeId) {
     SELECT target_id, COUNT(DISTINCT reporter_id) n FROM reports
     WHERE ts > ? GROUP BY target_id`).all(now() - 86400).map((r) => [r.target_id, r.n]));
 
+  const aim = Object.fromEntries(db.prepare(`
+    SELECT steam_id, SUM(shots) s, SUM(hits) h, SUM(headshots) hs
+    FROM accuracy WHERE wipe_id = ? GROUP BY steam_id`).all(wipeId)
+    .map((r) => [r.steam_id, r]));
+
   const out = [];
   for (const r of base) {
     const reasons = [];
@@ -811,6 +895,14 @@ function watchlist(wipeId) {
     const nReps = reps[r.steam_id] || 0;
     if (nReps) { score += Math.min(30, nReps * 10); reasons.push(`reported by ${nReps} player(s) in 24h`); }
 
+    const a = aim[r.steam_id];
+    if (a && a.s >= 200 && a.h / a.s >= 0.5) {
+      score += 30; reasons.push(`${Math.round(a.h / a.s * 100)}% of ${a.s} shots hit`);
+    }
+    if (a && a.h >= 60 && a.hs / a.h >= 0.5) {
+      score += 30; reasons.push(`${Math.round(a.hs / a.h * 100)}% of hits are headshots`);
+    }
+
     let flags = null;
     try { flags = r.steam_flags ? JSON.parse(r.steam_flags) : null; } catch { flags = null; }
     if (flags && (flags.vac || flags.gameBans > 0)) {
@@ -820,10 +912,12 @@ function watchlist(wipeId) {
     }
 
     if (score >= 15) {
+      const acc = aim[r.steam_id];
       out.push({
         steamId: r.steam_id, name: r.name, avatar: r.avatar,
         kills: r.kills, hsRate, maxDistance: Math.round(r.maxd),
         hours: Math.round(hours), score: Math.min(100, score), reasons,
+        aim: acc && acc.s >= 50 ? { shots: acc.s, accPct: Math.round(acc.h / acc.s * 100) } : null,
       });
     }
   }
@@ -1064,9 +1158,9 @@ function wipeSummary(wipeId) {
 
 // ---------- bans (gestão pelo admin) ----------
 
-function addBan({ steamName, reason, staffName, evidence }) {
-  db.prepare('INSERT INTO bans (ts, steam_name, reason, staff_name, evidence) VALUES (?, ?, ?, ?, ?)')
-    .run(now(), steamName, reason, staffName, evidence || null);
+function addBan({ steamName, reason, staffName, evidence, steamId }) {
+  db.prepare('INSERT INTO bans (ts, steam_name, reason, staff_name, evidence, steam_id) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(now(), steamName, reason, staffName, evidence || null, steamId || null);
 }
 
 function deleteBan(id) {
@@ -1604,6 +1698,7 @@ module.exports = {
   recordGather, recordHeartbeat, setInfo, getInfo, leaderboard, playerProfile,
   avatarInfo, setAvatar, ensureWebPlayer, achievementsCatalog, wrapped,
   setSteamFlags, addReport, reportPressure, reportsAdmin, watchlist,
+  recordAccuracy, addNotice, pendingNotices, markNoticesDelivered, reportersOf, modStats,
   killfeed, searchPlayers, status, staffList, banList, banStats,
   addApplication, recentApplicationFromIp, listApplications, setApplicationStatus, startWipe,
   // gemas e loja

@@ -103,6 +103,17 @@ function handleIngest(body, config) {
         accepted++;
         break;
       }
+      case 'accuracy': {
+        // agregados de pontaria: tiros/acertos/headshots por arma (5 em 5 min)
+        if (!e.steamId || !e.weapon) break;
+        const shots = Math.min(Math.max(0, e.shots | 0), 20000);
+        const hits = Math.min(Math.max(0, e.hits | 0), shots);
+        const hs = Math.min(Math.max(0, e.headshots | 0), hits);
+        if (!shots) break;
+        store.recordAccuracy(wipe.id, String(e.steamId), clean(e.weapon, 64), shots, hits, hs);
+        accepted++;
+        break;
+      }
       case 'report': {
         // report F7 feito dentro do jogo — vai para a fila da staff
         if (!e.reporterId || !e.targetId) break;
@@ -245,6 +256,14 @@ function route(req, res, url, body, config, session) {
     const key = req.headers['x-api-key'];
     if (!config.apiKey || key !== config.apiKey) { json(res, 401, { error: 'Invalid API key' }); return true; }
 
+    if (p === '/api/plugin/notices' && req.method === 'GET') {
+      json(res, 200, { rows: store.pendingNotices(50) }); return true;
+    }
+    if (p === '/api/plugin/notices/ack') {
+      const ids = Array.isArray(body?.ids) ? body.ids.slice(0, 100) : [];
+      store.markNoticesDelivered(ids);
+      json(res, 200, { ok: true }); return true;
+    }
     if (p === '/api/plugin/redemptions' && req.method === 'GET') {
       json(res, 200, { rows: store.pendingPluginRedemptions() }); return true;
     }
@@ -259,6 +278,7 @@ function route(req, res, url, body, config, session) {
       const newWipe = store.startWipe(body);
       if (newWipe.id !== oldWipe.id) {
         const summary = store.wipeSummary(oldWipe.id);
+        if (summary) summary.modStats = store.modStats(oldWipe.started_at);
         if (summary && summary.totals?.kills > 0) {
           store.addPost(
             `🏁 End of ${oldWipe.label || 'the wipe'} — the highlights`,
@@ -379,8 +399,13 @@ function route(req, res, url, body, config, session) {
         if (q.length < 2) { json(res, 200, { rows: [] }); return true; }
         json(res, 200, { rows: store.searchPlayers(q) }); return true;
       }
-      case '/api/staff':
-        json(res, 200, { staff: store.staffList(), banStats: store.banStats() }); return true;
+      case '/api/staff': {
+        const wipe = store.currentWipe();
+        json(res, 200, {
+          staff: store.staffList(), banStats: store.banStats(),
+          modStats: store.modStats(wipe.started_at),
+        }); return true;
+      }
       case '/api/bans':
         json(res, 200, { rows: store.banList() }); return true;
       case '/api/wipes':
@@ -503,23 +528,32 @@ function route(req, res, url, body, config, session) {
         case '/api/admin/owcases/close': {
           const allowed = ['cheater', 'innocent', 'inconclusive'];
           if (!allowed.includes(body.verdict)) { json(res, 400, { error: 'Invalid verdict' }); return true; }
-          const gone = store.closeOwCase(body.id, body.verdict);
-          if (gone) clips.remove(gone); // clip alojado deixa de ser preciso — libertar disco
+          const gone = store.closeOwCase(body.id, body.verdict, !!body.keepClip);
+          if (gone) clips.remove(gone); // sem keepClip, o clip é apagado do disco
           json(res, 200, { ok: true }); return true;
         }
         case '/api/admin/mapvote':
           json(res, 200, store.mapAdmin(clean(body.action, 20), body)); return true;
         case '/api/admin/bans': {
           if (body.action === 'delete') { store.deleteBan(body.id); json(res, 200, { ok: true }); return true; }
+          const banSteamId = /^7656119\d{10}$/.test(String(body.steamId || '')) ? String(body.steamId) : null;
           const ban = {
             steamName: clean(body.steamName, 64), reason: clean(body.reason, 300),
             staffName: clean(body.staffName, 64), evidence: clean(body.evidence, 300),
+            steamId: banSteamId,
           };
           if (!ban.steamName || !ban.reason || !ban.staffName) {
             json(res, 400, { error: 'Player, reason and admin are required' }); return true;
           }
           store.addBan(ban);
           discord.banAnnounce(config.discordWebhooks?.bans, ban);
+          // psicologia de comunidade: quem reportou o banido recebe um obrigado in-game
+          if (banSteamId) {
+            for (const rid of store.reportersOf(banSteamId)) {
+              store.addNotice(rid,
+                '✅ The player you reported was banned. Thanks for keeping the server clean!');
+            }
+          }
           json(res, 200, { ok: true }); return true;
         }
       }

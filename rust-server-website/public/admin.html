@@ -150,6 +150,7 @@ async function renderOw() {
         <div class="tabs" style="margin-top:10px">
           ${['cheater', 'innocent', 'inconclusive'].map((v) =>
             `<button data-close-ow="${c.id}" data-verdict="${v}">close: ${v}</button>`).join('')}
+          ${c.clip_file ? `<button data-close-ow="${c.id}" data-verdict="cheater" data-keep="1">close: cheater · keep clip 🎬</button>` : ''}
         </div>` : `<p style="font-size:13px;margin-top:6px">Verdict: <b>${esc(c.verdict)}</b></p>`}
     </div>`).join('');
 
@@ -196,6 +197,9 @@ async function renderBans() {
         <div class="field"><label>Responsible admin *</label><input name="staffName" required maxlength="64"></div>
         <div class="field full"><label>Reason *</label><input name="reason" required maxlength="300" placeholder="e.g.: Confirmed aimbot (recording published)"></div>
         <div class="field full"><label>Evidence link (optional)</label><input name="evidence" maxlength="300" placeholder="https://youtu.be/…"></div>
+        <div class="field full"><label>SteamID64 (optional)</label><input name="steamId" maxlength="20" placeholder="7656119…">
+          <p class="hint" style="color:var(--ink-muted);font-size:12px;margin-top:4px">
+            With the SteamID, everyone who reported this player gets an automatic in-game thank-you.</p></div>
       </div>
       <button class="btn" style="margin-top:12px">Record ban</button>
     </form>` +
@@ -325,13 +329,14 @@ async function renderWatchlist() {
       (Steam bans need <code>steamApiKey</code> in config.json).</p>` +
     (rows.length ? `<div class="table-wrap"><table>
       <thead><tr><th>Risk</th><th>Player</th><th class="num">Kills</th><th class="num">HS%</th>
-      <th class="num">Longest</th><th class="num">Hours</th><th>Signals</th></tr></thead>
+      <th class="num">Aim</th><th class="num">Longest</th><th class="num">Hours</th><th>Signals</th></tr></thead>
       <tbody>${rows.map((r) => `
         <tr>
           <td><b style="color:${r.score >= 60 ? 'var(--bad)' : r.score >= 35 ? 'var(--ember)' : 'var(--ink-2)'};font-family:var(--font-display);font-size:18px">${r.score}</b></td>
           <td>${pfp(r.avatar, r.name, 24)} <a href="/player?id=${encodeURIComponent(r.steamId)}" target="_blank">${esc(r.name)}</a></td>
           <td class="num">${r.kills}</td>
           <td class="num">${r.hsRate}%</td>
+          <td class="num">${r.aim ? `${r.aim.accPct}% <span style="color:var(--ink-muted);font-size:11px">of ${fmtNum(r.aim.shots)}</span>` : '—'}</td>
           <td class="num">${r.maxDistance}m</td>
           <td class="num">${r.hours}</td>
           <td style="white-space:normal;font-size:12px;color:var(--ink-2)">${r.reasons.map(esc).join(' · ')}</td>
@@ -386,7 +391,7 @@ document.getElementById('section-body').addEventListener('click', async (e) => {
   const ow = e.target.closest('button[data-close-ow]');
   if (ow) {
     e.preventDefault();
-    await aPost('/api/admin/owcases/close', { id: parseInt(ow.dataset.closeOw, 10), verdict: ow.dataset.verdict });
+    await aPost('/api/admin/owcases/close', { id: parseInt(ow.dataset.closeOw, 10), verdict: ow.dataset.verdict, keepClip: !!ow.dataset.keep });
     show(SECTION);
     return;
   }

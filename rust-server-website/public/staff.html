@@ -33,6 +33,9 @@
     <div class="pledge" data-i18n="staff.p5"><b>5. Respect, always.</b> Even with cheaters and toxic players: professionalism. We represent the server.</div>
   </div>
 
+  <h2 class="section"><span data-i18n="staff.receipts">The receipts</span> <small data-i18n="staff.receiptsSub">this wipe — proof the moderation actually happens</small></h2>
+  <div class="grid cols-4" id="mod-stats" data-i18n="loading">loading…</div>
+
   <h2 class="section"><span data-i18n="staff.transparency">Ban transparency</span> <small data-i18n="staff.last30">last 30 days</small></h2>
   <div class="grid cols-3" id="ban-stats">
     <div class="card tile"><div class="big" id="bans-30d">—</div><div class="label" data-i18n="staff.bans30">bans in the last 30 days</div></div>
@@ -61,6 +64,15 @@
 <script>
 (async () => {
   const data = await api('/api/staff');
+
+  // prova de trabalho: números da limpeza nesta wipe
+  if (data.modStats) {
+    const ms = data.modStats;
+    const tile = (big, label) => `<div class="card tile"><div class="big">${fmtNum(big)}</div><div class="label">${label}</div></div>`;
+    document.getElementById('mod-stats').innerHTML =
+      tile(ms.bans, t('staff.rBans')) + tile(ms.reports, t('staff.rReports')) +
+      tile(ms.appealsAnswered, t('staff.rAppeals')) + tile(ms.owClosed, t('staff.rOw'));
+  }
 
   document.getElementById('staff-grid').innerHTML = data.staff.map((m) => `
     <div class="card staff-card">
