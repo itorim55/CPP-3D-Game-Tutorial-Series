@@ -130,7 +130,7 @@ const ORANGE = 0xff5b26, EMBER = 0xffb020, GREEN = 0x4ade80, BLUE = 0x7ea6ff;
       { name: 'server-info', ro: true, topic: 'IP, website, how to connect.' },
     ]},
     { cat: '🛰️ LIVE FROM THE SERVER', channels: [
-      { name: 'killfeed', ro: true, topic: 'Live kills straight from the island — automated.', hook: 'killfeed' },
+      // (killfeed removido por decisão do dono — o site já tem o killfeed ao vivo)
       { name: 'ban-log', ro: true, topic: 'Every ban, public, with reason and admin. Automated.', hook: 'bans' },
     ]},
     { cat: '💬 COMMUNITY', channels: [
