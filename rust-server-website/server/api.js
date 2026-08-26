@@ -667,7 +667,7 @@ function route(req, res, url, body, config, session) {
             json(res, 400, { error: 'Player, reason and admin are required' }); return true;
           }
           store.addBan(ban);
-          discord.banAnnounce(config.discordWebhooks?.bans, ban);
+          discord.banAnnounce(config.discordWebhooks?.bans, ban, config.siteUrl);
           // psicologia de comunidade: quem reportou o banido recebe obrigado + bounty
           if (banSteamId) {
             const bounty = Math.max(0, config.reporterBountyGems ?? 5000);

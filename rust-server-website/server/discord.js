@@ -35,17 +35,24 @@ function killfeed(url, lines) {
   });
 }
 
-function banAnnounce(url, { steamName, reason, staffName, evidence }) {
+function banAnnounce(url, { steamName, reason, staffName, evidence, steamId }, siteUrl = '') {
+  const site = String(siteUrl || '').replace(/\/$/, '');
   send(url, {
     embeds: [{
       color: RED,
-      title: '🔨 Ban',
+      author: { name: 'RUSTWORTHY · BAN HAMMER' },
+      title: `⛔  ${steamName} has been banned`,
+      description:
+        `**📋 Reason**\n${reason}\n\n` +
+        (evidence ? `**🎥 Evidence**\n${evidence}\n\n` : '') +
+        `Another one gone. The island stays clean. 🧹`,
       fields: [
-        { name: 'Player', value: steamName, inline: true },
-        { name: 'Admin', value: staffName, inline: true },
-        { name: 'Reason', value: reason },
-        ...(evidence ? [{ name: 'Evidence', value: evidence }] : []),
+        { name: '🛡️ Banned by', value: staffName, inline: true },
+        ...(site ? [{ name: '⚖️ Think it\'s a mistake?', value: `[Appeal here](${site}/apelo)`, inline: true }] : []),
+        ...(site && steamId ? [{ name: '📊 Their stats', value: `[Profile](${site}/player?id=${steamId})`, inline: true }] : []),
       ],
+      footer: { text: 'Zero tolerance · every ban has recorded evidence · full list on the website' },
+      timestamp: new Date().toISOString(),
     }],
   });
 }
