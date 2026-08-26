@@ -36,6 +36,16 @@
   <h2 class="section" data-i18n="store.rewards">Rewards</h2>
   <div class="grid cols-2" id="items" data-i18n="loading">loading…</div>
 
+  <h2 class="section" data-i18n="store.donTitle">Support the server</h2>
+  <div class="card" style="border-left:3px solid var(--ember)">
+    <p style="color:var(--ink-2);font-size:14px" data-i18n="store.donDesc">
+      Rustworthy runs on donations — they pay the game server and nothing else.
+      Donating <b>never</b> gives in-game advantages: you get the 💎 Supporter badge
+      on your profile, a Discord role and our genuine gratitude. The game stays
+      the same for everyone; that's the whole point of this server.</p>
+    <div id="donate-area" style="margin-top:14px"></div>
+  </div>
+
   <div id="my-redemptions" style="display:none">
     <h2 class="section" data-i18n="store.myRedemptions">My redemptions</h2>
     <div class="table-wrap">
@@ -60,6 +70,16 @@ async function load() {
   const [storeData, user] = await Promise.all([api('/api/store'), me()]);
 
   document.getElementById('rate').textContent = t('store.rate', fmtNum(storeData.gemsPerHour));
+
+  // donations: botão quando o donateUrl está configurado, aviso quando não
+  siteStatus().then((s) => {
+    const area = document.getElementById('donate-area');
+    if (s?.info?.donate) {
+      area.innerHTML = `<a class="btn" href="${esc(s.info.donate)}" target="_blank" rel="noopener">💛 ${t('store.donBtn')}</a>`;
+    } else {
+      area.innerHTML = `<p style="color:var(--ink-muted);font-size:13px">${t('store.donSoon')}</p>`;
+    }
+  });
 
   if (user.loggedIn) {
     document.getElementById('balance').textContent = gems(user.wallet.gems);

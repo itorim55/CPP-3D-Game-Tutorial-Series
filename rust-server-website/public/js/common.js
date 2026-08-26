@@ -92,7 +92,6 @@ const NAV_LINKS = [
   ['/overwatch', 'nav.overwatch'],
   ['/regras', 'nav.rules'],
   ['/staff', 'nav.staff'],
-  ['/candidatura', 'nav.apply'],
 ];
 
 function renderChrome() {

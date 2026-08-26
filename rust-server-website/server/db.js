@@ -1830,7 +1830,7 @@ function status() {
     history,
     info: {
       name: getInfo('server_name'), ip: getInfo('server_ip'),
-      map: getInfo('map'), discord: getInfo('discord'),
+      map: getInfo('map'), discord: getInfo('discord'), donate: getInfo('donate'),
       brandAccent: getInfo('brand_accent') || 'RUST',
       brandRest: getInfo('brand_rest') || '',
     },
