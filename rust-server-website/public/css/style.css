@@ -602,6 +602,12 @@ h2.section + * { margin-top: 14px; }
 }
 .kill .hs { color: var(--ember); font-size: 10px; border: 1px solid var(--ember); padding: 0 4px; font-weight: 700; font-family: var(--font-mono); }
 
+/* zebra viva: linhas pares trocam o laranja pelo âmbar (borda, seta, arma) */
+.kill-list .kill:nth-child(even) { border-left-color: var(--ember); background: #10120f; }
+.kill-list .kill:nth-child(even) .x,
+.kill-list .kill:nth-child(even) .wpn { color: var(--ember); }
+.kill-list .kill:nth-child(even) .hs { color: var(--accent); border-color: var(--accent); }
+
 /* mini leaderboard */
 .mini-lb { width: 100%; border-collapse: collapse; font-size: 14.5px; }
 .mini-lb td { padding: 10px 8px; border-bottom: 1px solid var(--line); }
