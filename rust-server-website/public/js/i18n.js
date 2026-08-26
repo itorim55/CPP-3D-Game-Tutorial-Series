@@ -363,7 +363,7 @@ const I18N = {
     // home (HTML)
     'home.tagline': 'Moderação ativa ao vivo · bans públicos · zero pay-to-win.',
     'home.playersOnline': 'jogadores online', 'home.untilWipe': 'até à próxima wipe',
-    'home.killsWipe': 'kills esta wipe', 'home.serverFps': 'FPS do servidor',
+    'home.killsWipe': 'kills esta wipe', 'home.wipeLeader': 'líder da wipe', 'home.serverFps': 'FPS do servidor',
     'home.population': 'População', 'home.last48h': 'últimas 48 horas',
     'home.topWipe': 'Top da wipe', 'home.viewAll': 'ver tudo →',
     'home.liveKillfeed': 'Killfeed ao vivo', 'home.onFire': '🔥 Em fogo agora',

@@ -59,6 +59,11 @@
       <div class="num" id="kills-wipe">—</div>
       <div class="lbl" data-i18n="home.killsWipe">kills this wipe</div>
     </div>
+    <div class="stat">
+      <span class="ico">👑</span>
+      <div class="num leader" id="wipe-leader">—</div>
+      <div class="lbl" data-i18n="home.wipeLeader">wipe leader</div>
+    </div>
   </section>
 
   <!-- ============ DASHBOARD ============ -->
@@ -315,6 +320,13 @@ function startSpotlight(items) {
       <td class="m mkd">${r.kd.toFixed(2)}</td>
     </tr>`).join('') || `<tr><td colspan="5" style="color:var(--ink-muted)">${t('home.noData')}</td></tr>`;
   startTopMetrics();
+
+  // cartão do líder da wipe (usa o topo já carregado)
+  const top0 = lb.rows[0];
+  if (top0) {
+    document.getElementById('wipe-leader').innerHTML =
+      `${pfp(top0.avatar, top0.name, 30)}${playerLink(top0.steam_id, top0.name)}<span class="lk">· ${fmtNum(top0.kills)}</span>`;
+  }
 
   // spotlight com os dados já em mãos + a kill mais longa da wipe
   try {
