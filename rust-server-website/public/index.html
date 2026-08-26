@@ -121,6 +121,15 @@
         <div class="panel-head"><h3 data-i18n="home.onFire">🔥 On fire right now</h3></div>
         <div class="panel-body" id="streaks"></div>
       </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3 data-i18n="chat.title">Community chat</h3>
+          <span class="spacer"></span>
+          <span class="live-badge"><span class="pulse"></span>LIVE</span>
+        </div>
+        <div class="panel-body" id="home-chat"></div>
+      </div>
     </div>
   </section>
 
@@ -317,6 +326,7 @@ function startSpotlight(items) {
 
 (async () => {
   startEmbers(document.getElementById('embers'));
+  initChat(document.getElementById('home-chat'));
   await refreshStatus(true);
   await refreshKillfeed(true);
   refreshStreaks();

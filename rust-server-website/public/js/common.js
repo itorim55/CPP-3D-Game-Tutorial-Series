@@ -128,6 +128,17 @@ function renderChrome() {
   }
 
   me().then((u) => {
+    // link MOD na nav — só aparece a quem tem cargo
+    if (u.loggedIn && u.isMod && header && !header.querySelector('.modlink')) {
+      const sep = header.querySelector('.sep');
+      if (sep) {
+        const a = document.createElement('a');
+        a.href = '/mod';
+        a.textContent = 'MOD';
+        a.className = 'modlink' + (location.pathname.replace(/\.html$/, '') === '/mod' ? ' active' : '');
+        sep.parentNode.insertBefore(a, sep);
+      }
+    }
     const chip = document.getElementById('nav-user');
     if (!chip) return;
     if (u.loggedIn) {
@@ -281,6 +292,101 @@ async function renderTicker() {
   } catch {}
 }
 document.addEventListener('DOMContentLoaded', renderTicker);
+
+// ---------- chat do site (global + staff) ----------
+// Widget reutilizável: initChat(container, { defaultChannel }) — sondagem de
+// 5 s, tabs GLOBAL/STAFF (staff só para mods), Enter envia, mods apagam.
+function initChat(container, { defaultChannel = 'global' } = {}) {
+  let channel = defaultChannel;
+  let lastId = 0;
+  let user = { loggedIn: false, isMod: false };
+
+  container.innerHTML = `
+    <div class="chat-head">
+      <span class="seg" id="ct-tabs" style="display:none">
+        <button data-ch="global" class="${channel === 'global' ? 'active' : ''}">${t('chat.global')}</button>
+        <button data-ch="staff" class="${channel === 'staff' ? 'active' : ''}">${t('chat.staff')}</button>
+      </span>
+    </div>
+    <div class="chat-box" id="ct-box">${skelHTML(3)}</div>
+    <div class="chat-input" id="ct-input"></div>`;
+
+  const box = container.querySelector('#ct-box');
+  const tabs = container.querySelector('#ct-tabs');
+
+  const render = (rows, append) => {
+    const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+    const html = rows.map((m) => `
+      <div class="cmsg${m.role ? ' staffmsg' : ''}" data-id="${m.id}">
+        ${pfp(m.avatar, m.name, 20)}
+        <span class="who">${esc(m.name || '?')}</span>
+        ${m.role ? `<span class="rolechip">${m.role === 'admin' ? 'ADMIN' : 'MOD'}</span>` : ''}
+        <span class="txt">${esc(m.text)}</span>
+        <span class="when">${timeAgo(m.ts)}</span>
+        ${user.isMod ? `<a href="#" class="del" data-del="${m.id}" title="delete">×</a>` : ''}
+      </div>`).join('');
+    if (append) box.insertAdjacentHTML('beforeend', html);
+    else box.innerHTML = html || `<p class="chat-empty">${t('chat.empty')}</p>`;
+    if (rows.length) lastId = rows[rows.length - 1].id;
+    if (atBottom || !append) box.scrollTop = box.scrollHeight;
+  };
+
+  const poll = async (fresh) => {
+    try {
+      const d = await api(`/api/chat?channel=${channel}${fresh ? '' : `&after=${lastId}`}`);
+      if (fresh) { lastId = 0; render(d.rows, false); }
+      else if (d.rows.length) render(d.rows, true);
+    } catch { if (fresh) box.innerHTML = `<p class="chat-empty">${t('chat.empty')}</p>`; }
+  };
+
+  const renderInput = () => {
+    const inp = container.querySelector('#ct-input');
+    if (!user.loggedIn) {
+      inp.innerHTML = `<p class="chat-empty" style="margin:0">${t('chat.login')}</p>`;
+      return;
+    }
+    inp.innerHTML = `
+      <input type="text" id="ct-text" maxlength="300" placeholder="${t('chat.ph')}" autocomplete="off">
+      <button class="btn" id="ct-send">${t('chat.send')}</button>`;
+    const send = async () => {
+      const field = container.querySelector('#ct-text');
+      const text = field.value.trim();
+      if (!text) return;
+      field.value = '';
+      try { await apiPost('/api/chat', { channel, text }); poll(false); }
+      catch (e) { field.value = text; alert('⚠️ ' + e.message); }
+    };
+    container.querySelector('#ct-send').addEventListener('click', send);
+    container.querySelector('#ct-text').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') send();
+    });
+  };
+
+  tabs.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-ch]');
+    if (!b || b.dataset.ch === channel) return;
+    channel = b.dataset.ch;
+    tabs.querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
+    box.innerHTML = skelHTML(3);
+    poll(true);
+  });
+
+  box.addEventListener('click', async (e) => {
+    const d = e.target.closest('a[data-del]');
+    if (!d) return;
+    e.preventDefault();
+    await apiPost('/api/chat', { channel, deleteId: parseInt(d.dataset.del, 10) }).catch(() => {});
+    poll(true);
+  });
+
+  me().then((u) => {
+    user = u;
+    if (u.loggedIn && u.isMod) tabs.style.display = '';
+    renderInput();
+    poll(true);
+    setInterval(() => { if (!document.hidden) poll(false); }, 5000);
+  });
+}
 
 // ---------- delta flutuante (+2 / -1 a subir de um número que mudou) ----------
 function floatDelta(anchor, diff, cls = '') {

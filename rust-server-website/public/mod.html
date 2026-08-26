@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mod Room</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpolygon points='0,0 50,0 64,14 64,64 0,64' fill='%23ff5b26'/%3E%3Ctext x='32' y='47' font-family='Arial,sans-serif' font-size='40' font-weight='900' text-anchor='middle' fill='%230b0d11'%3ER%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Stencil+One&family=Saira+Condensed:wght@500;600;700;800;900&family=Barlow:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header></header>
+
+<main id="content">
+  <p style="color:var(--ink-muted)" data-i18n="loading">loading…</p>
+</main>
+
+<footer></footer>
+
+<script src="/js/i18n.js"></script>
+<script src="/js/common.js"></script>
+<script>
+(async () => {
+  const el = document.getElementById('content');
+  const user = await me();
+
+  if (!user.loggedIn || !user.isMod) {
+    el.innerHTML = `<div class="notice err" style="max-width:520px;margin:60px auto;text-align:center">
+      🔒 ${t('mod.denied')}</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <h2 class="section" style="margin-top:6px">${t('mod.title')}</h2>
+    <p style="color:var(--ink-muted);font-size:13px;margin-top:6px">${t('mod.sub')}</p>
+
+    <div class="dash" style="margin-top:16px">
+      <div style="display:flex;flex-direction:column;gap:18px;min-width:0">
+        <div class="panel">
+          <div class="panel-head"><h3>${t('mod.watchlist')}</h3>
+            <span class="spacer"></span>
+            <a href="/admin" style="font-size:13px">${t('mod.fullAdmin')}</a></div>
+          <div class="panel-body" id="mod-watch">${skelHTML(4)}</div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>${t('mod.reports')}</h3></div>
+          <div class="panel-body" id="mod-reports">${skelHTML(3)}</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:18px;min-width:0">
+        <div class="panel">
+          <div class="panel-head"><h3>${t('mod.chatTitle')}</h3>
+            <span class="spacer"></span>
+            <span class="live-badge"><span class="pulse"></span>LIVE</span></div>
+          <div class="panel-body" id="mod-chat"></div>
+        </div>
+      </div>
+    </div>`;
+
+  initChat(document.getElementById('mod-chat'), { defaultChannel: 'staff' });
+
+  api('/api/mod/watchlist').then(({ rows }) => {
+    document.getElementById('mod-watch').innerHTML = rows.length ? `
+      <table class="mini-lb"><tbody>${rows.slice(0, 8).map((r) => `
+        <tr>
+          <td class="r" style="color:${r.score >= 60 ? 'var(--bad)' : r.score >= 35 ? 'var(--ember)' : 'var(--ink-2)'}">${r.score}</td>
+          <td>${playerCell(r.steamId, r.name, r.avatar)}</td>
+          <td style="white-space:normal;font-size:12px;color:var(--ink-2)">${r.reasons.map(esc).join(' · ')}</td>
+        </tr>`).join('')}</tbody></table>`
+      : `<p style="color:var(--ink-muted)">${t('mod.watchEmpty')}</p>`;
+  }).catch(() => {});
+
+  api('/api/mod/reports').then(({ rows }) => {
+    document.getElementById('mod-reports').innerHTML = rows.length ? rows.slice(0, 8).map((r) => `
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line)">
+        ${pfp(r.avatar, r.name, 22)}
+        <b>${esc(r.name || r.target_id)}</b>
+        ${r.reporters24h >= 3 ? '<span class="badge failed">PRIORITY</span>' : ''}
+        <span style="font-size:12.5px;color:var(--ink-2)">${r.reporters24h}/24h · ${r.total} total</span>
+        <a href="/player?id=${encodeURIComponent(r.target_id)}" style="margin-left:auto;font-size:12.5px">${t('mod.profile')} ↗</a>
+      </div>`).join('')
+      : `<p style="color:var(--ink-muted)">${t('mod.reportsEmpty')}</p>`;
+  }).catch(() => {});
+})().catch(console.error);
+</script>
+</body>
+</html>

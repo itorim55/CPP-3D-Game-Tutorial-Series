@@ -322,6 +322,27 @@ CREATE TABLE IF NOT EXISTS signups (
 );
 `);
 
+// cargos do site (mod/admin por SteamID — geridos no painel admin)
+db.exec(`
+CREATE TABLE IF NOT EXISTS roles (
+  steam_id TEXT PRIMARY KEY,
+  role     TEXT NOT NULL,
+  added_ts INTEGER NOT NULL
+);
+`);
+
+// chat do site: canal 'global' (todos) e 'staff' (só mods/admins)
+db.exec(`
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts       INTEGER NOT NULL,
+  channel  TEXT NOT NULL,
+  steam_id TEXT NOT NULL,
+  text     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_chat ON chat_messages(channel, id);
+`);
+
 // reports F7 vindos do jogo (via plugin)
 db.exec(`
 CREATE TABLE IF NOT EXISTS reports (
@@ -536,6 +557,59 @@ function combatSnapshot(wipeId, steamId) {
     bestDistance: Math.round(k.dist),
     acc: a.s >= 50 ? `${Math.round(a.h / a.s * 100)}% of ${a.s} shots` : null,
   };
+}
+
+// ---------- cargos ----------
+
+function setRole(steamId, role) {
+  db.prepare(`
+    INSERT INTO roles (steam_id, role, added_ts) VALUES (?, ?, ?)
+    ON CONFLICT(steam_id) DO UPDATE SET role = excluded.role`).run(steamId, role, now());
+}
+
+function removeRole(steamId) {
+  db.prepare('DELETE FROM roles WHERE steam_id = ?').run(steamId);
+}
+
+function listRoles() {
+  return db.prepare(`
+    SELECT r.steam_id, r.role, r.added_ts, p.name, p.avatar
+    FROM roles r LEFT JOIN players p ON p.steam_id = r.steam_id
+    ORDER BY r.added_ts`).all();
+}
+
+function isMod(steamId) {
+  if (!steamId) return false;
+  return !!db.prepare('SELECT 1 FROM roles WHERE steam_id = ?').get(steamId);
+}
+
+// ---------- chat do site ----------
+
+function addChatMessage(channel, steamId, text) {
+  const r = db.prepare(
+    'INSERT INTO chat_messages (ts, channel, steam_id, text) VALUES (?, ?, ?, ?)')
+    .run(now(), channel, steamId, text);
+  // reter só as últimas 500 mensagens por canal
+  if (Number(r.lastInsertRowid) % 25 === 0) {
+    db.prepare(`
+      DELETE FROM chat_messages WHERE channel = ? AND id NOT IN (
+        SELECT id FROM chat_messages WHERE channel = ? ORDER BY id DESC LIMIT 500
+      )`).run(channel, channel);
+  }
+  return Number(r.lastInsertRowid);
+}
+
+function chatMessages(channel, afterId = 0, limit = 60) {
+  return db.prepare(`
+    SELECT m.id, m.ts, m.steam_id, m.text, p.name, p.avatar,
+           (SELECT role FROM roles WHERE steam_id = m.steam_id) role
+    FROM chat_messages m LEFT JOIN players p ON p.steam_id = m.steam_id
+    WHERE m.channel = ? AND m.id > ?
+    ORDER BY m.id DESC LIMIT ?`).all(channel, afterId | 0, limit).reverse();
+}
+
+function deleteChatMessage(id) {
+  db.prepare('DELETE FROM chat_messages WHERE id = ?').run(id | 0);
 }
 
 // ---------- prova de trabalho da moderação (público, por wipe) ----------
@@ -1820,6 +1894,7 @@ module.exports = {
   setSteamFlags, addReport, reportPressure, reportsAdmin, watchlist,
   recordAccuracy, addNotice, pendingNotices, markNoticesDelivered, reportersOf, modStats,
   aliases, setSignup, removeSignup, listSignups, precisionBoard, isFirstKill, combatSnapshot,
+  setRole, removeRole, listRoles, isMod, addChatMessage, chatMessages, deleteChatMessage,
   killfeed, searchPlayers, status, staffList, banList, banStats,
   addApplication, recentApplicationFromIp, listApplications, setApplicationStatus, startWipe,
   // gemas e loja

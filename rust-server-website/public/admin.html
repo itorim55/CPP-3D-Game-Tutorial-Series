@@ -38,6 +38,7 @@
       <button data-s="bans">Bans</button>
       <button data-s="map">Map vote</button>
       <button data-s="posts">News</button>
+      <button data-s="team">Team</button>
     </div>
     <div id="section-body" style="margin-top:14px"></div>
   </div>
@@ -279,6 +280,41 @@ async function renderPosts() {
   });
 }
 
+async function renderTeam() {
+  const { rows } = await aGet('/api/admin/roles');
+  body().innerHTML = `
+    <p style="color:var(--ink-muted);font-size:13px;margin-bottom:12px">
+      Site roles. Mods see the <b>MOD</b> nav link, the staff chat, /mod (watchlist + reports)
+      and can delete chat messages. They do NOT get this admin panel — that stays adminKey-only.</p>
+    <form id="role-form" class="card" style="margin-bottom:14px">
+      <div class="form-grid">
+        <div class="field"><label>SteamID64 *</label><input name="steamId" required maxlength="20" placeholder="7656119…"></div>
+        <div class="field"><label>Role</label>
+          <select name="role"><option value="mod">mod</option><option value="admin">admin</option></select></div>
+      </div>
+      <button class="btn" style="margin-top:12px">Add / update</button>
+    </form>` +
+    (rows.map((r) => `
+    <div class="card" style="margin-bottom:8px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      ${pfp(r.avatar, r.name, 26)}
+      <b>${esc(r.name || r.steam_id)}</b>
+      <span class="rolechip">${esc(r.role.toUpperCase())}</span>
+      <span style="font-size:12px;color:var(--ink-muted)">${esc(r.steam_id)}</span>
+      <a href="#" data-remove-role="${esc(r.steam_id)}" style="margin-left:auto;font-size:13px;color:var(--bad)">remove</a>
+    </div>`).join('') || '<p style="color:var(--ink-muted)">No roles yet — add your own SteamID first.</p>');
+
+  document.getElementById('role-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await aPost('/api/admin/roles', Object.fromEntries(new FormData(e.target).entries()));
+    renderTeam();
+  });
+  body().querySelectorAll('[data-remove-role]').forEach((a) => a.addEventListener('click', async (e) => {
+    e.preventDefault();
+    await aPost('/api/admin/roles', { steamId: a.dataset.removeRole, action: 'remove' });
+    renderTeam();
+  }));
+}
+
 async function renderReports() {
   const { rows } = await aGet('/api/admin/reports');
   body().innerHTML = `
@@ -344,7 +380,7 @@ async function renderWatchlist() {
     </table></div>` : '<p style="color:var(--ink-muted)">Nobody trips the radar right now. 🕊️</p>');
 }
 
-const SECTIONS = { apps: renderApps, reports: renderReports, watch: renderWatchlist, appeals: renderAppeals, redemptions: renderRedemptions, ow: renderOw, bans: renderBans, map: renderMap, posts: renderPosts };
+const SECTIONS = { apps: renderApps, reports: renderReports, watch: renderWatchlist, team: renderTeam, appeals: renderAppeals, redemptions: renderRedemptions, ow: renderOw, bans: renderBans, map: renderMap, posts: renderPosts };
 
 async function show(section) {
   SECTION = section;

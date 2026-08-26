@@ -176,6 +176,7 @@ function checkFirstKillFlags(steamId, name, wipeId, config) {
 // recebe prioridade máxima no Discord para ir para o spectate.
 
 const _reportAlerted = new Map(); // targetId -> ts do último alerta
+const _chatLast = new Map(); // steamId -> ts da última mensagem de chat
 
 function checkReportPressure(targetId, targetName, config) {
   const threshold = config.reportAlertThreshold ?? 3;
@@ -395,6 +396,14 @@ function route(req, res, url, body, config, session) {
         steam.refresh(id);
         json(res, 200, w); return true;
       }
+      case '/api/chat': {
+        const channel = url.searchParams.get('channel') === 'staff' ? 'staff' : 'global';
+        if (channel === 'staff' && !(session && store.isMod(session.steamId))) {
+          json(res, 403, { error: 'Staff only.' }); return true;
+        }
+        const after = parseInt(url.searchParams.get('after') || '0', 10) || 0;
+        json(res, 200, { rows: store.chatMessages(channel, after) }); return true;
+      }
       case '/api/precision':
         json(res, 200, { rows: store.precisionBoard(store.currentWipe().id) }); return true;
       case '/api/signups':
@@ -470,6 +479,7 @@ function route(req, res, url, body, config, session) {
           steamId: session.steamId,
           name: prof?.name || null,
           avatar: prof?.avatar || null,
+          isMod: store.isMod(session.steamId),
           playtimeS: prof?.playtimeS || 0,
           wallet: store.getWallet(session.steamId),
           voteWeight: store.voteWeight(session.steamId),
@@ -482,6 +492,44 @@ function route(req, res, url, body, config, session) {
   }
 
   // --- endpoints autenticados por sessão Steam (POST) ---
+  // --- endpoints para moderadores (sessão Steam + cargo; sem adminKey) ---
+  if (p.startsWith('/api/mod/')) {
+    if (!(session && store.isMod(session.steamId))) {
+      json(res, 403, { error: 'Staff only.' }); return true;
+    }
+    if (req.method === 'GET') {
+      if (p === '/api/mod/watchlist') {
+        json(res, 200, { rows: store.watchlist(store.currentWipe().id) }); return true;
+      }
+      if (p === '/api/mod/reports') {
+        const target = url.searchParams.get('target');
+        json(res, 200, { rows: store.reportsAdmin(target ? clean(target, 20) : null) }); return true;
+      }
+    }
+    json(res, 404, { error: 'Unknown endpoint' }); return true;
+  }
+
+  // --- chat: escrever (global = qualquer sessão; staff = mods) ---
+  if (req.method === 'POST' && p === '/api/chat') {
+    if (!session) { json(res, 401, { error: 'Sign in with Steam first.' }); return true; }
+    if (!body) { json(res, 400, { error: 'Invalid JSON' }); return true; }
+    const channel = body.channel === 'staff' ? 'staff' : 'global';
+    const mod = store.isMod(session.steamId);
+    if (channel === 'staff' && !mod) { json(res, 403, { error: 'Staff only.' }); return true; }
+    if (body.deleteId) {
+      if (!mod) { json(res, 403, { error: 'Staff only.' }); return true; }
+      store.deleteChatMessage(body.deleteId);
+      json(res, 200, { ok: true }); return true;
+    }
+    const text = clean(body.text, 300);
+    if (!text) { json(res, 400, { error: 'Empty message.' }); return true; }
+    const last = _chatLast.get(session.steamId) || 0;
+    if (store.now() - last < 3) { json(res, 429, { error: 'Slow down — one message every 3 seconds.' }); return true; }
+    _chatLast.set(session.steamId, store.now());
+    const id = store.addChatMessage(channel, session.steamId, text);
+    json(res, 200, { ok: true, id }); return true;
+  }
+
   if (req.method === 'POST' && p === '/api/signups') {
     if (!session) { json(res, 401, { error: 'Sign in with Steam first.' }); return true; }
     if (!body) { json(res, 400, { error: 'Invalid JSON' }); return true; }
@@ -535,6 +583,8 @@ function route(req, res, url, body, config, session) {
           const target = url.searchParams.get('target');
           json(res, 200, { rows: store.reportsAdmin(target ? clean(target, 20) : null) }); return true;
         }
+        case '/api/admin/roles':
+          json(res, 200, { rows: store.listRoles() }); return true;
         case '/api/admin/watchlist':
           json(res, 200, { rows: store.watchlist(store.currentWipe().id) }); return true;
         case '/api/admin/bans': json(res, 200, { rows: store.listBansAdmin() }); return true;
@@ -585,6 +635,13 @@ function route(req, res, url, body, config, session) {
           if (!allowed.includes(body.verdict)) { json(res, 400, { error: 'Invalid verdict' }); return true; }
           const gone = store.closeOwCase(body.id, body.verdict, !!body.keepClip);
           if (gone) clips.remove(gone); // sem keepClip, o clip é apagado do disco
+          json(res, 200, { ok: true }); return true;
+        }
+        case '/api/admin/roles': {
+          const rid = String(body.steamId || '');
+          if (!/^7656119\d{10}$/.test(rid)) { json(res, 400, { error: 'Valid SteamID64 required' }); return true; }
+          if (body.action === 'remove') store.removeRole(rid);
+          else store.setRole(rid, body.role === 'admin' ? 'admin' : 'mod');
           json(res, 200, { ok: true }); return true;
         }
         case '/api/admin/mapvote':

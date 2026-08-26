@@ -91,6 +91,18 @@ function seed() {
     for (const r of RESOURCES) store.recordGather(wipe.id, id, r, 1000 + rnd(90000));
   }
 
+  console.log('[seed] Chat de demonstração...');
+  const chat = [
+    [ids[3], 'anyone selling scrap at bandit? paying in wood lol'],
+    [ids[1], 'that heli fight at dome was insane'],
+    [ids[5], 'GG to the trio at lighthouse, good fight'],
+    [ids[0], 'wipe day hype, who is dropping launch?'],
+    [ids[8], 'farmzilla does not fight, farmzilla farms'],
+  ];
+  chat.forEach(([id, text], i) => {
+    store.addChatMessage('global', id, text);
+  });
+
   console.log('[seed] Heartbeats (histórico de população)...');
   for (let h = 48; h >= 0; h--) {
     const ts = now - h * 3600;

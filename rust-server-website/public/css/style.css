@@ -140,6 +140,8 @@ header::after { /* fio de perigo sob a nav */
 }
 .nav .lang-switch a.active { color: #0b0d11; background: var(--accent); }
 .nav .sep { width: 1px; height: 20px; background: var(--line-2); margin: 0 6px; }
+.nav .links a.modlink { color: var(--ember); border: 1px solid rgba(255, 176, 32, .4); padding: 6px 11px; }
+.nav .links a.modlink.active { color: var(--ember); border-color: var(--ember); border-bottom-color: var(--ember); }
 
 /* LED de jogadores online, colado ao logótipo */
 .nav-live {
@@ -593,9 +595,10 @@ h2.section + * { margin-top: 14px; }
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) 16px 24px minmax(0, 1fr) 56px;
   column-gap: 8px; row-gap: 3px; align-items: center;
-  background: var(--inset); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  background: var(--inset); border: 1px solid var(--line-2); border-left: 3px solid var(--accent);
   padding: 8px 12px; font-size: 13.5px;
 }
+.kill-list .kill:nth-child(even) { border-color: #3d4654; border-left-color: var(--ember); }
 .kill.fresh { animation: slidein .8s cubic-bezier(.2, .7, .2, 1); }
 @keyframes slidein {
   from { opacity: 0; transform: translateX(-18px); background: var(--accent-soft); border-left-color: var(--ember); }
@@ -622,7 +625,9 @@ h2.section + * { margin-top: 14px; }
 
 /* mini leaderboard */
 .mini-lb { width: 100%; border-collapse: collapse; font-size: 14.5px; }
-.mini-lb td { padding: 10px 8px; border-bottom: 1px solid var(--line); }
+.mini-lb td { padding: 10px 8px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.mini-lb td:first-child { border-left: 1px solid var(--line); }
+.mini-lb td:last-child { border-right: 1px solid var(--line); }
 .mini-lb tr:last-child td { border-bottom: 0; }
 .mini-lb tr { transition: background .12s ease; }
 .mini-lb tr:hover { background: var(--surface-2); }
@@ -967,6 +972,33 @@ footer a:hover { color: var(--accent); }
   20% { opacity: 1; }
   to { opacity: 0; transform: translateY(-22px); }
 }
+
+/* ------------------------------------------------------------- chat */
+
+.chat-head { display: flex; align-items: center; margin-bottom: 8px; min-height: 4px; }
+.chat-box {
+  height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px;
+  background: var(--inset); border: 1px solid var(--line); padding: 10px;
+}
+.cmsg {
+  display: flex; align-items: baseline; gap: 7px; font-size: 13px; line-height: 1.4;
+  padding: 3px 4px; flex-wrap: wrap;
+}
+.cmsg .pfp { align-self: center; }
+.cmsg .who { font-weight: 700; color: var(--ink); flex: none; }
+.cmsg .txt { color: var(--ink-2); overflow-wrap: anywhere; }
+.cmsg .when { color: var(--ink-muted); font-size: 10px; font-family: var(--font-mono); margin-left: auto; flex: none; }
+.cmsg .del { color: var(--ink-muted); font-size: 12px; padding: 0 4px; flex: none; }
+.cmsg .del:hover { color: var(--bad); }
+.cmsg.staffmsg .who { color: var(--ember); }
+.rolechip {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: 1px;
+  color: var(--ember); border: 1px solid var(--ember); padding: 0 5px; flex: none;
+}
+.chat-empty { color: var(--ink-muted); font-size: 13px; text-align: center; padding: 10px 0; }
+.chat-input { display: flex; gap: 8px; margin-top: 10px; }
+.chat-input input { flex: 1; }
+.chat-input .btn { padding: 9px 18px; font-size: 13px; flex: none; }
 
 /* ------------------------------------------------------- vida/movimento */
 
