@@ -9,6 +9,77 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Saira+Stencil+One&family=Saira+Condensed:wght@500;600;700;800;900&family=Barlow:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
+<style>
+/* ---- ops console ---- */
+.ad-wrap { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 22px; align-items: start; }
+.ad-side {
+  position: sticky; top: 84px; background: var(--surface); border: 1px solid var(--line);
+  padding: 0 0 10px; box-shadow: var(--shadow);
+}
+.ad-side::before {
+  content: ""; display: block; height: 3px;
+  background: repeating-linear-gradient(-55deg, var(--accent) 0 10px, transparent 10px 20px); opacity: .5;
+}
+.ad-brand {
+  font-family: var(--font-stencil); font-size: 19px; letter-spacing: 1px;
+  padding: 14px 16px 10px; border-bottom: 1px solid var(--line);
+}
+.ad-brand b { color: var(--accent); font-weight: 400; }
+.ad-group {
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.5px;
+  color: var(--ink-muted); text-transform: uppercase; padding: 14px 16px 5px;
+}
+.ad-item {
+  display: flex; gap: 10px; align-items: center; padding: 8px 14px;
+  font-family: var(--font-display); font-weight: 600; font-size: 14.5px; letter-spacing: .6px;
+  color: var(--ink-2); cursor: pointer; border-left: 2px solid transparent; user-select: none;
+}
+.ad-item:hover { color: var(--ink); background: var(--surface-2); }
+.ad-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+.ad-item .i { width: 20px; text-align: center; font-size: 14px; }
+.ad-item .cnt {
+  margin-left: auto; min-width: 20px; text-align: center;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  color: #0b0d11; background: var(--ember); padding: 1px 6px;
+}
+.ad-item .cnt.hot { background: var(--bad); color: #fff; }
+.ad-item .cnt:empty { display: none; }
+.ad-foot { border-top: 1px solid var(--line); margin-top: 10px; padding: 10px 16px 2px; display: flex; gap: 14px; }
+.ad-foot a { font-size: 12px; color: var(--ink-muted); cursor: pointer; }
+.ad-foot a:hover { color: var(--accent); }
+.ad-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
+.ad-head h2 {
+  font-family: var(--font-display); font-weight: 800; font-size: 24px;
+  letter-spacing: 2px; text-transform: uppercase;
+}
+.ad-head .desc { color: var(--ink-muted); font-size: 12.5px; }
+.ad-head .refresh { margin-left: auto; font-size: 12.5px; color: var(--ink-muted); cursor: pointer; }
+.ad-head .refresh:hover { color: var(--accent); }
+
+/* overview: mural "precisa de atenção" */
+.ov-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+@media (max-width: 900px) { .ov-grid { grid-template-columns: 1fr 1fr; } }
+.ov-tile {
+  background: var(--surface); border: 1px solid var(--line); clip-path: var(--chamfer);
+  padding: 16px 18px 14px; cursor: pointer; position: relative; transition: border-color .13s ease;
+}
+.ov-tile::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--tc, var(--line-2)); }
+.ov-tile:hover { border-color: var(--line-2); }
+.ov-tile .n { font-family: var(--font-display); font-weight: 900; font-size: 40px; line-height: 1; color: var(--tc, var(--ink)); }
+.ov-tile .l { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 1.3px; text-transform: uppercase; color: var(--ink-muted); margin-top: 7px; }
+.ov-tile .s { font-size: 12px; color: var(--ink-2); margin-top: 4px; }
+.ov-tile.ok { --tc: var(--live); }
+.ov-tile.warn { --tc: var(--ember); }
+.ov-tile.hot { --tc: var(--bad); }
+
+@media (max-width: 900px) {
+  .ad-wrap { grid-template-columns: 1fr; }
+  .ad-side { position: static; display: flex; flex-wrap: wrap; padding: 6px; }
+  .ad-brand, .ad-group, .ad-foot { display: none; }
+  .ad-item { border-left: 0; border-bottom: 2px solid transparent; }
+  .ad-item.active { border-bottom-color: var(--accent); }
+}
+</style>
 </head>
 <body>
 
@@ -20,27 +91,42 @@
 </header>
 
 <main>
-  <div class="card" id="login-card" style="max-width:420px;margin-top:6px">
-    <h3>Admin key</h3>
-    <input type="text" id="admin-key" placeholder="paste the adminKey from config.json">
-    <button class="btn" style="margin-top:12px" id="load-btn">Enter</button>
-    <p class="hint" style="color:var(--ink-muted);font-size:12px;margin-top:8px">The key is in server/config.json (adminKey field). Never share it.</p>
+  <div id="login-card" style="max-width:440px;margin:70px auto 0">
+    <div class="card" style="padding:30px;border-top:3px solid var(--accent)">
+      <h2 style="font-family:var(--font-stencil);font-size:26px;letter-spacing:2px">OPS<span style="color:var(--accent)">/</span>CONSOLE</h2>
+      <p style="color:var(--ink-muted);font-size:13px;margin:8px 0 16px">Full control room. The key lives in <code>server/config.json</code> (adminKey) — never share it.</p>
+      <input type="password" id="admin-key" placeholder="adminKey…" autocomplete="off">
+      <button class="btn" style="margin-top:12px;width:100%" id="load-btn">Unlock</button>
+    </div>
   </div>
 
-  <div id="panel" style="display:none">
-    <div class="tabs" id="section-tabs" style="margin-top:6px">
-      <button data-s="apps" class="active">Applications</button>
-      <button data-s="reports">Reports 🚨</button>
-      <button data-s="watch">Watchlist</button>
-      <button data-s="appeals">Appeals</button>
-      <button data-s="redemptions">Store / Deliveries</button>
-      <button data-s="ow">Overwatch</button>
-      <button data-s="bans">Bans</button>
-      <button data-s="map">Map vote</button>
-      <button data-s="posts">News</button>
-      <button data-s="team">Team</button>
-    </div>
-    <div id="section-body" style="margin-top:14px"></div>
+  <div id="panel" class="ad-wrap" style="display:none;margin-top:6px">
+    <aside class="ad-side" id="ad-side">
+      <div class="ad-brand"><b>R</b>//OPS</div>
+      <div class="ad-item" data-s="overview"><span class="i">⌂</span>Overview<b class="cnt" id="cnt-total"></b></div>
+      <div class="ad-group">Moderation</div>
+      <div class="ad-item" data-s="reports"><span class="i">🚨</span>Reports<b class="cnt hot" data-cnt="reportsPriority"></b></div>
+      <div class="ad-item" data-s="watch"><span class="i">🎯</span>Watchlist<b class="cnt hot" data-cnt="watchHigh"></b></div>
+      <div class="ad-item" data-s="ow"><span class="i">🕵️</span>Overwatch<b class="cnt" data-cnt="owOpen"></b></div>
+      <div class="ad-item" data-s="bans"><span class="i">🔨</span>Bans</div>
+      <div class="ad-group">Community</div>
+      <div class="ad-item" data-s="apps"><span class="i">📋</span>Applications<b class="cnt" data-cnt="appsPending"></b></div>
+      <div class="ad-item" data-s="appeals"><span class="i">⚖️</span>Appeals<b class="cnt" data-cnt="appealsPending"></b></div>
+      <div class="ad-item" data-s="team"><span class="i">👥</span>Team</div>
+      <div class="ad-group">Operations</div>
+      <div class="ad-item" data-s="redemptions"><span class="i">💎</span>Deliveries<b class="cnt" data-cnt="redemptionsPending"></b></div>
+      <div class="ad-item" data-s="map"><span class="i">🗺️</span>Map vote</div>
+      <div class="ad-item" data-s="posts"><span class="i">📰</span>News</div>
+      <div class="ad-foot"><a href="/">← site</a><a id="lock-btn">🔒 lock</a></div>
+    </aside>
+    <section style="min-width:0">
+      <div class="ad-head">
+        <h2 id="sec-title">Overview</h2>
+        <span class="desc" id="sec-desc"></span>
+        <span class="refresh" id="sec-refresh">↻ refresh</span>
+      </div>
+      <div id="section-body" style="margin-top:12px"></div>
+    </section>
   </div>
 </main>
 
@@ -48,7 +134,7 @@
 <script src="/js/common.js"></script>
 <script>
 let KEY = sessionStorage.getItem('adminKey') || '';
-let SECTION = 'apps';
+let SECTION = 'overview';
 
 const H = () => ({ 'X-Admin-Key': KEY });
 const aGet = (p) => fetch(p, { headers: H() }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
@@ -383,34 +469,116 @@ async function renderWatchlist() {
     </table></div>` : '<p style="color:var(--ink-muted)">Nobody trips the radar right now. 🕊️</p>');
 }
 
-const SECTIONS = { apps: renderApps, reports: renderReports, watch: renderWatchlist, team: renderTeam, appeals: renderAppeals, redemptions: renderRedemptions, ow: renderOw, bans: renderBans, map: renderMap, posts: renderPosts };
+// ---------- overview: o mural do que precisa de atenção ----------
+
+const TILE_DEFS = [
+  { key: 'reportsPriority', s: 'reports', hot: true, label: 'priority reports', okText: 'no report pressure' },
+  { key: 'watchHigh', s: 'watch', hot: true, label: 'high-risk players', okText: 'radar quiet' },
+  { key: 'appsPending', s: 'apps', label: 'applications waiting', okText: 'inbox zero' },
+  { key: 'appealsPending', s: 'appeals', label: 'appeals waiting', okText: 'all answered' },
+  { key: 'redemptionsPending', s: 'redemptions', label: 'deliveries pending', okText: 'all delivered' },
+  { key: 'owOpen', s: 'ow', label: 'overwatch cases open', okText: 'no open cases' },
+];
+
+async function renderOverview() {
+  const [sum, staffData] = await Promise.all([
+    aGet('/api/admin/summary'),
+    api('/api/staff').catch(() => null),
+  ]);
+  const tiles = TILE_DEFS.map((t) => {
+    const n = sum[t.key] || 0;
+    const cls = n === 0 ? 'ok' : (t.hot ? 'hot' : 'warn');
+    return `<div class="ov-tile ${cls}" data-goto="${t.s}">
+      <div class="n">${n}</div>
+      <div class="l">${t.label}</div>
+      <div class="s">${n === 0 ? '✓ ' + t.okText : 'click to handle →'}</div>
+    </div>`;
+  }).join('');
+  const ms = staffData?.modStats;
+  body().innerHTML = `
+    <div class="ov-grid">${tiles}</div>
+    ${ms ? `<h3 style="font-family:var(--font-display);letter-spacing:1.5px;text-transform:uppercase;font-size:15px;color:var(--ink-2);margin:24px 0 10px">This wipe's receipts (public)</h3>
+    <div class="ov-grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="ov-tile" style="cursor:default"><div class="n">${ms.bans}</div><div class="l">cheaters banned</div></div>
+      <div class="ov-tile" style="cursor:default"><div class="n">${ms.reports}</div><div class="l">F7 reports processed</div></div>
+      <div class="ov-tile" style="cursor:default"><div class="n">${ms.appealsAnswered}</div><div class="l">appeals answered</div></div>
+      <div class="ov-tile" style="cursor:default"><div class="n">${ms.owClosed}</div><div class="l">overwatch verdicts</div></div>
+    </div>` : ''}`;
+  body().querySelectorAll('[data-goto]').forEach((el) =>
+    el.addEventListener('click', () => show(el.dataset.goto)));
+}
+
+// ---------- badges da sidebar ----------
+
+async function updateBadges() {
+  try {
+    const sum = await aGet('/api/admin/summary');
+    let total = 0;
+    document.querySelectorAll('[data-cnt]').forEach((el) => {
+      const n = sum[el.dataset.cnt] || 0;
+      total += n;
+      el.textContent = n > 0 ? n : '';
+    });
+    const t = document.getElementById('cnt-total');
+    t.textContent = total > 0 ? total : '';
+    t.classList.toggle('hot', (sum.reportsPriority || 0) + (sum.watchHigh || 0) > 0);
+  } catch {}
+}
+
+const SECTIONS = { overview: renderOverview, apps: renderApps, reports: renderReports, watch: renderWatchlist, team: renderTeam, appeals: renderAppeals, redemptions: renderRedemptions, ow: renderOw, bans: renderBans, map: renderMap, posts: renderPosts };
+
+const SECTION_META = {
+  overview: ['Overview', 'what needs your attention right now'],
+  reports: ['Reports', 'F7 reports grouped by target — red means spectate priority'],
+  watch: ['Watchlist', 'automatic risk radar — never bans, only ranks who to watch'],
+  ow: ['Overwatch', 'community verdict cases and hosted clips'],
+  bans: ['Bans', 'feeds the public transparency page + Discord'],
+  apps: ['Applications', 'moderator candidates'],
+  appeals: ['Appeals', 'answered by a different admin than the one who banned'],
+  team: ['Team', 'site roles: mods get /mod, staff chat and the MOD nav link'],
+  redemptions: ['Deliveries', 'gem store redemptions — auto via plugin, manual marked here'],
+  map: ['Map vote', 'candidate maps for the next wipe'],
+  posts: ['News', 'server changelog, shown on the site'],
+};
 
 async function show(section) {
   SECTION = section;
-  document.querySelectorAll('#section-tabs button').forEach((x) => x.classList.toggle('active', x.dataset.s === section));
-  body().innerHTML = '<p style="color:var(--ink-muted)">loading…</p>';
+  document.querySelectorAll('.ad-item').forEach((x) => x.classList.toggle('active', x.dataset.s === section));
+  const [title, desc] = SECTION_META[section] || [section, ''];
+  document.getElementById('sec-title').textContent = title;
+  document.getElementById('sec-desc').textContent = desc;
+  body().innerHTML = skelHTML(4);
   try { await SECTIONS[section](); }
   catch (e) { body().innerHTML = `<div class="notice err">Error: ${esc(e.message)}</div>`; }
+  updateBadges();
 }
 
 // ---------- eventos globais ----------
 
-document.getElementById('load-btn').addEventListener('click', async () => {
+async function unlock() {
   KEY = document.getElementById('admin-key').value.trim();
   if (!KEY) return;
   try {
-    await aGet('/api/admin/applications');
+    await aGet('/api/admin/summary');
     sessionStorage.setItem('adminKey', KEY);
     document.getElementById('login-card').style.display = 'none';
     document.getElementById('panel').style.display = '';
-    show('apps');
+    show('overview');
   } catch { alert('Invalid key.'); }
+}
+document.getElementById('load-btn').addEventListener('click', unlock);
+document.getElementById('admin-key').addEventListener('keydown', (e) => { if (e.key === 'Enter') unlock(); });
+
+document.getElementById('lock-btn').addEventListener('click', () => {
+  sessionStorage.removeItem('adminKey');
+  location.reload();
 });
 
-document.getElementById('section-tabs').addEventListener('click', (e) => {
-  const b = e.target.closest('button[data-s]');
+document.getElementById('ad-side').addEventListener('click', (e) => {
+  const b = e.target.closest('.ad-item[data-s]');
   if (b) show(b.dataset.s);
 });
+document.getElementById('sec-refresh').addEventListener('click', () => show(SECTION));
 
 document.getElementById('section-body').addEventListener('click', async (e) => {
   const st = e.target.closest('button[data-status]');
@@ -461,7 +629,9 @@ document.getElementById('section-body').addEventListener('click', async (e) => {
 
 if (KEY) {
   document.getElementById('admin-key').value = KEY;
-  document.getElementById('load-btn').click();
+  unlock();
+} else {
+  document.getElementById('admin-key').focus();
 }
 </script>
 </body>

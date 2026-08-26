@@ -594,6 +594,8 @@ function route(req, res, url, body, config, session) {
         }
         case '/api/admin/roles':
           json(res, 200, { rows: store.listRoles() }); return true;
+        case '/api/admin/summary':
+          json(res, 200, store.adminSummary()); return true;
         case '/api/admin/watchlist':
           json(res, 200, { rows: store.watchlist(store.currentWipe().id) }); return true;
         case '/api/admin/bans': json(res, 200, { rows: store.listBansAdmin() }); return true;

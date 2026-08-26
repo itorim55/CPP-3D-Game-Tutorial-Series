@@ -612,6 +612,25 @@ function deleteChatMessage(id) {
   db.prepare('DELETE FROM chat_messages WHERE id = ?').run(id | 0);
 }
 
+// ---------- resumo do painel admin (badges de pendentes) ----------
+
+function adminSummary() {
+  const wipe = currentWipe();
+  const one = (sql, ...a) => db.prepare(sql).get(...a).n;
+  return {
+    appsPending: one("SELECT COUNT(*) n FROM applications WHERE status = 'pending'"),
+    appealsPending: one("SELECT COUNT(*) n FROM appeals WHERE status = 'pending'"),
+    redemptionsPending: one("SELECT COUNT(*) n FROM redemptions WHERE status = 'pending'"),
+    owOpen: one("SELECT COUNT(*) n FROM ow_cases WHERE status = 'open'"),
+    reportsPriority: one(`
+      SELECT COUNT(*) n FROM (
+        SELECT target_id FROM reports WHERE ts > ?
+        GROUP BY target_id HAVING COUNT(DISTINCT reporter_id) >= 3
+      )`, now() - 86400),
+    watchHigh: watchlist(wipe.id).filter((r) => r.score >= 60).length,
+  };
+}
+
 // ---------- prova de trabalho da moderação (público, por wipe) ----------
 
 function modStats(sinceTs) {
@@ -1894,7 +1913,7 @@ module.exports = {
   setSteamFlags, addReport, reportPressure, reportsAdmin, watchlist,
   recordAccuracy, addNotice, pendingNotices, markNoticesDelivered, reportersOf, modStats,
   aliases, setSignup, removeSignup, listSignups, precisionBoard, isFirstKill, combatSnapshot,
-  setRole, removeRole, listRoles, isMod, addChatMessage, chatMessages, deleteChatMessage,
+  setRole, removeRole, listRoles, isMod, addChatMessage, chatMessages, deleteChatMessage, adminSummary,
   killfeed, searchPlayers, status, staffList, banList, banStats,
   addApplication, recentApplicationFromIp, listApplications, setApplicationStatus, startWipe,
   // gemas e loja
