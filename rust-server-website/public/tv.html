@@ -152,7 +152,7 @@ async function board() {
       <tr>
         <td class="r ${i < 3 ? 'top' : ''}">${i + 1}</td>
         <td>${pfp(r.avatar, r.name, 24)} ${esc(r.name)}</td>
-        <td class="n">${r.kills}</td>
+        <td class="n">${fmtNum(r.kills)}</td>
       </tr>`).join('');
   } catch {}
 }

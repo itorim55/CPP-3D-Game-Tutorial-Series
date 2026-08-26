@@ -177,8 +177,8 @@ async function loadBoard() {
         <td><span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
         <td>${playerCell(r.steam_id, r.name, r.avatar)}</td>
         <td>${esc(r.tier)}</td>
-        ${barTd(r.rating, r.rating)}
-        <td class="num">${r.games}</td>
+        ${barTd(r.rating, fmtNum(r.rating))}
+        <td class="num">${fmtNum(r.games)}</td>
       </tr>`).join('') || `<tr><td colspan="5">${t('stats.eloEmpty')}</td></tr>`;
     return;
   }
@@ -194,12 +194,12 @@ async function loadBoard() {
     <tr${rowAttrs(i)}>
       <td><span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
       <td>${playerCell(r.steam_id, r.name, r.avatar)}</td>
-      ${cell('kills', r.kills, r.kills)}
-      ${cell('deaths', r.deaths, r.deaths)}
+      ${cell('kills', r.kills, fmtNum(r.kills))}
+      ${cell('deaths', r.deaths, fmtNum(r.deaths))}
       ${cell('kd', r.kd, r.kd.toFixed(2))}
-      ${cell('headshots', r.headshots, r.headshots)}
+      ${cell('headshots', r.headshots, fmtNum(r.headshots))}
       ${cell('distance', r.best_distance, r.best_distance ? Math.round(r.best_distance) + 'm' : '—')}
-      ${cell('playtime', r.playtime_s, Math.round(r.playtime_s / 3600 * 10) / 10)}
+      ${cell('playtime', r.playtime_s, (r.playtime_s / 3600).toFixed(1))}
     </tr>`).join('') || `<tr><td colspan="8">${t('stats.noPeriod')}</td></tr>`;
 }
 
@@ -247,8 +247,8 @@ async function loadTeams() {
       <td><span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
       <td><b>${t('stats.team', esc(team.leader))}</b> <span style="color:var(--ink-muted)">(${team.size})</span></td>
       <td style="white-space:normal">${team.members.map((m) => playerLink(m.steamId, m.name)).join(', ')}</td>
-      <td class="num">${team.kills}</td>
-      <td class="num">${team.deaths}</td>
+      <td class="num">${fmtNum(team.kills)}</td>
+      <td class="num">${fmtNum(team.deaths)}</td>
       <td class="num">${team.kd.toFixed(2)}</td>
     </tr>`).join('') || `<tr><td colspan="6">${t('stats.noTeams')}</td></tr>`;
 }

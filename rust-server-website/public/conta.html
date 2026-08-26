@@ -44,7 +44,7 @@
       ${pfp(user.avatar, user.name, 56, 'pfp-lg')}
       <h1 style="font-family:var(--font-display);font-size:40px;letter-spacing:2px">${esc(user.name || t('account.survivor'))}</h1>
       <span style="color:var(--ink-muted);font-size:13px">SteamID ${esc(user.steamId)}</span>
-      <a href="/auth/logout" style="margin-left:auto;font-size:13px;color:var(--ink-muted)">${t('account.logout')}</a>
+      <a href="/auth/logout" class="quiet" style="margin-left:auto;font-size:13px">${t('account.logout')}</a>
     </div>
     ${user.playtimeS ? '' : `<div class="notice err" style="margin-top:10px">${t('account.notSeenYet')}</div>`}
 

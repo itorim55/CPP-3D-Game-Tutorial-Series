@@ -68,13 +68,13 @@
 
     <h2 class="section">${t('vs.thisWipe')}</h2>
     <div class="grid cols-4">
-      ${statTile(w.kills, t('player.kills'))}
-      ${statTile(w.deaths, t('player.deathsPvp'))}
+      ${statTile(fmtNum(w.kills), t('player.kills'))}
+      ${statTile(fmtNum(w.deaths), t('player.deathsPvp'))}
       ${statTile(w.kd.toFixed(2), 'K/D')}
       ${statTile(w.hsRate + '%', t('player.hsRate'))}
       ${statTile(Math.round(w.bestDistance) + 'm', t('player.longest'))}
       ${statTile(p.streak ? '🔥 ' + p.streak : '0', t('player.streakTile'))}
-      ${statTile('💥 ' + p.structuresDestroyed, t('player.structuresTile'))}
+      ${statTile('💥 ' + fmtNum(p.structuresDestroyed), t('player.structuresTile'))}
       ${statTile(hours(p.playtimeS), t('player.playtimeTotal'))}
     </div>
 
@@ -90,10 +90,10 @@
 
     <h2 class="section">${t('vs.allTime')}</h2>
     <div class="grid cols-4">
-      ${statTile(a.kills, t('player.kills'))}
-      ${statTile(a.deaths, t('player.deaths'))}
+      ${statTile(fmtNum(a.kills), t('player.kills'))}
+      ${statTile(fmtNum(a.deaths), t('player.deaths'))}
       ${statTile(a.kd.toFixed(2), 'K/D')}
-      ${statTile(a.headshots, t('player.headshots'))}
+      ${statTile(fmtNum(a.headshots), t('player.headshots'))}
     </div>
 
     <div class="grid cols-2" style="margin-top:28px">

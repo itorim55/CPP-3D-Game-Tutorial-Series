@@ -84,7 +84,7 @@ async function load() {
         <span class="cost">${fmtNum(it.cost)} 💎</span>
       </div>
       <p style="color:var(--ink-2);font-size:13.5px;margin:8px 0 14px">${esc(it.description || '')}</p>
-      <button class="btn" data-id="${esc(it.id)}" ${canAfford ? '' : 'disabled style="opacity:.45;cursor:not-allowed"'}>
+      <button class="btn" data-id="${esc(it.id)}" ${canAfford ? '' : 'disabled'}>
         ${user.loggedIn ? (canAfford ? t('store.redeem') : t('store.notEnough')) : t('store.loginToRedeem')}
       </button>
     </div>`;
