@@ -24,6 +24,7 @@
     <button data-by="headshots" data-i18n="stats.mHeadshots">Headshots</button>
     <button data-by="distance" data-i18n="stats.mLongest">Longest kill</button>
     <button data-by="playtime" data-i18n="stats.mHours">Hours played</button>
+    <button data-by="precision" data-i18n="stats.mPrecision">Precision 🎯</button>
     <span class="spacer"></span>
     <select id="wipe-select" style="width:auto;padding:7px 14px;font-size:13px">
       <option value="w:1h" data-i18n="stats.wLastHour">⏱️ Last hour</option>
@@ -148,6 +149,26 @@ async function loadBoard() {
   const body = document.getElementById('lb-body');
   const head = document.getElementById('lb-head');
   body.innerHTML = `<tr><td colspan="8">${skelHTML(4)}</td></tr>`;
+
+  // "combate limpo": precisão pública — atrai os bons, intimida os outros
+  if (by === 'precision') {
+    const pr = await api('/api/precision');
+    document.getElementById('podium').innerHTML = '';
+    document.getElementById('me-chip').innerHTML = '';
+    head.innerHTML = `<tr><th>#</th><th>${t('stats.thPlayer')}</th>
+      <th class="num sorted">${t('stats.thAccuracy')}</th><th class="num">${t('stats.thShots')}</th>
+      <th class="num">${t('stats.thAvgDist')}</th><th class="num">${t('stats.thKills')}</th></tr>`;
+    body.innerHTML = pr.rows.map((r, i) => `
+      <tr>
+        <td><span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
+        <td>${playerCell(r.steam_id, r.name, r.avatar)}</td>
+        <td class="num sorted" style="color:var(--accent);font-weight:700">${r.accPct}%</td>
+        <td class="num">${fmtNum(r.shots)}</td>
+        <td class="num">${r.avg_distance}m</td>
+        <td class="num">${fmtNum(r.kills)}</td>
+      </tr>`).join('') || `<tr><td colspan="6">${t('stats.precisionEmpty')}</td></tr>`;
+    return;
+  }
   const lb = await api(`/api/leaderboard?by=${by}&${periodQuery()}&limit=100`);
   const u = await me();
 
@@ -206,7 +227,7 @@ async function loadBoard() {
 // O Elo é sempre sazonal (por wipe atual) — o seletor de janela não se aplica.
 function syncWindowSelect() {
   const sel = document.getElementById('wipe-select');
-  const eloActive = by === 'elo';
+  const eloActive = by === 'elo' || by === 'precision';
   if (eloActive) sel.value = ''; // Elo é sempre a wipe atual
   sel.disabled = eloActive;
   sel.title = eloActive ? t('stats.eloWindowNote') : '';

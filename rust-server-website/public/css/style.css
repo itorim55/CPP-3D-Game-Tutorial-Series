@@ -560,6 +560,7 @@ h2.section + * { margin-top: 14px; }
   margin-top: 8px; text-transform: uppercase; letter-spacing: 1.5px;
 }
 .stat .ico { position: absolute; right: 16px; top: 12px; font-size: 19px; opacity: .3; }
+.stat .next-map { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); margin-top: 6px; }
 
 /* stat "hero" (contador de jogadores no hero) */
 .stat-hero {
@@ -858,6 +859,15 @@ textarea { min-height: 96px; resize: vertical; }
 .vote-bar > div { transition: width .8s cubic-bezier(.2, .7, .2, 1); }
 .pct { font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted); margin-left: 6px; }
 .map-option.voted::before, .map-option.voted::after { opacity: 1; }
+
+/* chips de equipas inscritas para a próxima wipe */
+.su-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: var(--inset); border: 1px solid var(--line);
+  padding: 5px 12px; font-size: 13px;
+  animation: rise .4s cubic-bezier(.2, .7, .2, 1) backwards;
+}
+.su-chip .n { color: var(--accent); font-family: var(--font-mono); font-size: 11.5px; }
 
 /* ---------------------------------------------------------- overwatch */
 

@@ -27,6 +27,13 @@
 
   <div id="state-banner"></div>
   <div class="grid cols-3" id="options" style="margin-top:16px" data-i18n="loading">loading…</div>
+
+  <h2 class="section"><span data-i18n="su.title">Squad up for the wipe</span> <small data-i18n="su.sub">register your crew — show everyone the wipe will be busy</small></h2>
+  <div class="card" style="max-width:820px">
+    <div id="su-counter" style="font-family:var(--font-display);font-weight:800;font-size:22px;letter-spacing:1px"></div>
+    <div id="su-form" style="margin-top:12px"></div>
+    <div id="su-list" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"></div>
+  </div>
 </main>
 
 <footer></footer>
@@ -114,6 +121,45 @@ document.getElementById('options').addEventListener('click', async (e) => {
 });
 
 load().catch(console.error);
+
+// ---------- inscrições de equipas (hype pré-wipe) ----------
+async function loadSignups() {
+  const [data, user] = await Promise.all([api('/api/signups'), me()]);
+
+  document.getElementById('su-counter').innerHTML =
+    data.teams ? t('su.counter', `<b style="color:var(--accent)">${data.teams}</b>`, `<b>${data.players}</b>`) : t('su.none');
+
+  const mine = user.loggedIn ? data.rows.find((r) => r.steam_id === user.steamId) : null;
+  document.getElementById('su-form').innerHTML = !user.loggedIn
+    ? `<p style="color:var(--ink-muted);font-size:13px">${t('su.login')}</p>`
+    : `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <input type="text" id="su-name" maxlength="32" placeholder="${t('su.namePh')}" value="${mine ? esc(mine.team_name) : ''}" style="max-width:220px">
+        <select id="su-size" style="width:auto;padding:9px 12px">
+          ${[1,2,3,4,5,6,7,8].map((n) => `<option value="${n}" ${mine && mine.size === n ? 'selected' : ''}>${n === 1 ? t('su.solo') : n}</option>`).join('')}
+        </select>
+        <button class="btn" id="su-save">${mine ? t('su.update') : t('su.register')}</button>
+        ${mine ? `<a href="#" id="su-remove" class="quiet" style="font-size:13px">${t('su.remove')}</a>` : ''}
+      </div>`;
+
+  document.getElementById('su-list').innerHTML = data.rows.map((r) => `
+    <span class="su-chip">${pfp(r.avatar, r.team_name, 20)}<b>${esc(r.team_name)}</b><span class="n">×${r.size}</span></span>`).join('');
+
+  const save = document.getElementById('su-save');
+  if (save) save.addEventListener('click', async () => {
+    const name = document.getElementById('su-name').value.trim();
+    if (!name) return;
+    save.disabled = true;
+    try { await apiPost('/api/signups', { teamName: name, size: parseInt(document.getElementById('su-size').value, 10) }); loadSignups(); }
+    catch (e) { alert('⚠️ ' + e.message); save.disabled = false; }
+  });
+  const rem = document.getElementById('su-remove');
+  if (rem) rem.addEventListener('click', async (e) => {
+    e.preventDefault();
+    await apiPost('/api/signups', { remove: true }).catch(() => {});
+    loadSignups();
+  });
+}
+loadSignups().catch(console.error);
 </script>
 </body>
 </html>

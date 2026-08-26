@@ -294,6 +294,34 @@ CREATE TABLE IF NOT EXISTS notices (
 );
 `);
 
+// histórico de nomes (deteção de rebranding/ban evasion) — trigger, custo zero no hot path
+db.exec(`
+CREATE TABLE IF NOT EXISTS name_history (
+  steam_id TEXT NOT NULL,
+  name     TEXT NOT NULL,
+  ts       INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_namehist ON name_history(steam_id);
+CREATE TRIGGER IF NOT EXISTS trg_name_change
+AFTER UPDATE OF name ON players
+WHEN old.name != new.name AND old.name != 'Unknown'
+BEGIN
+  INSERT INTO name_history (steam_id, name, ts) VALUES (old.steam_id, old.name, unixepoch());
+END;
+`);
+
+// inscrições de equipas para a próxima wipe (hype pré-wipe)
+db.exec(`
+CREATE TABLE IF NOT EXISTS signups (
+  wipe_id   INTEGER NOT NULL,
+  steam_id  TEXT NOT NULL,
+  team_name TEXT NOT NULL,
+  size      INTEGER NOT NULL,
+  ts        INTEGER NOT NULL,
+  PRIMARY KEY (wipe_id, steam_id)
+);
+`);
+
 // reports F7 vindos do jogo (via plugin)
 db.exec(`
 CREATE TABLE IF NOT EXISTS reports (
@@ -430,6 +458,84 @@ function reportersOf(targetId, windowS = 30 * 86400) {
   return db.prepare(`
     SELECT DISTINCT reporter_id FROM reports WHERE target_id = ? AND ts > ?`)
     .all(targetId, now() - windowS).map((r) => r.reporter_id);
+}
+
+/** Nomes anteriores conhecidos de um jogador (mais recentes primeiro). */
+function aliases(steamId, limit = 6) {
+  return db.prepare(
+    'SELECT DISTINCT name FROM name_history WHERE steam_id = ? ORDER BY ts DESC LIMIT ?')
+    .all(steamId, limit).map((r) => r.name);
+}
+
+// ---------- inscrições de equipas para a próxima wipe ----------
+
+function setSignup(wipeId, steamId, teamName, size) {
+  db.prepare(`
+    INSERT INTO signups (wipe_id, steam_id, team_name, size, ts) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(wipe_id, steam_id) DO UPDATE SET team_name = excluded.team_name,
+      size = excluded.size, ts = excluded.ts
+  `).run(wipeId, steamId, teamName, size, now());
+}
+
+function removeSignup(wipeId, steamId) {
+  db.prepare('DELETE FROM signups WHERE wipe_id = ? AND steam_id = ?').run(wipeId, steamId);
+}
+
+function listSignups(wipeId) {
+  const rows = db.prepare(`
+    SELECT s.team_name, s.size, s.ts, p.name, p.avatar, s.steam_id
+    FROM signups s LEFT JOIN players p ON p.steam_id = s.steam_id
+    WHERE s.wipe_id = ? ORDER BY s.ts DESC LIMIT 100`).all(wipeId);
+  return {
+    rows,
+    teams: rows.length,
+    players: rows.reduce((a, r) => a + r.size, 0),
+  };
+}
+
+// ---------- leaderboard de precisão ("combate limpo") ----------
+
+function precisionBoard(wipeId, limit = 50) {
+  return db.prepare(`
+    SELECT p.steam_id, p.name, p.avatar,
+           SUM(a.shots) shots, SUM(a.hits) hits, SUM(a.headshots) headshots,
+           COALESCE(k.kills, 0) kills, COALESCE(k.avgd, 0) avg_distance
+    FROM accuracy a
+    JOIN players p ON p.steam_id = a.steam_id
+    LEFT JOIN (
+      SELECT attacker_id, COUNT(*) kills, AVG(distance) avgd
+      FROM kills WHERE wipe_id = $w AND distance IS NOT NULL GROUP BY attacker_id
+    ) k ON k.attacker_id = a.steam_id
+    WHERE a.wipe_id = $w
+    GROUP BY a.steam_id
+    HAVING shots >= 300
+    ORDER BY CAST(hits AS REAL) / shots DESC
+    LIMIT $l`).all({ w: wipeId, l: limit })
+    .map((r) => ({ ...r, accPct: Math.round(r.hits / r.shots * 100), avg_distance: Math.round(r.avg_distance) }));
+}
+
+/** True se esta é a primeira kill do atacante nesta wipe (para alerta de conta nova). */
+function isFirstKill(wipeId, attackerId) {
+  return db.prepare(
+    'SELECT COUNT(*) n FROM kills WHERE wipe_id = ? AND attacker_id = ?').get(wipeId, attackerId).n === 1;
+}
+
+/** Resumo rápido de combate de um jogador (para o dossier nos alertas). */
+function combatSnapshot(wipeId, steamId) {
+  const k = db.prepare(`
+    SELECT COUNT(*) kills, COALESCE(SUM(headshot),0) hs, COALESCE(MAX(distance),0) dist,
+           COALESCE(SUM(ts > $cut), 0) lastHour
+    FROM kills WHERE wipe_id = $w AND attacker_id = $id`)
+    .get({ cut: now() - 3600, w: wipeId, id: steamId });
+  const a = db.prepare(
+    'SELECT COALESCE(SUM(shots),0) s, COALESCE(SUM(hits),0) h FROM accuracy WHERE wipe_id = ? AND steam_id = ?')
+    .get(wipeId, steamId);
+  return {
+    kills: k.kills, lastHour: k.lastHour,
+    hsRate: k.kills ? Math.round(k.hs / k.kills * 100) : 0,
+    bestDistance: Math.round(k.dist),
+    acc: a.s >= 50 ? `${Math.round(a.h / a.s * 100)}% of ${a.s} shots` : null,
+  };
 }
 
 // ---------- prova de trabalho da moderação (público, por wipe) ----------
@@ -905,6 +1011,13 @@ function watchlist(wipeId) {
 
     let flags = null;
     try { flags = r.steam_flags ? JSON.parse(r.steam_flags) : null; } catch { flags = null; }
+    if (flags && Number.isFinite(flags.rustHours) && flags.rustHours > 0 && flags.rustHours < 150) {
+      score += 15; reasons.push(`only ${Math.round(flags.rustHours)}h of Rust on record`);
+    }
+    if (flags && flags.createdTs) {
+      const ageDays = Math.floor((now() - flags.createdTs) / 86400);
+      if (ageDays >= 0 && ageDays < 90) { score += 15; reasons.push(`Steam account ${ageDays} days old`); }
+    }
     if (flags && (flags.vac || flags.gameBans > 0)) {
       const days = flags.daysSinceLastBan ?? 9999;
       if (days < 365) { score += 30; reasons.push(`Steam ban ${days} days ago`); }
@@ -918,6 +1031,7 @@ function watchlist(wipeId) {
         kills: r.kills, hsRate, maxDistance: Math.round(r.maxd),
         hours: Math.round(hours), score: Math.min(100, score), reasons,
         aim: acc && acc.s >= 50 ? { shots: acc.s, accPct: Math.round(acc.h / acc.s * 100) } : null,
+        aliases: aliases(r.steam_id, 4),
       });
     }
   }
@@ -1585,8 +1699,13 @@ function playerProfile(steamId) {
 
   const eloRow = eloGet(wipe.id, steamId);
 
+  const aimAgg = db.prepare(
+    'SELECT COALESCE(SUM(shots),0) s, COALESCE(SUM(hits),0) h FROM accuracy WHERE wipe_id = ? AND steam_id = ?')
+    .get(wipe.id, steamId);
+
   return {
     steamId: p.steam_id, name: p.name, avatar: p.avatar,
+    aim: aimAgg.s >= 100 ? { shots: aimAgg.s, accPct: Math.round(aimAgg.h / aimAgg.s * 100) } : null,
     firstSeen: p.first_seen, lastSeen: p.last_seen, playtimeS: p.playtime_s,
     wipe: agg(wipe.id), allTime: agg(null),
     weapons, victims, nemesis, gather: gatherRows, recent,
@@ -1631,6 +1750,7 @@ function status() {
     heartbeat: hb,
     wipe: { id: wipe.id, startedAt: wipe.started_at, mapSeed: wipe.map_seed, mapSize: wipe.map_size, label: wipe.label },
     nextWipe: getInfo('next_wipe'),
+    nextMap: { seed: getInfo('next_map_seed'), size: getInfo('next_map_size') },
     killsThisWipe: totals.c,
     playersKnown: playersTotal.c,
     history,
@@ -1699,6 +1819,7 @@ module.exports = {
   avatarInfo, setAvatar, ensureWebPlayer, achievementsCatalog, wrapped,
   setSteamFlags, addReport, reportPressure, reportsAdmin, watchlist,
   recordAccuracy, addNotice, pendingNotices, markNoticesDelivered, reportersOf, modStats,
+  aliases, setSignup, removeSignup, listSignups, precisionBoard, isFirstKill, combatSnapshot,
   killfeed, searchPlayers, status, staffList, banList, banStats,
   addApplication, recentApplicationFromIp, listApplications, setApplicationStatus, startWipe,
   // gemas e loja

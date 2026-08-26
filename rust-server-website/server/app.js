@@ -41,6 +41,7 @@ for (const [k, v] of Object.entries({
   discord: config.discord, next_wipe: config.nextWipe,
   brand_accent: config.brandAccent || 'RUST', brand_rest: config.brandRest || '',
   map_image: config.mapImage, // imagem de fundo do heatmap (URL da imagem do mapa)
+  next_map_seed: config.nextMapSeed, next_map_size: config.nextMapSize, // hype pré-wipe
 })) if (v !== undefined && v !== null && v !== '') store.setInfo(k, v);
 if (!config.brandRest) store.setInfo('brand_rest', '');
 

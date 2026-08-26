@@ -8,9 +8,12 @@
   "serverIp": "connect play.exemplo.pt:28015",
   "discord": "https://discord.gg/exemplo",
   "nextWipe": "2026-09-03T18:00:00Z",
+  "nextMapSeed": "",
+  "nextMapSize": "",
   "gemsPerHour": 1000,
   "anomalyKillsPerHour": 15,
   "reportAlertThreshold": 3,
+  "reporterBountyGems": 5000,
   "trustProxy": false,
   "mapImage": "",
   "discordWebhooks": {

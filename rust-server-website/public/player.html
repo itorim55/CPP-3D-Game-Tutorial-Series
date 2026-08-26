@@ -76,6 +76,7 @@
       ${statTile(p.streak ? '🔥 ' + p.streak : '0', t('player.streakTile'))}
       ${statTile('💥 ' + fmtNum(p.structuresDestroyed), t('player.structuresTile'))}
       ${statTile(hours(p.playtimeS), t('player.playtimeTotal'))}
+      ${p.aim ? statTile(`🎯 ${p.aim.accPct}%`, t('player.aimTile', fmtNum(p.aim.shots))) : ''}
     </div>
 
     <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">

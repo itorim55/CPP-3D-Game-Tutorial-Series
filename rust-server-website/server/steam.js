@@ -23,7 +23,7 @@ async function fetchProfile(steamId) {
     if (!r.ok) throw new Error(`steam api ${r.status}`);
     const d = await r.json();
     const pl = d?.response?.players?.[0];
-    return pl ? { name: pl.personaname || null, avatar: pl.avatarmedium || null } : null;
+    return pl ? { name: pl.personaname || null, avatar: pl.avatarmedium || null, createdTs: pl.timecreated || null } : null;
   }
   const r = await fetch(`https://steamcommunity.com/profiles/${steamId}/?xml=1`,
     { signal: AbortSignal.timeout(6000) });
@@ -52,22 +52,31 @@ function refresh(steamId) {
   fetchProfile(steamId)
     .then(async (prof) => {
       store.setAvatar(steamId, prof?.avatar || null);
-      // com steamApiKey também refrescamos o registo de bans (watchlist)
+      // com steamApiKey também refrescamos bans + idade da conta + horas de Rust
       if (apiKey) {
         try {
+          const flags = { createdTs: prof?.createdTs || null };
           const r = await fetch(
             `https://api.steampowered.com/ISteamUser/GetPlayerBans/v1/?key=${apiKey}&steamids=${steamId}`,
             { signal: AbortSignal.timeout(6000) });
           const b = (await r.json())?.players?.[0];
           if (b) {
-            store.setSteamFlags(steamId, JSON.stringify({
-              vac: !!b.VACBanned,
-              gameBans: b.NumberOfGameBans | 0,
-              daysSinceLastBan: b.DaysSinceLastBan | 0,
-              community: !!b.CommunityBanned,
-            }));
+            flags.vac = !!b.VACBanned;
+            flags.gameBans = b.NumberOfGameBans | 0;
+            flags.daysSinceLastBan = b.DaysSinceLastBan | 0;
+            flags.community = !!b.CommunityBanned;
           }
-        } catch { /* bans ficam por refrescar */ }
+          try {
+            // horas de Rust (só perfis com detalhes de jogos públicos)
+            const g = await fetch(
+              `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${apiKey}&steamid=${steamId}` +
+              '&appids_filter%5B0%5D=252490&include_played_free_games=1',
+              { signal: AbortSignal.timeout(6000) });
+            const game = (await g.json())?.response?.games?.[0];
+            if (game) flags.rustHours = Math.round((game.playtime_forever || 0) / 60);
+          } catch { /* perfil privado — sem horas */ }
+          store.setSteamFlags(steamId, JSON.stringify(flags));
+        } catch { /* flags ficam por refrescar */ }
       }
     })
     // Falha de rede: mantém o avatar antigo mas carimba a tentativa,

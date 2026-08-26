@@ -52,6 +52,7 @@
       <span class="ico">⏱️</span>
       <div class="num clock" id="wipe-countdown">—</div>
       <div class="lbl" data-i18n="home.untilWipe">until next wipe</div>
+      <div class="next-map" id="next-map" style="display:none"></div>
     </div>
     <div class="stat">
       <span class="ico">⚔️</span>
@@ -215,6 +216,12 @@ async function refreshStatus(first) {
       countUp(killsEl, s.killsThisWipe);
       killsEl.dataset.v = s.killsThisWipe;
       if (s.nextWipe) startCountdown(document.getElementById('wipe-countdown'), s.nextWipe);
+      // hype pré-wipe: mapa da próxima wipe já visível para planear a base
+      if (s.nextMap && s.nextMap.seed && s.nextMap.size) {
+        const nm = document.getElementById('next-map');
+        nm.style.display = '';
+        nm.innerHTML = `${t('home.nextMap')}: <a href="https://rustmaps.com/map/${encodeURIComponent(s.nextMap.size)}_${encodeURIComponent(s.nextMap.seed)}" target="_blank" rel="noopener">seed ${esc(s.nextMap.seed)} · ${esc(s.nextMap.size)} ↗</a>`;
+      }
       renderAreaChart(document.getElementById('pop-chart'), s.history, { maxY: hb ? hb.max_players : null });
 
       const ip = s.info.ip || 'client.connect <ip>:28015';

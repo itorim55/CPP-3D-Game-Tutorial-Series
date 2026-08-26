@@ -333,7 +333,7 @@ async function renderWatchlist() {
       <tbody>${rows.map((r) => `
         <tr>
           <td><b style="color:${r.score >= 60 ? 'var(--bad)' : r.score >= 35 ? 'var(--ember)' : 'var(--ink-2)'};font-family:var(--font-display);font-size:18px">${r.score}</b></td>
-          <td>${pfp(r.avatar, r.name, 24)} <a href="/player?id=${encodeURIComponent(r.steamId)}" target="_blank">${esc(r.name)}</a></td>
+          <td>${pfp(r.avatar, r.name, 24)} <a href="/player?id=${encodeURIComponent(r.steamId)}" target="_blank" ${r.aliases && r.aliases.length ? `title="also known as: ${esc(r.aliases.join(', '))}"` : ''}>${esc(r.name)}</a>${r.aliases && r.aliases.length ? ' <span style="color:var(--ink-muted);font-size:11px">aka</span>' : ''}</td>
           <td class="num">${r.kills}</td>
           <td class="num">${r.hsRate}%</td>
           <td class="num">${r.aim ? `${r.aim.accPct}% <span style="color:var(--ink-muted);font-size:11px">of ${fmtNum(r.aim.shots)}</span>` : '—'}</td>

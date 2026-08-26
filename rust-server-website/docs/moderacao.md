@@ -136,3 +136,54 @@ permite monetizar queue skip em servidores comunitários.
 - O hall of shame do Overwatch é a versão site disto — linka os clips nos
   posts.
 - Regra: nunca mostrar nomes reais/Discord do banido além do nick in-game.
+
+---
+
+# Ronda 3 de estratégia — o que entrou e o que foi descartado
+
+## Descartado (com razão técnica)
+
+- **"GIF/vídeo automático da perspetiva no report"** — impossível como descrito:
+  um servidor de Rust não renderiza gráficos, não há vídeo para gravar. A
+  versão REAL disto são as **demos server-side nativas** (`demo.record`) — ver
+  abaixo, implementado.
+- **Valor do inventário Steam / nº de amigos banidos** como sinais de risco —
+  na prática inúteis: inventários e listas de amigos estão quase sempre
+  privados, e o valor de inventário exige chamadas de mercado pesadas para um
+  sinal fraquíssimo. Os sinais fortes (idade da conta, horas de Rust, bans
+  anteriores) já estão na watchlist.
+- **"Trust Score"** como sistema novo — já existe: é a nossa Watchlist. Foi
+  aprofundada em vez de duplicada.
+
+## Implementado nesta ronda ✅
+
+1. **Watchlist enriquecida (o "trust score" completo)** — com `steamApiKey`,
+   as flags de cada jogador incluem agora idade da conta Steam e horas de
+   Rust (perfis públicos). Sinais novos: conta com <90 dias (+15) e <150 h
+   de Rust (+15). O histórico de nomes é registado automaticamente
+   (trigger na BD) e aparece como "aka" na watchlist — rebranding não
+   esconde ninguém.
+2. **Alerta de primeira kill** — quando uma conta sinalizada (ban anterior,
+   conta nova, poucas horas) faz a PRIMEIRA kill da wipe, a staff recebe
+   alerta no Discord. O topo da fila de spectate faz-se sozinho.
+3. **Dossier no alerta de pressão** — o alerta de 3+ reporters agora inclui
+   o resumo de combate do alvo (kills da wipe e da última hora, HS%, melhor
+   distância, precisão) — o moderador decide em segundos.
+4. **Auto-demo (o "killcam" verdadeiro)** — quando 3 jogadores distintos
+   reportam o mesmo alvo, o plugin grava automaticamente uma demo
+   server-side de 60 s (`demo.record`) — fica em `server/<identity>/demos/`,
+   abre-se no cliente do Rust com `demo.play`. Configurável
+   ("Auto server demo on report pressure", 0 desliga).
+5. **Bounty de reports** — quem reportou um jogador que acabou banido recebe
+   gemas (config `reporterBountyGems`, 5000 por defeito, 0 desliga) junto
+   com o obrigado in-game. Gemas são cosméticas → sem risco de P2W; o custo
+   de reports falsos é zero porque só pagam bans confirmados.
+6. **Wipe Hype** — `nextMapSeed`/`nextMapSize` no config mostram o próximo
+   mapa na home (link RustMaps para planear a base) + secção **"Squad up"**
+   na página do mapa: equipas registam-se para a próxima wipe e o contador
+   público ("N equipas · M jogadores confirmados") vende movimento.
+7. **Leaderboard de Precisão** — tab pública 🎯 na stats (mín. 300 tiros):
+   precisão, tiros, distância média, kills. Os bons exibem números; os
+   batoteiros sabem que os deles vão gritar. O perfil de cada jogador mostra
+   a tile de precisão (mín. 100 tiros). Os limiares INTERNOS da watchlist
+   não são publicados.

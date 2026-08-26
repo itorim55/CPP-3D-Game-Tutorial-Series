@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("StatsHub", "Rustworthy", "1.4.0")]
+    [Info("StatsHub", "Rustworthy", "1.5.0")]
     [Description("Sends kills, sessions, farming and heartbeats to the stats website and delivers store rewards")]
     public class StatsHub : RustPlugin
     {
@@ -40,6 +40,9 @@ namespace Oxide.Plugins
 
             [JsonProperty("Deliver store rewards (runs commands)")]
             public bool ExecuteRedemptions = true;
+
+            [JsonProperty("Auto server demo on report pressure (seconds, 0 = off)")]
+            public float AutoDemoSeconds = 60f;
 
             [JsonProperty("Reward poll interval (seconds)")]
             public float RedemptionPollInterval = 60f;
@@ -247,10 +250,34 @@ namespace Oxide.Plugins
             }, this, RequestMethod.GET, headers, 10f);
         }
 
+        // pressão de reports em memória -> demo server-side automática do alvo
+        private readonly Dictionary<string, HashSet<string>> _reportPressure = new Dictionary<string, HashSet<string>>();
+        private readonly HashSet<string> _demoRecorded = new HashSet<string>();
+
+        private void MaybeAutoDemo(string targetId, string reporterId)
+        {
+            if (_config.AutoDemoSeconds <= 0) return;
+            HashSet<string> reporters;
+            if (!_reportPressure.TryGetValue(targetId, out reporters))
+                _reportPressure[targetId] = reporters = new HashSet<string>();
+            reporters.Add(reporterId);
+            if (reporters.Count < 3 || _demoRecorded.Contains(targetId)) return;
+            _demoRecorded.Add(targetId);
+            // demo nativa do Rust: fica em server/<identity>/demos/ — prova real da perspetiva
+            ConsoleSystem.Run(ConsoleSystem.Option.Server.Quiet(), $"demo.record {targetId}");
+            Puts($"[StatsHub] Auto demo started for {targetId} ({reporters.Count} distinct reporters)");
+            timer.Once(_config.AutoDemoSeconds, () =>
+            {
+                ConsoleSystem.Run(ConsoleSystem.Option.Server.Quiet(), $"demo.stop {targetId}");
+                Puts($"[StatsHub] Auto demo finished for {targetId}");
+            });
+        }
+
         // Report F7 dentro do jogo -> fila de prioridade da staff no site/Discord
         private void OnPlayerReported(BasePlayer reporter, string targetName, string targetId, string subject, string message, string type)
         {
             if (reporter == null || string.IsNullOrEmpty(targetId)) return;
+            MaybeAutoDemo(targetId, reporter.UserIDString);
             Enqueue(new Dictionary<string, object>
             {
                 ["type"] = "report",

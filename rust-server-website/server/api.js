@@ -44,6 +44,7 @@ function handleIngest(body, config) {
         }, wipe.id);
         killLines.push(`⚔️ **${clean(e.attackerName, 32) || '?'}** killed **${clean(e.victimName, 32) || '?'}**` +
           ` (${clean(e.weapon, 32) || '?'}${Number.isFinite(e.distance) ? `, ${Math.round(e.distance)}m` : ''}${e.headshot ? ', HS 🎯' : ''})`);
+        checkFirstKillFlags(String(e.attackerId), clean(e.attackerName, 64), wipe.id, config);
         accepted++;
         break;
       }
@@ -136,6 +137,40 @@ function handleIngest(body, config) {
   return { ok: true, accepted };
 }
 
+// ---------- alerta de primeira kill de conta sinalizada ----------
+// Conta nova / poucas horas / historial de bans faz a 1ª kill da wipe
+// disparar um aviso — o "trust score" a trabalhar sozinho.
+
+const _firstKillAlerted = new Set();
+
+function checkFirstKillFlags(steamId, name, wipeId, config) {
+  const url = config.discordWebhooks?.staff;
+  if (!url || _firstKillAlerted.has(steamId)) return;
+  try {
+    if (!store.isFirstKill(wipeId, steamId)) return;
+    _firstKillAlerted.add(steamId);
+    const raw = store.db.prepare('SELECT steam_flags FROM players WHERE steam_id = ?').get(steamId)?.steam_flags;
+    if (!raw) return;
+    let f;
+    try { f = JSON.parse(raw); } catch { return; }
+    const reasons = [];
+    if (f.vac || f.gameBans > 0) reasons.push(`Steam ban on record (${f.daysSinceLastBan ?? '?'} days ago)`);
+    if (Number.isFinite(f.rustHours) && f.rustHours > 0 && f.rustHours < 150) reasons.push(`${Math.round(f.rustHours)}h of Rust`);
+    if (f.createdTs && (store.now() - f.createdTs) / 86400 < 90) {
+      reasons.push(`account ${Math.floor((store.now() - f.createdTs) / 86400)} days old`);
+    }
+    if (!reasons.length) return;
+    discord.send(url, {
+      embeds: [{
+        color: 0xd8a94e,
+        title: '👀 Flagged account just got their first kill',
+        description: `**${name || steamId}** — ${reasons.join(' · ')}.\n` +
+          `Worth an early spectate.\nProfile: /player?id=${steamId} · Admin: /admin (Watchlist)`,
+      }],
+    });
+  } catch { /* nunca derrubar o ingest */ }
+}
+
 // ---------- alerta de pressão de reports ----------
 // Quando N jogadores DIFERENTES reportam o mesmo alvo em 24 h, a staff
 // recebe prioridade máxima no Discord para ir para o spectate.
@@ -151,11 +186,15 @@ function checkReportPressure(targetId, targetName, config) {
   const last = _reportAlerted.get(targetId) || 0;
   if (store.now() - last < 6 * 3600) return;
   _reportAlerted.set(targetId, store.now());
+  // dossier: o moderador decide em segundos sem entrar no jogo
+  const snap = store.combatSnapshot(store.currentWipe().id, targetId);
   discord.send(url, {
     embeds: [{
       color: 0xff5d5d,
       title: '🚨 Report pressure — spectate priority',
       description: `**${targetName || targetId}** was reported by **${n} different players in 24h**.\n` +
+        `Combat: ${snap.kills} kills this wipe (${snap.lastHour} in the last hour) · ` +
+        `${snap.hsRate}% HS · best ${snap.bestDistance}m${snap.acc ? ` · aim ${snap.acc}` : ''}.\n` +
         `Get someone in spectate.\nProfile: /player?id=${targetId} · Admin: /admin (Reports tab)`,
     }],
   });
@@ -356,6 +395,10 @@ function route(req, res, url, body, config, session) {
         steam.refresh(id);
         json(res, 200, w); return true;
       }
+      case '/api/precision':
+        json(res, 200, { rows: store.precisionBoard(store.currentWipe().id) }); return true;
+      case '/api/signups':
+        json(res, 200, store.listSignups(store.currentWipe().id)); return true;
       case '/api/achievements':
         json(res, 200, { rows: store.achievementsCatalog(store.currentWipe().id) }); return true;
       case '/api/streaks':
@@ -439,6 +482,18 @@ function route(req, res, url, body, config, session) {
   }
 
   // --- endpoints autenticados por sessão Steam (POST) ---
+  if (req.method === 'POST' && p === '/api/signups') {
+    if (!session) { json(res, 401, { error: 'Sign in with Steam first.' }); return true; }
+    if (!body) { json(res, 400, { error: 'Invalid JSON' }); return true; }
+    const wipeId = store.currentWipe().id;
+    if (body.remove) { store.removeSignup(wipeId, session.steamId); json(res, 200, { ok: true }); return true; }
+    const teamName = clean(body.teamName, 32);
+    const size = Math.min(Math.max(1, body.size | 0), 8);
+    if (!teamName) { json(res, 400, { error: 'Team name is required.' }); return true; }
+    store.setSignup(wipeId, session.steamId, teamName, size);
+    json(res, 200, { ok: true }); return true;
+  }
+
   if (req.method === 'POST' && ['/api/redeem', '/api/mapvote/vote', '/api/owcases/vote', '/api/appeals'].includes(p)) {
     if (!session) { json(res, 401, { error: 'Sign in with Steam first.' }); return true; }
     if (!body) { json(res, 400, { error: 'Invalid JSON' }); return true; }
@@ -547,11 +602,14 @@ function route(req, res, url, body, config, session) {
           }
           store.addBan(ban);
           discord.banAnnounce(config.discordWebhooks?.bans, ban);
-          // psicologia de comunidade: quem reportou o banido recebe um obrigado in-game
+          // psicologia de comunidade: quem reportou o banido recebe obrigado + bounty
           if (banSteamId) {
+            const bounty = Math.max(0, config.reporterBountyGems ?? 5000);
             for (const rid of store.reportersOf(banSteamId)) {
+              if (bounty) store.addGems(rid, bounty);
               store.addNotice(rid,
-                '✅ The player you reported was banned. Thanks for keeping the server clean!');
+                `✅ The player you reported was banned. Thanks for keeping the server clean!` +
+                (bounty ? ` (+${bounty.toLocaleString('en-GB')} gems bounty 💎)` : ''));
             }
           }
           json(res, 200, { ok: true }); return true;
