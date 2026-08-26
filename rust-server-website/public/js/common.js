@@ -388,6 +388,47 @@ function initChat(container, { defaultChannel = 'global' } = {}) {
   });
 }
 
+// ---------- dock de chat fixo (ecrãs largos) ----------
+function mountChatDock() {
+  const DOCK_MIN = 1980; // só quando há margem livre a sério
+  const path = location.pathname.replace(/\.html$/, '') || '/';
+  if (document.body.classList.contains('tv') || path === '/admin' || path === '/mod') return;
+  if (window.innerWidth < DOCK_MIN) return;
+
+  document.documentElement.classList.add('has-chatdock');
+  const aside = document.createElement('aside');
+  aside.className = 'chat-dock';
+  aside.id = 'chat-dock';
+  aside.innerHTML = `
+    <div class="cd-head">
+      <b>${t('chat.title')}</b>
+      <span class="live-badge" style="margin-left:auto"><span class="pulse"></span>LIVE</span>
+      <button class="cd-min" id="cd-min" title="—">—</button>
+    </div>
+    <div class="cd-body" id="cd-body"></div>`;
+  document.body.appendChild(aside);
+
+  const tab = document.createElement('button');
+  tab.className = 'chat-tab';
+  tab.textContent = '💬';
+  tab.title = t('chat.title');
+  document.body.appendChild(tab);
+
+  const setOpen = (open) => {
+    aside.style.display = open ? '' : 'none';
+    tab.style.display = open ? 'none' : '';
+    try { localStorage.setItem('chatDock', open ? '1' : '0'); } catch {}
+  };
+  aside.querySelector('#cd-min').addEventListener('click', () => setOpen(false));
+  tab.addEventListener('click', () => setOpen(true));
+  let open = true;
+  try { open = localStorage.getItem('chatDock') !== '0'; } catch {}
+  setOpen(open);
+
+  initChat(aside.querySelector('#cd-body'));
+}
+document.addEventListener('DOMContentLoaded', mountChatDock);
+
 // ---------- delta flutuante (+2 / -1 a subir de um número que mudou) ----------
 function floatDelta(anchor, diff, cls = '') {
   if (!diff || reduceMotion || !anchor) return;

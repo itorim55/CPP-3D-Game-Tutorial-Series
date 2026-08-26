@@ -45,13 +45,16 @@ function refresh(steamId) {
   const info = store.avatarInfo(steamId);
   if (!info) return; // jogador desconhecido — nada onde guardar
   const age = Math.floor(Date.now() / 1000) - (info.avatar_ts || 0);
-  if (info.avatar_ts && age < (info.avatar ? TTL_OK : TTL_FAIL)) return;
+  const nameless = info.name === 'Unknown'; // nome por preencher — ignorar o TTL
+  if (!nameless && info.avatar_ts && age < (info.avatar ? TTL_OK : TTL_FAIL)) return;
   if (inflight.has(steamId) || inflight.size >= 4) return;
 
   inflight.add(steamId);
   fetchProfile(steamId)
     .then(async (prof) => {
       store.setAvatar(steamId, prof?.avatar || null);
+      // auto-cura: se o registo ficou 'Unknown' (ex.: seed), cola o nome Steam
+      if (prof?.name) store.ensureWebPlayer(steamId, prof.name);
       // com steamApiKey também refrescamos bans + idade da conta + horas de Rust
       if (apiKey) {
         try {

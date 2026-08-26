@@ -399,7 +399,7 @@ function ensureWebPlayer(steamId, name) {
 
 // Cache de avatares Steam (preenchida por server/steam.js).
 function avatarInfo(steamId) {
-  return db.prepare('SELECT avatar, avatar_ts FROM players WHERE steam_id = ?').get(steamId) || null;
+  return db.prepare('SELECT avatar, avatar_ts, name FROM players WHERE steam_id = ?').get(steamId) || null;
 }
 function setAvatar(steamId, url) {
   db.prepare('UPDATE players SET avatar = ?, avatar_ts = ? WHERE steam_id = ?')

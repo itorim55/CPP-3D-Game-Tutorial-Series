@@ -595,10 +595,10 @@ h2.section + * { margin-top: 14px; }
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) 16px 24px minmax(0, 1fr) 56px;
   column-gap: 8px; row-gap: 3px; align-items: center;
-  background: var(--inset); border: 1px solid var(--line-2); border-left: 3px solid var(--accent);
+  background: var(--inset); border: 1px solid #4d5a70; border-left: 3px solid var(--accent);
   padding: 8px 12px; font-size: 13.5px;
 }
-.kill-list .kill:nth-child(even) { border-color: #3d4654; border-left-color: var(--ember); }
+.kill-list .kill:nth-child(even) { border-color: rgba(255, 176, 32, .45); border-left-color: var(--ember); }
 .kill.fresh { animation: slidein .8s cubic-bezier(.2, .7, .2, 1); }
 @keyframes slidein {
   from { opacity: 0; transform: translateX(-18px); background: var(--accent-soft); border-left-color: var(--ember); }
@@ -625,10 +625,9 @@ h2.section + * { margin-top: 14px; }
 
 /* mini leaderboard */
 .mini-lb { width: 100%; border-collapse: collapse; font-size: 14.5px; }
-.mini-lb td { padding: 10px 8px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.mini-lb td:first-child { border-left: 1px solid var(--line); }
-.mini-lb td:last-child { border-right: 1px solid var(--line); }
-.mini-lb tr:last-child td { border-bottom: 0; }
+.mini-lb td { padding: 10px 8px; border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); }
+.mini-lb td:first-child { border-left: 1px solid var(--line-2); }
+.mini-lb td:last-child { border-right: 1px solid var(--line-2); }
 .mini-lb tr { transition: background .12s ease; }
 .mini-lb tr:hover { background: var(--surface-2); }
 .mini-lb .r { color: var(--ink-muted); width: 30px; font-variant-numeric: tabular-nums; font-family: var(--font-display); font-weight: 700; font-size: 16px; }
@@ -972,6 +971,38 @@ footer a:hover { color: var(--accent); }
   20% { opacity: 1; }
   to { opacity: 0; transform: translateY(-22px); }
 }
+
+/* ---------------------------------------------------- dock de chat fixo */
+/* Ecrãs largos (≥1980px): o chat vive fixo na margem direita, sempre
+   visível em todas as páginas. Ecrãs menores usam o painel da home. */
+.chat-dock {
+  position: fixed; top: 108px; right: 14px; bottom: 14px; width: 308px; z-index: 40;
+  background: var(--surface); border: 1px solid var(--line-2);
+  display: flex; flex-direction: column; box-shadow: var(--shadow);
+}
+.chat-dock::before {
+  content: ""; height: 3px; flex: none;
+  background: repeating-linear-gradient(-55deg, var(--accent) 0 10px, transparent 10px 20px); opacity: .5;
+}
+.chat-dock .cd-head {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px; flex: none;
+  border-bottom: 1px solid var(--line); background: var(--surface-2);
+  font-family: var(--font-display); letter-spacing: 1.5px; text-transform: uppercase; font-size: 14px;
+}
+.cd-min {
+  background: none; border: 1px solid var(--line); color: var(--ink-2);
+  cursor: pointer; padding: 0 9px; font-size: 14px; line-height: 20px; flex: none;
+}
+.cd-min:hover { color: var(--ink); border-color: var(--line-2); }
+.chat-dock .cd-body { flex: 1; display: flex; flex-direction: column; padding: 12px; min-height: 0; }
+.chat-dock .chat-box { flex: 1; height: auto; min-height: 0; }
+.chat-tab {
+  position: fixed; right: 0; top: 50%; transform: translateY(-50%); z-index: 40;
+  background: var(--surface-2); border: 1px solid var(--line-2); border-right: 0;
+  color: var(--ink); font-size: 18px; padding: 12px 10px 12px 12px; cursor: pointer;
+}
+.chat-tab:hover { border-color: var(--accent); }
+html.has-chatdock #home-chat-panel { display: none; }
 
 /* ------------------------------------------------------------- chat */
 
