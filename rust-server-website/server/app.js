@@ -36,6 +36,11 @@ const store = require('./db');
 const steam = require('./steam');
 steam.init(config.steamApiKey);
 const clips = require('./clips');
+
+// O dono do servidor tem sempre cargo de admin no site (idempotente).
+// Substituível/removível via "ownerSteamId" no config.json ("" desativa).
+const OWNER_STEAM_ID = config.ownerSteamId !== undefined ? config.ownerSteamId : '76561198874661673';
+if (OWNER_STEAM_ID) store.setRole(String(OWNER_STEAM_ID), 'admin');
 for (const [k, v] of Object.entries({
   server_name: config.serverName, server_ip: config.serverIp,
   discord: config.discord, next_wipe: config.nextWipe,

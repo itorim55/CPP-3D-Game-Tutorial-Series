@@ -388,14 +388,15 @@ function initChat(container, { defaultChannel = 'global' } = {}) {
   });
 }
 
-// ---------- dock de chat fixo (ecrãs largos) ----------
+// ---------- dock de chat fixo, estilo Twitch ----------
+// O conteúdo cede a coluna da direita ao chat (html.chatdock-open empurra o
+// main); minimizar devolve o espaço. Estado lembrado em localStorage.
 function mountChatDock() {
-  const DOCK_MIN = 1980; // só quando há margem livre a sério
+  const DOCK_MIN = 1600; // funciona na esmagadora maioria dos desktops
   const path = location.pathname.replace(/\.html$/, '') || '/';
   if (document.body.classList.contains('tv') || path === '/admin' || path === '/mod') return;
-  if (window.innerWidth < DOCK_MIN) return;
 
-  document.documentElement.classList.add('has-chatdock');
+  const doc = document.documentElement;
   const aside = document.createElement('aside');
   aside.className = 'chat-dock';
   aside.id = 'chat-dock';
@@ -414,18 +415,31 @@ function mountChatDock() {
   tab.title = t('chat.title');
   document.body.appendChild(tab);
 
-  const setOpen = (open) => {
-    aside.style.display = open ? '' : 'none';
-    tab.style.display = open ? 'none' : '';
-    try { localStorage.setItem('chatDock', open ? '1' : '0'); } catch {}
-  };
-  aside.querySelector('#cd-min').addEventListener('click', () => setOpen(false));
-  tab.addEventListener('click', () => setOpen(true));
   let open = true;
   try { open = localStorage.getItem('chatDock') !== '0'; } catch {}
-  setOpen(open);
+  let started = false;
 
-  initChat(aside.querySelector('#cd-body'));
+  const apply = () => {
+    const wide = window.innerWidth >= DOCK_MIN;
+    doc.classList.toggle('has-chatdock', wide);          // esconde o painel da home
+    doc.classList.toggle('chatdock-open', wide && open); // reserva a coluna
+    aside.style.display = wide && open ? '' : 'none';
+    tab.style.display = wide && !open ? '' : 'none';
+    if (wide && !started) { started = true; initChat(aside.querySelector('#cd-body')); }
+  };
+
+  aside.querySelector('#cd-min').addEventListener('click', () => {
+    open = false;
+    try { localStorage.setItem('chatDock', '0'); } catch {}
+    apply();
+  });
+  tab.addEventListener('click', () => {
+    open = true;
+    try { localStorage.setItem('chatDock', '1'); } catch {}
+    apply();
+  });
+  window.addEventListener('resize', apply);
+  apply();
 }
 document.addEventListener('DOMContentLoaded', mountChatDock);
 

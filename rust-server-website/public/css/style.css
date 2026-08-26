@@ -973,8 +973,14 @@ footer a:hover { color: var(--accent); }
 }
 
 /* ---------------------------------------------------- dock de chat fixo */
-/* Ecrãs largos (≥1980px): o chat vive fixo na margem direita, sempre
-   visível em todas as páginas. Ecrãs menores usam o painel da home. */
+/* Modelo Twitch: o chat vive fixo na margem direita e o CONTEÚDO cede-lhe
+   a coluna (recentra-se no espaço restante). Ativo a partir de ~1600px de
+   largura CSS; abaixo disso fica o painel de chat da home. */
+html.chatdock-open main {
+  width: calc(100% - 352px); /* o main é flex-item — sem isto o width:100% ignora as margens */
+  margin-left: max(16px, calc((100% - 1716px) / 2));
+  margin-right: 336px;
+}
 .chat-dock {
   position: fixed; top: 108px; right: 14px; bottom: 14px; width: 308px; z-index: 40;
   background: var(--surface); border: 1px solid var(--line-2);
