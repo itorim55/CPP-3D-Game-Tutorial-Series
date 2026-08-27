@@ -70,7 +70,7 @@ async function load() {
       </p>
       <div class="vote-bar"><div style="width:0%" data-pct="${pct}"></div></div>
       <p style="color:var(--ink-2);font-size:13px;margin:6px 0 12px">
-        ${t('map.points', `<span class="votes-n">${o.votes}</span>`, o.voters)}
+        ${t('map.points', `<span class="votes-n">${o.votes}</span>`, `<span class="voters-n">${o.voters}</span>`)}
         <span class="pct">${pct}%</span></p>
       ${state.open ? `<button class="btn ${state.myVote === o.id ? '' : 'ghost'}" data-id="${o.id}">
         ${state.myVote === o.id ? t('map.yourVote') : t('map.voteThis')}</button>` : ''}
@@ -92,16 +92,24 @@ setInterval(async () => {
   const s = await api('/api/mapvote').catch(() => null);
   if (!s || !s.options.length) return;
   const total = s.options.reduce((a, o) => a + o.votes, 0) || 1;
+  const maxVotes = Math.max(...s.options.map((o) => o.votes), 0);
   for (const o of s.options) {
     const card = document.querySelector(`[data-opt="${o.id}"]`);
     if (!card) continue;
     const n = card.querySelector('.votes-n');
     if (n && n.textContent !== String(o.votes)) { n.textContent = o.votes; bump(n); }
+    const v = card.querySelector('.voters-n');
+    if (v && v.textContent !== String(o.voters)) v.textContent = o.voters;
     const pct = Math.round((o.votes / total) * 100);
     const bar = card.querySelector('.vote-bar > div');
     if (bar) bar.style.width = `${pct}%`;
     const pctEl = card.querySelector('.pct');
     if (pctEl) pctEl.textContent = `${pct}%`;
+    // o chip LEADING muda de dono quando a corrida vira
+    const isLead = o.votes > 0 && o.votes === maxVotes;
+    const chip = card.querySelector('.lead-chip');
+    if (isLead && !chip) card.querySelector('b')?.insertAdjacentHTML('beforeend', ` <span class="lead-chip">${t('map.leading')}</span>`);
+    else if (!isLead && chip) chip.remove();
   }
 }, 25000);
 

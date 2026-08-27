@@ -87,7 +87,12 @@
       <td>${esc(b.staff_name)}</td>
       <td>${b.evidence ? `<a href="${esc(b.evidence)}" target="_blank" rel="noopener">${t('staff.view')}</a>` : '—'}</td>
     </tr>`).join('') || `<tr><td colspan="5">${t('staff.noBans')}</td></tr>`;
-})();
+})().catch((e) => {
+  document.getElementById('mod-stats').innerHTML =
+    `<div class="notice err" style="grid-column:1/-1">${t('error.generic', esc(e.message))}</div>`;
+  document.getElementById('staff-grid').textContent = '';
+  document.getElementById('ban-list').innerHTML = '';
+});
 
 // Código do Moderador: colapsado à linha do título; clicar expande (delegado — sobrevive ao i18n)
 document.querySelectorAll('#mod-code .pledge').forEach((p) => p.classList.add('closed'));

@@ -13,6 +13,13 @@ const crypto = require('node:crypto');
 const DIR = path.join(__dirname, '..', 'data', 'clips');
 fs.mkdirSync(DIR, { recursive: true });
 
+// uploads interrompidos deixam .part para trás — varrer no arranque
+try {
+  for (const f of fs.readdirSync(DIR)) {
+    if (f.endsWith('.part')) fs.unlinkSync(path.join(DIR, f));
+  }
+} catch { /* pasta vazia */ }
+
 // nomes gerados por nós — nunca aceitar nomes vindos do cliente fora deste formato
 const NAME_RE = /^clip-[a-z0-9]+-[a-f0-9]{8}\.(mp4|webm)$/;
 const MAX_BYTES = 200 * 1024 * 1024; // 200 MB por clip

@@ -21,17 +21,23 @@ function sign(data, secret) {
   return crypto.createHmac('sha256', secret).update(data).digest('base64url');
 }
 
-function makeSessionCookie(steamId, secret) {
+function makeSessionCookie(steamId, secret, secure = false) {
   const payload = b64url(JSON.stringify({
     sid: steamId,
     exp: Math.floor(Date.now() / 1000) + SESSION_DAYS * 86400,
   }));
   const value = `${payload}.${sign(payload, secret)}`;
-  return `${COOKIE_NAME}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_DAYS * 86400}`;
+  return `${COOKIE_NAME}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_DAYS * 86400}${secure ? '; Secure' : ''}`;
 }
 
-function clearSessionCookie() {
-  return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+function clearSessionCookie(secure = false) {
+  return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure ? '; Secure' : ''}`;
+}
+
+/** Comparação de chaves imune a timing attacks (hash iguala comprimentos). */
+function keysMatch(given, expected) {
+  const h = (s) => crypto.createHash('sha256').update(String(s || '')).digest();
+  return crypto.timingSafeEqual(h(given), h(expected));
 }
 
 /** Lê e valida a sessão do pedido. Devolve { steamId } ou null. */
@@ -115,4 +121,4 @@ function verifySteamReturn(url, siteUrl) {
   });
 }
 
-module.exports = { makeSessionCookie, clearSessionCookie, readSession, steamLoginUrl, verifySteamReturn };
+module.exports = { makeSessionCookie, clearSessionCookie, readSession, steamLoginUrl, verifySteamReturn, keysMatch };

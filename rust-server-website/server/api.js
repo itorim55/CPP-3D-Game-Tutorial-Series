@@ -6,14 +6,23 @@ const store = require('./db');
 const discord = require('./discord');
 const steam = require('./steam');
 const clips = require('./clips');
+const { keysMatch } = require('./auth');
 
 function json(res, code, obj) {
   const body = JSON.stringify(obj);
   res.writeHead(code, {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
   });
   res.end(body);
+}
+
+// só URLs http(s) podem ser guardados como links clicáveis (evidence, clips) —
+// esc() não neutraliza esquemas javascript:/data: dentro de um href
+function cleanUrl(s, max = 300) {
+  const v = clean(s, max);
+  return v && /^https?:\/\//i.test(v) ? v : null;
 }
 
 function clean(s, max = 200) {
@@ -29,7 +38,19 @@ function cleanText(s, max = 8000) {
 
 // ---------- ingestão (plugin Oxide -> site) ----------
 
+// dedup de lotes: o plugin envia batchId único; um retry após timeout em que o
+// servidor JÁ processou o lote não pode duplicar kills/gemas/playtime
+const _seenBatches = new Map();
+
 function handleIngest(body, config) {
+  const bid = typeof body.batchId === 'string' ? body.batchId.slice(0, 64) : null;
+  if (bid) {
+    if (_seenBatches.has(bid)) return { ok: true, accepted: 0, duplicate: true };
+    _seenBatches.set(bid, Date.now());
+    if (_seenBatches.size > 500) {
+      for (const [k, t] of _seenBatches) { if (Date.now() - t > 3600e3) _seenBatches.delete(k); }
+    }
+  }
   const wipe = store.currentWipe();
   const gemsPerHour = config.gemsPerHour ?? 1000;
   const killLines = [];
@@ -38,7 +59,7 @@ function handleIngest(body, config) {
     const ts = Number.isFinite(e.ts) ? e.ts : store.now();
     switch (e.type) {
       case 'kill': {
-        if (!e.attackerId || !e.victimId) break;
+        if (!e.attackerId || !e.victimId || String(e.attackerId) === String(e.victimId)) break;
         store.upsertPlayer(String(e.attackerId), clean(e.attackerName, 64), ts);
         store.upsertPlayer(String(e.victimId), clean(e.victimName, 64), ts);
         store.recordKill({
@@ -90,7 +111,9 @@ function handleIngest(body, config) {
       }
       case 'gather': {
         if (!e.steamId || !e.resource) break;
-        store.recordGather(wipe.id, String(e.steamId), clean(e.resource, 32), e.amount | 0);
+        const amount = Math.min(Math.max(0, e.amount | 0), 100000);
+        if (!amount) break;
+        store.recordGather(wipe.id, String(e.steamId), clean(e.resource, 32), amount);
         accepted++;
         break;
       }
@@ -183,6 +206,15 @@ function checkFirstKillFlags(steamId, name, wipeId, config) {
 
 const _reportAlerted = new Map(); // targetId -> ts do último alerta
 const _chatLast = new Map(); // steamId -> ts da última mensagem de chat
+
+// os mapas de rate-limit/alerta crescem com cada jogador distinto — varrer de hora a hora
+setInterval(() => {
+  const cut = store.now() - 6 * 3600;
+  for (const [k, t] of _chatLast) { if (t < cut) _chatLast.delete(k); }
+  for (const [k, t] of _reportAlerted) { if (t < cut) _reportAlerted.delete(k); }
+  for (const [k, t] of _anomalyAlerted) { if (t < cut) _anomalyAlerted.delete(k); }
+  if (_firstKillAlerted.size > 5000) _firstKillAlerted.clear();
+}, 3600e3).unref();
 
 function checkReportPressure(targetId, targetName, config) {
   const threshold = config.reportAlertThreshold ?? 3;
@@ -293,14 +325,17 @@ function route(req, res, url, body, config, session) {
   // Só confiar no X-Forwarded-For quando o site está atrás de um proxy de
   // confiança (Cloudflare Tunnel, nginx…) — config.trustProxy: true. Caso
   // contrário um cliente direto podia forjar o IP e contornar o rate-limit.
-  const ip = (config.trustProxy && req.headers['x-forwarded-for'])
-    ? req.headers['x-forwarded-for'].split(',')[0].trim()
+  // Atrás do proxy: o IP real é o que O NOSSO proxy acrescentou — a entrada
+  // MAIS À DIREITA do X-Forwarded-For. A da esquerda é escolhida pelo cliente
+  // (spoofável). Cloudflare também envia CF-Connecting-IP, que é preferível.
+  const ip = (config.trustProxy && (req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for']))
+    ? (req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'].split(',').pop()).trim()
     : req.socket.remoteAddress;
 
   // --- endpoints do plugin (chave de API) ---
   if (p.startsWith('/api/plugin/') || p === '/api/ingest' || p === '/api/heartbeat' || p === '/api/wipe') {
     const key = req.headers['x-api-key'];
-    if (!config.apiKey || key !== config.apiKey) { json(res, 401, { error: 'Invalid API key' }); return true; }
+    if (!config.apiKey || !keysMatch(key, config.apiKey)) { json(res, 401, { error: 'Invalid API key' }); return true; }
 
     if (p === '/api/plugin/notices' && req.method === 'GET') {
       json(res, 200, { rows: store.pendingNotices(50) }); return true;
@@ -321,6 +356,11 @@ function route(req, res, url, body, config, session) {
     else if (p === '/api/wipe') {
       // antes de abrir a wipe nova: gerar o resumo da wipe que termina
       const oldWipe = store.currentWipe();
+      // idempotência: um retry do plugin (timeout) ou um OnNewSave repetido
+      // no mesmo arranque não pode partir a wipe em duas
+      if (store.now() - oldWipe.started_at < 3600) {
+        json(res, 200, { ok: true, wipe: oldWipe, skipped: 'wipe already started recently' }); return true;
+      }
       const newWipe = store.startWipe(body);
       if (newWipe.id !== oldWipe.id) {
         const summary = store.wipeSummary(oldWipe.id);
@@ -396,7 +436,11 @@ function route(req, res, url, body, config, session) {
       case '/api/wrapped': {
         const id = url.searchParams.get('id');
         if (!id) { json(res, 400, { error: 'Missing id parameter' }); return true; }
-        const wid = parseInt(url.searchParams.get('wipe') || '', 10) || store.currentWipe().id;
+        const wantWipe = url.searchParams.get('wipe');
+        const wid = parseInt(wantWipe || '', 10) || store.currentWipe().id;
+        if (wantWipe && !store.listWipes().some((x) => x.id === wid)) {
+          json(res, 404, { error: 'Wipe not found' }); return true;
+        }
         const w = store.wrapped(id, wid);
         if (!w) { json(res, 404, { error: 'Player not found' }); return true; }
         steam.refresh(id);
@@ -577,7 +621,7 @@ function route(req, res, url, body, config, session) {
   if (p.startsWith('/api/admin/')) {
     // só via header (nunca query string — evita vazar a chave em logs/histórico)
     const key = req.headers['x-admin-key'];
-    if (!config.adminKey || key !== config.adminKey) { json(res, 401, { error: 'Invalid admin key' }); return true; }
+    if (!config.adminKey || !keysMatch(key, config.adminKey)) { json(res, 401, { error: 'Invalid admin key' }); return true; }
 
     if (req.method === 'GET') {
       switch (p) {
@@ -637,7 +681,10 @@ function route(req, res, url, body, config, session) {
           store.deletePost(body.id); json(res, 200, { ok: true }); return true;
         case '/api/admin/owcases': {
           const title = clean(body.title, 120);
-          const clip = clean(body.clipUrl, 300);
+          const clip = cleanUrl(body.clipUrl);
+          if (body.clipUrl && clean(body.clipUrl, 300) && !clip) {
+            json(res, 400, { error: 'Clip URL must start with http(s)://' }); return true;
+          }
           const clipFile = clean(body.clipFile, 80);
           if (!title || (!clip && !clipFile)) {
             json(res, 400, { error: 'Title and a clip (URL or uploaded file) are required' }); return true;
@@ -662,14 +709,28 @@ function route(req, res, url, body, config, session) {
           else store.setRole(rid, body.role === 'admin' ? 'admin' : 'mod');
           json(res, 200, { ok: true }); return true;
         }
-        case '/api/admin/mapvote':
-          json(res, 200, store.mapAdmin(clean(body.action, 20), body)); return true;
+        case '/api/admin/mapvote': {
+          const action = clean(body.action, 20);
+          if (action === 'add') {
+            const label = clean(body.label, 80);
+            if (!label) { json(res, 400, { error: 'Label is required' }); return true; }
+            json(res, 200, store.mapAdmin('add', {
+              label, seed: clean(body.seed, 32),
+              size: Number.isFinite(body.size) ? Math.min(Math.max(1000, body.size | 0), 6000) : null,
+              imageUrl: cleanUrl(body.imageUrl),
+            })); return true;
+          }
+          json(res, 200, store.mapAdmin(action, body)); return true;
+        }
         case '/api/admin/bans': {
           if (body.action === 'delete') { store.deleteBan(body.id); json(res, 200, { ok: true }); return true; }
           const banSteamId = /^7656119\d{10}$/.test(String(body.steamId || '')) ? String(body.steamId) : null;
+          if (body.evidence && clean(body.evidence, 300) && !cleanUrl(body.evidence)) {
+            json(res, 400, { error: 'Evidence must be an http(s) link' }); return true;
+          }
           const ban = {
             steamName: clean(body.steamName, 64), reason: clean(body.reason, 300),
-            staffName: clean(body.staffName, 64), evidence: clean(body.evidence, 300),
+            staffName: clean(body.staffName, 64), evidence: cleanUrl(body.evidence),
             steamId: banSteamId,
           };
           if (!ban.steamName || !ban.reason || !ban.staffName) {
@@ -678,7 +739,10 @@ function route(req, res, url, body, config, session) {
           store.addBan(ban);
           discord.banAnnounce(config.discordWebhooks?.bans, ban, config.siteUrl);
           // psicologia de comunidade: quem reportou o banido recebe obrigado + bounty
-          if (banSteamId) {
+          // (uma única vez por alvo — apagar+recriar o ban para corrigir um typo
+          // ou banir um evader outra vez não paga o bounty de novo)
+          if (banSteamId && !store.bountyAlreadyPaid(banSteamId)) {
+            store.markBountyPaid(banSteamId);
             const bounty = Math.max(0, config.reporterBountyGems ?? 5000);
             for (const rid of store.reportersOf(banSteamId)) {
               if (bounty) store.addGems(rid, bounty);

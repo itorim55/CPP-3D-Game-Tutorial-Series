@@ -278,7 +278,7 @@ function buildTickerItems(s, kf, lb) {
     `<span class="ticker-item${cls}"><span class="tk">${tk}</span> ${html}</span>`);
 
   const hb = s?.heartbeat;
-  if (hb) item('◉', `<b>${hb.players}/${hb.max_players}</b> ${t('ticker.online')}`);
+  if (hb && s?.online) item('◉', `<b>${hb.players}/${hb.max_players}</b> ${t('ticker.online')}`);
   if (s?.killsThisWipe) item('☠', t('ticker.killsWipe', `<b>${fmtNum(s.killsThisWipe)}</b>`));
   if (s?.nextWipe) {
     const ms = new Date(s.nextWipe).getTime() - Date.now();
@@ -318,9 +318,12 @@ async function renderTicker() {
     const bar = document.createElement('div');
     bar.className = 'ticker';
     bar.setAttribute('aria-hidden', 'true');
-    // conteúdo duplicado = loop contínuo sem intervalo morto
+    // conteúdo duplicado = loop contínuo sem intervalo morto; com um só item
+    // (BD vazia no dia do lançamento) mostrar uma cópia parada, não "x | x"
     const html = items.join('');
-    bar.innerHTML = `<div class="ticker-track">${html}${html}</div>`;
+    bar.innerHTML = items.length > 1
+      ? `<div class="ticker-track">${html}${html}</div>`
+      : `<div class="ticker-track" style="animation:none">${html}</div>`;
     header.insertAdjacentElement('afterend', bar);
     const track = bar.querySelector('.ticker-track');
     track.style.animationDuration = `${Math.max(30, track.scrollWidth / 260)}s`;
@@ -337,7 +340,8 @@ async function renderTicker() {
         const fresh = buildTickerItems(s2, kf2, lb2);
         if (!fresh.length) return;
         const h = fresh.join('');
-        track.innerHTML = h + h;
+        track.innerHTML = fresh.length > 1 ? h + h : h;
+        track.style.animation = fresh.length > 1 ? '' : 'none';
         track.style.animationDuration = `${Math.max(30, track.scrollWidth / 260)}s`;
       } catch {}
     }, 60000);
@@ -569,7 +573,12 @@ function startCountdown(el, isoDate) {
     // o relógio muda de carácter à medida que a wipe se aproxima
     el.classList.toggle('cd-soon', ms < 86400000 && ms >= 3600000);
     el.classList.toggle('cd-crit', ms > 0 && ms < 3600000);
-    if (ms <= 0) { el.textContent = t('countdown.wipe'); return; }
+    if (ms <= 0) {
+      // janela de graça de 6h: depois disso a data está desatualizada, não "WIPE!" eterno
+      el.textContent = ms > -6 * 3600000 ? t('countdown.wipe') : '—';
+      el.classList.remove('cd-soon', 'cd-crit');
+      return;
+    }
     const d = Math.floor(ms / 86400000); ms -= d * 86400000;
     const h = Math.floor(ms / 3600000); ms -= h * 3600000;
     const m = Math.floor(ms / 60000); ms -= m * 60000;

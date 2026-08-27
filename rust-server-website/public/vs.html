@@ -113,8 +113,9 @@ async function load() {
   const row = (label, va, vb, fmt = (x) => x, higherWins = true) => {
     const winA = higherWins ? va > vb : va < vb;
     const winB = higherWins ? vb > va : vb < va;
-    const tot = (Number(va) + Number(vb)) || 1;
-    const pa = Math.round(Number(va) / tot * 100);
+    const tot = Number(va) + Number(vb);
+    // empate a zero: barras iguais e neutras, não 100% para o lado B
+    const pa = tot === 0 ? 50 : Math.round(Number(va) / tot * 100);
     const delay = (rowIdx++) * 70;
     return `<div class="cmp-row">
       <div class="val ${winA ? 'win' : ''}">${fmt(va)}</div>

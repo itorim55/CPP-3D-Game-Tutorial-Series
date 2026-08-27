@@ -102,7 +102,7 @@ document.getElementById('items').addEventListener('click', async (e) => {
   b.disabled = true; b.textContent = t('store.redeeming');
   try {
     const r = await apiPost('/api/redeem', { itemId: b.dataset.id });
-    b.textContent = r.auto ? t('store.redeemedAuto') : t('store.redeemedManual');
+    b.textContent = r.instant ? t('store.redeemedInstant') : (r.auto ? t('store.redeemedAuto') : t('store.redeemedManual'));
     _mePromise = null; // refrescar saldo
     setTimeout(load, 1500);
   } catch (err) {

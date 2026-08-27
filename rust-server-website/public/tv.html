@@ -100,9 +100,10 @@ async function feed(first) {
         <span class="v">${esc(k.victim_name || '?')}</span>
         <span class="ago">${timeAgo(k.ts)}</span>
         <span class="wpn">${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}${k.headshot ? ' <b class="hs">HS</b>' : ''}</span>
-      </div>`).join('');
+      </div>`).join('') || `<p style="color:var(--ink-muted);padding:14px">${t('home.noKills')}</p>`;
     // kills de destaque nunca vistas entram na fila do banner
-    if (!first && !reduceMotion) {
+    // (não com o separador escondido — senão acumulam e repetem tudo ao voltar)
+    if (!first && !reduceMotion && !document.hidden) {
       for (const k of kf.rows) {
         if (seen.has(kkey(k))) continue;
         if (k.headshot || (k.distance || 0) >= 150) {
@@ -112,15 +113,22 @@ async function feed(first) {
           });
         }
       }
+      if (bannerQ.length > 3) bannerQ.splice(0, bannerQ.length - 3); // só o mais recente interessa num ecrã
       drainBanner();
     }
+    // 'seen' reconstruído a cada poll — nunca cresce sem limite numa TV ligada dias
+    seen.clear();
     kf.rows.forEach((k) => seen.add(kkey(k)));
   } catch {}
 }
 
+let tvReady = false; // widgets de arranque esperam pelo 1º status que chegue de facto
+
 async function status(first) {
   try {
     const s = await api('/api/status');
+    first = first || !tvReady;
+    tvReady = true;
     const hb = s.heartbeat;
     const onlineEl = document.getElementById('online');
     if (hb) {
@@ -153,7 +161,7 @@ async function board() {
         <td class="r ${i < 3 ? 'top' : ''}">${i + 1}</td>
         <td>${pfp(r.avatar, r.name, 24)} ${esc(r.name)}</td>
         <td class="n">${fmtNum(r.kills)}</td>
-      </tr>`).join('');
+      </tr>`).join('') || `<tr><td colspan="3" style="color:var(--ink-muted);padding:14px">${t('home.noData')}</td></tr>`;
   } catch {}
 }
 

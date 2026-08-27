@@ -49,12 +49,13 @@ const EN_JS = {
   'status.approved': 'approved', 'status.rejected': 'rejected', 'status.accepted': 'accepted',
   'status.sent': 'sent', 'status.delivered': 'delivered', 'status.failed': 'failed',
   'status.open': 'open', 'status.closed': 'closed',
+  'status.cheater': 'cheater', 'status.innocent': 'innocent', 'status.inconclusive': 'inconclusive',
+  'mod.priority': 'PRIORITY',
+  'conta.title': 'My account', 'modpage.title': 'Mod Room',
 
   // home
   'home.copied': 'copied! paste in F1 console', 'home.copy': 'copy',
   'home.noData': 'No data yet.', 'home.noKills': 'No kills recorded yet.',
-  'home.streakUnit': 'kills without dying',
-  'home.playersTracked': 'survivors tracked',
 
   // ticker (fio de notícias no topo)
   'ticker.online': 'survivors online',
@@ -106,11 +107,8 @@ const EN_JS = {
   'staff.rReports': 'F7 reports processed',
   'staff.rAppeals': 'appeals answered',
   'staff.rOw': 'overwatch verdicts',
-  'stats.hotNow': 'ON FIRE RIGHT NOW',
   'stats.youRank': 'YOU · #$1 — jump to your row',
   'home.combatHeat': 'combat intensity — kills in the last 10 min',
-  'home.killsHour': 'kills in the last hour',
-  'home.raidsWipe': 'raids this wipe',
   'home.raidLive': 'BASE UNDER RAID AT',
   'home.raidWalls': 'structures down',
   'player.onlineNow': 'ONLINE NOW',
@@ -139,6 +137,7 @@ const EN_JS = {
   'wr.victim': 'favourite victim', 'wr.nemesis': 'your nemesis',
   'wr.footer': 'Generated live from server stats',
   'wr.fullProfile': 'full profile →',
+  'wr.noId': 'This link is missing the player id.',
 
   'ach.holders': '$1 unlocked',
   'ach.best': 'record: $1 ($2)',
@@ -146,8 +145,7 @@ const EN_JS = {
 
   // stats
   'stats.noPeriod': 'No data for this period.', 'stats.noPlayers': 'No players found.',
-  'stats.eloEmpty': 'Nobody with 5+ fights this wipe yet.',
-  'stats.currentWipe': 'This wipe', 'stats.archive': 'Archive: $1 ($2)', 'stats.wipeWord': 'Wipe',
+  'stats.eloEmpty': 'Nobody with 5+ fights this wipe yet.', 'stats.archive': 'Archive: $1 ($2)', 'stats.wipeWord': 'Wipe',
   'stats.team': 'Team $1', 'stats.noTeams': 'No teams recorded this wipe yet (the plugin reports native Rust teams every 5 min).',
   'stats.noRaids': 'No raids recorded this wipe. The bases thank you. 🏠',
   'stats.noKills': 'No kills recorded.',
@@ -156,6 +154,8 @@ const EN_JS = {
   'staff.bans30': 'bans in the last 30 days', 'staff.bansTotal': 'bans in total',
   'player.reportBox': '\ud83d\udea9 Suspect this player? Report in-game with <b>F7</b> or on Discord \u2014 confirmed cheaters end up on the <a href="/staff#bans">public ban list</a>.',
   'player.moreActivity': 'show $1 older \u2192',
+  'nf.title': 'Not found', 'nf.sub': 'sector not found on this map',
+  'nf.desc': 'This page got wiped \u2014 or the link was wrong from the start.', 'nf.home': '\u2190 Back to base',
   'stats.evTotal': '· $1 this wipe', 'stats.evEmpty': 'Nobody yet. $1 on the loose!',
   'stats.evHeli': 'Heli Hunters', 'stats.evBradley': 'Tank Busters', 'stats.evCrate': 'Fast Hands',
 
@@ -180,6 +180,7 @@ const EN_JS = {
   'store.rate': '$1 gems per hour played', 'store.enterToSee': 'sign in to see 💎',
   'store.redeem': 'Redeem', 'store.notEnough': 'Not enough gems', 'store.loginToRedeem': 'Sign in to redeem',
   'store.redeeming': 'redeeming…', 'store.redeemedAuto': '✅ Redeemed — delivery in ~1 min',
+  'store.redeemedInstant': '✅ Redeemed — active on your profile now',
   'store.redeemedManual': '✅ Redeemed — manual delivery within 24 h', 'store.empty': 'Store is empty.',
 
   // mapa
@@ -285,12 +286,13 @@ const I18N = {
     'status.approved': 'aprovado', 'status.rejected': 'recusado', 'status.accepted': 'aceite',
     'status.sent': 'enviado', 'status.delivered': 'entregue', 'status.failed': 'falhou',
     'status.open': 'aberto', 'status.closed': 'fechado',
+    'status.cheater': 'cheater confirmado', 'status.innocent': 'inocente', 'status.inconclusive': 'inconclusivo',
+    'mod.priority': 'PRIORIDADE',
+    'conta.title': 'A minha conta', 'modpage.title': 'Sala de Mods',
 
     // home (JS)
     'home.copied': 'copiado! cola na consola F1', 'home.copy': 'copiar',
     'home.noData': 'Sem dados ainda.', 'home.noKills': 'Sem kills registadas ainda.',
-    'home.streakUnit': 'kills sem morrer',
-    'home.playersTracked': 'sobreviventes registados',
 
     'ticker.online': 'sobreviventes online',
     'ticker.killsWipe': '$1 kills nesta wipe',
@@ -305,7 +307,6 @@ const I18N = {
     'player.wrapped': 'Wipe Wrapped',
     'player.progress': 'Progresso nesta wipe',
     'player.progressHint': 'K/D acumulado, dia a dia — a história da tua wipe.',
-    'stats.achLink': '🏅 Conquistas',
     'sum.myWrapped': 'O meu Wipe Wrapped',
     'chat.title': 'Chat da comunidade',
     'chat.global': 'GLOBAL', 'chat.staff': 'STAFF',
@@ -343,11 +344,8 @@ const I18N = {
     'staff.rReports': 'reports F7 processados',
     'staff.rAppeals': 'apelos respondidos',
     'staff.rOw': 'veredictos overwatch',
-    'stats.hotNow': 'EM CHAMAS AGORA',
     'stats.youRank': 'TU · #$1 — saltar para a tua linha',
     'home.combatHeat': 'intensidade de combate — kills nos últimos 10 min',
-    'home.killsHour': 'kills na última hora',
-    'home.raidsWipe': 'raids nesta wipe',
     'home.raidLive': 'BASE A SER RAIDADA EM',
     'home.raidWalls': 'estruturas destruídas',
     'player.onlineNow': 'ONLINE AGORA',
@@ -372,6 +370,7 @@ const I18N = {
     'wr.victim': 'vítima favorita', 'wr.nemesis': 'o teu némesis',
     'wr.footer': 'Gerado ao vivo a partir das stats do servidor',
     'wr.fullProfile': 'perfil completo →',
+    'wr.noId': 'Falta o id do jogador neste link.',
     'tv.title': 'Modo TV',
 
     'ach.title': '🏅 Conquistas',
@@ -382,7 +381,7 @@ const I18N = {
     // home (HTML)
     'home.tagline': 'Moderação ativa ao vivo · bans públicos · zero pay-to-win.',
     'home.playersOnline': 'jogadores online', 'home.untilWipe': 'até à próxima wipe',
-    'home.killsWipe': 'kills esta wipe', 'home.wipeLeader': 'líder da wipe', 'home.serverFps': 'FPS do servidor',
+    'home.killsWipe': 'kills esta wipe', 'home.wipeLeader': 'líder da wipe',
     'home.population': 'População', 'home.last48h': 'últimas 48 horas',
     'home.topWipe': 'Top da wipe', 'home.viewAll': 'ver tudo →',
     'home.liveKillfeed': 'Killfeed ao vivo', 'home.onFire': '🔥 Em fogo agora',
@@ -396,8 +395,7 @@ const I18N = {
 
     // stats (JS)
     'stats.noPeriod': 'Sem dados para este período.', 'stats.noPlayers': 'Nenhum jogador encontrado.',
-    'stats.eloEmpty': 'Ainda ninguém com 5+ combates nesta wipe.',
-    'stats.currentWipe': 'Esta wipe', 'stats.archive': 'Arquivo: $1 ($2)', 'stats.wipeWord': 'Wipe',
+    'stats.eloEmpty': 'Ainda ninguém com 5+ combates nesta wipe.', 'stats.archive': 'Arquivo: $1 ($2)', 'stats.wipeWord': 'Wipe',
     'stats.team': 'Equipa $1', 'stats.noTeams': 'Ainda sem equipas registadas nesta wipe (o plugin envia as equipas nativas a cada 5 min).',
     'stats.noRaids': 'Ainda sem raids registados nesta wipe. As bases agradecem. 🏠',
     'stats.noKills': 'Sem kills registadas.',
@@ -405,6 +403,8 @@ const I18N = {
     'home.newsTitle': '\ud83d\udcf0 \u00daltimas novidades', 'home.newsAll': 'todas \u2192',
     'player.reportBox': '\ud83d\udea9 Suspeitas deste jogador? Reporta no jogo com <b>F7</b> ou no Discord \u2014 cheaters confirmados acabam na <a href="/staff#bans">lista p\u00fablica de bans</a>.',
     'player.moreActivity': 'mostrar mais $1 \u2192',
+    'nf.title': 'N\u00e3o encontrada', 'nf.sub': 'setor n\u00e3o encontrado neste mapa',
+    'nf.desc': 'Esta p\u00e1gina levou wipe \u2014 ou o link j\u00e1 vinha errado.', 'nf.home': '\u2190 Voltar \u00e0 base',
     'stats.evTotal': '· $1 esta wipe', 'stats.evEmpty': 'Ainda ninguém. $1 à solta!',
     'stats.evHeli': 'Caça-Helis', 'stats.evBradley': 'Anti-Tanque', 'stats.evCrate': 'Mãos Rápidas',
     // stats (HTML)
@@ -425,8 +425,6 @@ const I18N = {
     'stats.raidsTitle': 'Maiores raids da wipe', 'stats.raidsSub': 'agrupados por zona e hora',
     'stats.thWhen': 'Quando', 'stats.thZone': 'Zona', 'stats.thStructures': 'Estruturas',
     'stats.thRaiders': 'Raiders', 'stats.thWeapons': 'Armas',
-    'stats.vsLink': '⚔️ Comparador 1v1', 'stats.heatLink': '🗺️ Heatmap de mortes', 'stats.sumLink': '🏁 Resumo da wipe',
-    'stats.killfeedTitle': 'Killfeed completo',
 
     // player
     'player.notSeen': 'Ainda não vimos este jogador.',
@@ -449,6 +447,7 @@ const I18N = {
     'store.rate': '$1 gemas por cada hora jogada', 'store.enterToSee': 'entra para ver 💎',
     'store.redeem': 'Resgatar', 'store.notEnough': 'Gemas insuficientes', 'store.loginToRedeem': 'Entra para resgatar',
     'store.redeeming': 'a resgatar…', 'store.redeemedAuto': '✅ Resgatado — entrega em ~1 min',
+    'store.redeemedInstant': '✅ Resgatado — já ativo no teu perfil',
     'store.redeemedManual': '✅ Resgatado — entrega manual em 24 h', 'store.empty': 'Loja vazia.',
     // loja (HTML)
     'store.title': 'Loja de Gemas',
@@ -578,9 +577,6 @@ const I18N = {
     'staff.modMonth': 'moderador do mês 🏆',
     'staff.thWhen': 'Quando', 'staff.thPlayer': 'Jogador', 'staff.thReason': 'Motivo',
     'staff.thAdmin': 'Admin', 'staff.thEvidence': 'Provas',
-    'staff.joinTitle': 'QUERES FAZER PARTE DA EQUIPA?',
-    'staff.joinDesc': 'Procuramos moderadores dedicados que queiram manter o servidor limpo — e reconhecemos publicamente quem o faz bem.',
-    'staff.joinBtn': 'Enviar candidatura →',
 
     // regras
     'rules.title': 'Regras do servidor',

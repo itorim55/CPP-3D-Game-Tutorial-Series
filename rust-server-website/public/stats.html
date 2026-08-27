@@ -136,14 +136,27 @@ function renderPodium(rows, metricKey, labelText) {
   });
 }
 
+let boardSeq = 0; // guarda de corrida: só a resposta do último clique escreve na tabela
+
 async function loadBoard() {
+  const my = ++boardSeq;
   const body = document.getElementById('lb-body');
   const head = document.getElementById('lb-head');
   body.innerHTML = `<tr><td colspan="8">${skelHTML(4)}</td></tr>`;
+  try {
+    await loadBoardInner(my, body, head);
+  } catch (e) {
+    if (my !== boardSeq) return;
+    body.innerHTML = `<tr><td colspan="8" style="color:var(--bad)">${t('error.generic', esc(e.message))}</td></tr>`;
+  }
+}
+
+async function loadBoardInner(my, body, head) {
 
   // "combate limpo": precisão pública — atrai os bons, intimida os outros
   if (by === 'precision') {
     const pr = await api('/api/precision');
+    if (my !== boardSeq) return;
     document.getElementById('podium').innerHTML = '';
     document.getElementById('me-chip').innerHTML = '';
     head.innerHTML = `<tr><th>#</th><th>${t('stats.thPlayer')}</th>
@@ -162,6 +175,7 @@ async function loadBoard() {
   }
   const lb = await api(`/api/leaderboard?by=${by}&${periodQuery()}&limit=100`);
   const u = await me();
+  if (my !== boardSeq) return;
 
   const metricKey = KEYMAP[by] || 'kills';
   const tabEl = document.querySelector('#metric-tabs button.active');

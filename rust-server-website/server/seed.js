@@ -17,7 +17,7 @@ const WEAPONS = [
   'Pump Shotgun', 'Crossbow', 'Compound Bow', 'F1 Grenade', 'Machete',
 ];
 
-const RESOURCES = ['wood', 'stone', 'metal.ore', 'sulfur.ore', 'hq.metal.ore'];
+const RESOURCES = ['wood', 'stones', 'metal.ore', 'sulfur.ore', 'hq.metal.ore'];
 const CAUSES = ['Bear', 'Wolf', 'Fall', 'Drowned', 'Scientist', 'Patrol Helicopter', 'Bradley APC', 'Cold', 'Hunger'];
 
 function rnd(n) { return Math.floor(Math.random() * n); }

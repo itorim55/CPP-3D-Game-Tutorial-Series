@@ -86,8 +86,11 @@ function serveStatic(req, res, url) {
   }
   fs.readFile(file, (err, data) => {
     if (err) {
-      res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end('<!doctype html><meta charset="utf-8"><h1>404</h1><p>Page not found. <a href="/">Back to home</a></p>');
+      // 404 com o estilo do site (fallback inline se o ficheiro faltar)
+      fs.readFile(path.join(PUBLIC_DIR, '404.html'), (e2, page) => {
+        res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'X-Content-Type-Options': 'nosniff' });
+        res.end(e2 ? '<!doctype html><meta charset="utf-8"><h1>404</h1><p>Page not found. <a href="/">Back to home</a></p>' : page);
+      });
       return;
     }
     const isHtml = file.endsWith('.html');
@@ -96,11 +99,13 @@ function serveStatic(req, res, url) {
       // highlights...) para os embeds do Discord/WhatsApp ficarem bonitos
       const route = url.pathname === '/' ? '/' : url.pathname.replace(/\.html$/, '');
       const tags = og.tagsFor(route, url.searchParams, SITE_URL);
-      data = data.toString('utf-8').replace('</head>', `${tags}\n</head>`);
+      data = data.toString('utf-8').replace('</head>', () => `${tags}\n</head>`);
     }
     res.writeHead(200, {
       'Content-Type': MIME[path.extname(file)] || 'application/octet-stream',
       'Cache-Control': isHtml ? 'no-cache' : 'public, max-age=300',
+      'X-Content-Type-Options': 'nosniff',
+      ...(isHtml ? { 'X-Frame-Options': 'DENY' } : {}),
     });
     res.end(data);
   });
@@ -124,18 +129,18 @@ async function handleAuth(req, res, url) {
       const steamId = await auth.verifySteamReturn(url, SITE_URL);
       if (!steamId) { redirect(res, '/conta?erro=login'); return true; }
       await steam.adopt(steamId); // nome + avatar prontos antes do redirect
-      redirect(res, '/conta', auth.makeSessionCookie(steamId, config.sessionSecret));
+      redirect(res, '/conta', auth.makeSessionCookie(steamId, config.sessionSecret, httpsSite()));
       return true;
     }
     case '/auth/logout':
-      redirect(res, '/', auth.clearSessionCookie());
+      redirect(res, '/', auth.clearSessionCookie(httpsSite()));
       return true;
     case '/auth/dev': {
       // login falso para desenvolvimento local — desativado por omissão
       if (!config.devLogin) return false;
       const id = url.searchParams.get('id');
       if (!/^7656119\d{10}$/.test(id || '')) { res.writeHead(400); res.end('invalid id'); return true; }
-      redirect(res, '/conta', auth.makeSessionCookie(id, config.sessionSecret));
+      redirect(res, '/conta', auth.makeSessionCookie(id, config.sessionSecret, httpsSite()));
       return true;
     }
   }
@@ -156,11 +161,10 @@ function fail(res, code, msg) {
 
 // ---------- clips de overwatch (upload da staff + streaming com Range) ----------
 
-function keysMatch(given, expected) {
-  // hash antes de comparar: timingSafeEqual exige comprimentos iguais
-  const h = (s) => crypto.createHash('sha256').update(String(s || '')).digest();
-  return crypto.timingSafeEqual(h(given), h(expected));
-}
+const keysMatch = auth.keysMatch;
+
+// cookie Secure quando o site público é servido por HTTPS (Cloudflare Tunnel)
+function httpsSite() { return String(config.siteUrl || '').startsWith('https://'); }
 
 // POST /api/admin/owclip — corpo é o ficheiro em bruto (sem multipart).
 // Escreve em streaming direto para o disco: nunca carrega o vídeo em memória.
@@ -169,8 +173,8 @@ function handleClipUpload(req, res) {
   if (!config.adminKey || !keysMatch(req.headers['x-admin-key'], config.adminKey)) {
     api.json(res, 401, { error: 'Invalid admin key' }); return;
   }
-  const type = String(req.headers['content-type'] || '');
-  const ext = type.includes('webm') ? '.webm' : (type.includes('mp4') ? '.mp4' : null);
+  const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+  const ext = type === 'video/webm' ? '.webm' : (type === 'video/mp4' ? '.mp4' : null);
   if (!ext) { api.json(res, 400, { error: 'Only MP4 or WebM videos are accepted.' }); return; }
 
   const name = clips.newName(ext);
@@ -191,6 +195,7 @@ function handleClipUpload(req, res) {
   out.on('error', () => abort(500, 'Could not write the clip to disk.'));
   out.on('finish', () => {
     if (dead) return;
+    if (size === 0) { fs.unlink(tmp, () => {}); api.json(res, 400, { error: 'Empty upload.' }); return; }
     fs.rename(tmp, path.join(clips.DIR, name), (err) => {
       if (err) { api.json(res, 500, { error: 'Could not save the clip.' }); return; }
       api.json(res, 200, { ok: true, file: name, bytes: size });
@@ -201,6 +206,7 @@ function handleClipUpload(req, res) {
 
 // GET /clips/<nome> — com suporte a Range para o browser poder saltar no vídeo.
 function serveClip(req, res, url) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') { fail(res, 405, 'Method Not Allowed'); return; }
   const name = url.pathname.slice('/clips/'.length);
   if (!clips.NAME_RE.test(name)) { fail(res, 404, 'Not Found'); return; }
   const file = path.join(clips.DIR, name);
@@ -208,19 +214,25 @@ function serveClip(req, res, url) {
     if (err || !st.isFile()) { fail(res, 404, 'Not Found'); return; }
     const type = name.endsWith('.webm') ? 'video/webm' : 'video/mp4';
     const base = { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store' };
+    // o caso pode fechar (clip auto-apagado) entre o stat e o open — nunca deixar o pedido pendurado
+    const send = (stream, head, headers) => {
+      res.writeHead(head, headers);
+      if (req.method === 'HEAD') { res.end(); return; }
+      stream.on('error', () => res.destroy());
+      stream.pipe(res);
+    };
     const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
     if (m && (m[1] || m[2])) {
       const start = m[1] ? parseInt(m[1], 10) : Math.max(0, st.size - parseInt(m[2], 10));
       const end = m[1] && m[2] ? Math.min(parseInt(m[2], 10), st.size - 1) : st.size - 1;
-      if (!Number.isFinite(start) || start < 0 || start > end || start >= st.size) {
-        res.writeHead(416, { 'Content-Range': `bytes */${st.size}` }); res.end(); return;
+      if (Number.isFinite(start) && start >= 0 && start <= end && start < st.size) {
+        send(fs.createReadStream(file, { start, end }), 206,
+          { ...base, 'Content-Range': `bytes ${start}-${end}/${st.size}`, 'Content-Length': end - start + 1 });
+        return;
       }
-      res.writeHead(206, { ...base, 'Content-Range': `bytes ${start}-${end}/${st.size}`, 'Content-Length': end - start + 1 });
-      fs.createReadStream(file, { start, end }).pipe(res);
-    } else {
-      res.writeHead(200, { ...base, 'Content-Length': st.size });
-      fs.createReadStream(file).pipe(res);
+      // Range sintaticamente inválido (ex.: bytes=500-100) ignora-se — RFC 9110
     }
+    send(fs.createReadStream(file), 200, { ...base, 'Content-Length': st.size });
   });
 }
 
@@ -294,11 +306,25 @@ const HOST = config.host || '0.0.0.0';
 server.on('error', (e) => {
   if (e.code === 'EADDRINUSE') {
     console.error(`\n⚠️  Port ${PORT} is already in use — the site is probably already running in another window.`);
-    console.error('   Close it there (Ctrl+C) or kill it with:  taskkill /F /IM node.exe  (Windows) / pkill -x node (Linux)\n');
+    console.error(`   Close it there (Ctrl+C) — or kill just that process:`);
+    console.error(`   Windows:  netstat -ano | findstr :${PORT}   then   taskkill /F /PID <pid>`);
+    console.error(`   Linux:    fuser -k ${PORT}/tcp\n`);
     process.exit(1);
   }
   console.error('[server error]', e);
 });
+// clips órfãos: upload feito mas caso nunca criado (falha/aba fechada) —
+// ficheiros com 24h+ sem nenhuma ow_case a apontar para eles são lixo
+try {
+  const referenced = new Set(
+    store.db.prepare('SELECT clip_file FROM ow_cases WHERE clip_file IS NOT NULL').all().map((r) => r.clip_file));
+  const cut = Date.now() - 24 * 3600e3;
+  for (const f of fs.readdirSync(clips.DIR)) {
+    if (!clips.NAME_RE.test(f) || referenced.has(f)) continue;
+    if (fs.statSync(path.join(clips.DIR, f)).mtimeMs < cut) fs.unlinkSync(path.join(clips.DIR, f));
+  }
+} catch { /* pasta vazia */ }
+
 server.listen(PORT, HOST, () => {
   console.log(`Site running at http://${HOST}:${PORT} (public URL: ${SITE_URL})`);
   console.log(`Plugin API key (X-API-Key): ${config.apiKey}`);

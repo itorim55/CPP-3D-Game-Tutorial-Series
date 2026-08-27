@@ -150,7 +150,10 @@ let KEY = sessionStorage.getItem('adminKey') || '';
 let SECTION = 'overview';
 
 const H = () => ({ 'X-Admin-Key': KEY });
-const aGet = (p) => fetch(p, { headers: H() }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+const aGet = (p) => fetch(p, { headers: H() }).then((r) => {
+  if (!r.ok) { const err = new Error(r.status); err.status = r.status; throw err; }
+  return r.json();
+});
 const aPost = (p, b) => apiPost(p, b, H());
 const body = () => document.getElementById('section-body');
 const badge = (s) => `<span class="badge ${esc(s)}">${esc(s)}</span>`;
@@ -327,8 +330,15 @@ async function renderBans() {
   wireCounts(banForm);
   banForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    await aPost('/api/admin/bans', Object.fromEntries(new FormData(banForm).entries()));
-    renderBans();
+    const btn = banForm.querySelector('.btn');
+    btn.disabled = true; btn.textContent = 'Recording…';
+    try {
+      await aPost('/api/admin/bans', Object.fromEntries(new FormData(banForm).entries()));
+      renderBans();
+    } catch (err) {
+      alert('⚠️ ' + err.message);
+      btn.disabled = false; btn.textContent = 'Record ban';
+    }
   });
 }
 
@@ -364,9 +374,13 @@ async function renderMap() {
 
   document.getElementById('map-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const btn = e.target.querySelector('.btn');
+    btn.disabled = true;
     const d = Object.fromEntries(new FormData(e.target).entries());
-    await aPost('/api/admin/mapvote', { action: 'add', label: d.label, seed: d.seed, size: parseInt(d.size, 10) || null });
-    renderMap();
+    try {
+      await aPost('/api/admin/mapvote', { action: 'add', label: d.label, seed: d.seed, size: parseInt(d.size, 10) || null });
+      renderMap();
+    } catch (err) { alert('⚠️ ' + err.message); btn.disabled = false; }
   });
 }
 
@@ -443,13 +457,19 @@ async function renderTeam() {
 
   document.getElementById('role-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    await aPost('/api/admin/roles', Object.fromEntries(new FormData(e.target).entries()));
-    renderTeam();
+    const btn = e.target.querySelector('.btn');
+    btn.disabled = true;
+    try {
+      await aPost('/api/admin/roles', Object.fromEntries(new FormData(e.target).entries()));
+      renderTeam();
+    } catch (err) { alert('⚠️ ' + err.message); btn.disabled = false; }
   });
   body().querySelectorAll('[data-remove-role]').forEach((a) => a.addEventListener('click', async (e) => {
     e.preventDefault();
-    await aPost('/api/admin/roles', { steamId: a.dataset.removeRole, action: 'remove' });
-    renderTeam();
+    try {
+      await aPost('/api/admin/roles', { steamId: a.dataset.removeRole, action: 'remove' });
+      renderTeam();
+    } catch (err) { alert('⚠️ ' + err.message); }
   }));
 }
 
@@ -483,7 +503,9 @@ async function renderReports() {
     if (box.style.display !== 'none') { box.style.display = 'none'; return; }
     box.style.display = '';
     box.innerHTML = '<p style="color:var(--ink-muted);font-size:13px">loading…</p>';
-    const { rows: list } = await aGet(`/api/admin/reports?target=${encodeURIComponent(id)}`);
+    let list;
+    try { ({ rows: list } = await aGet(`/api/admin/reports?target=${encodeURIComponent(id)}`)); }
+    catch (err) { box.innerHTML = `<p style="color:var(--bad);font-size:13px">Error: ${esc(err.message)}</p>`; return; }
     box.innerHTML = list.map((x) => `
       <div style="border-left:2px solid var(--line-2);padding:6px 12px;margin:6px 0;font-size:13px">
         <b>${esc(x.reporter_name || x.reporter_id)}</b>
@@ -604,21 +626,29 @@ const SECTION_META = {
   posts: ['News', 'server changelog, shown on the site'],
 };
 
+let showSeq = 0; // um clique rápido noutra secção cancela a renderização anterior
+
 async function show(section) {
+  const my = ++showSeq;
   SECTION = section;
   document.querySelectorAll('.ad-item').forEach((x) => x.classList.toggle('active', x.dataset.s === section));
   const [title, desc] = SECTION_META[section] || [section, ''];
   document.getElementById('sec-title').textContent = title;
   document.getElementById('sec-desc').textContent = desc;
   body().innerHTML = skelHTML(4);
-  try { await SECTIONS[section](); }
-  catch (e) { body().innerHTML = `<div class="notice err">Error: ${esc(e.message)}</div>`; }
+  try {
+    await SECTIONS[section]();
+    if (my !== showSeq) return;
+  } catch (e) {
+    if (my !== showSeq) return;
+    body().innerHTML = `<div class="notice err">Error: ${esc(e.message)}</div>`;
+  }
   updateBadges();
 }
 
 // ---------- eventos globais ----------
 
-async function unlock() {
+async function unlock(auto = false) {
   KEY = document.getElementById('admin-key').value.trim();
   if (!KEY) return;
   try {
@@ -627,7 +657,18 @@ async function unlock() {
     document.getElementById('login-card').style.display = 'none';
     document.getElementById('panel').style.display = '';
     show('overview');
-  } catch { alert('Invalid key.'); }
+  } catch (e) {
+    if (e.status === 401 || e.status === 403) {
+      // chave rodada/errada: esquecer a guardada e voltar ao login limpo
+      sessionStorage.removeItem('adminKey');
+      KEY = '';
+      if (!auto) alert('Invalid key.');
+      document.getElementById('admin-key').value = '';
+      document.getElementById('admin-key').focus();
+    } else {
+      alert('⚠️ Server unreachable — is it running? (' + e.message + ')');
+    }
+  }
 }
 document.getElementById('load-btn').addEventListener('click', unlock);
 document.getElementById('admin-key').addEventListener('keydown', (e) => { if (e.key === 'Enter') unlock(); });
@@ -643,7 +684,20 @@ document.getElementById('ad-side').addEventListener('click', (e) => {
 });
 document.getElementById('sec-refresh').addEventListener('click', () => show(SECTION));
 
-document.getElementById('section-body').addEventListener('click', async (e) => {
+document.getElementById('section-body').addEventListener('click', (e) => {
+  handleBodyClick(e).catch((err) => {
+    alert('⚠️ ' + err.message);
+    show(SECTION); // repõe o estado real depois de uma falha
+  });
+});
+
+async function handleBodyClick(e) {
+  const anyBtn = e.target.closest('#section-body button');
+  if (anyBtn) {
+    if (anyBtn.disabled) return;
+    anyBtn.disabled = true;
+    setTimeout(() => { anyBtn.disabled = false; }, 1500); // rearma caso não haja re-render
+  }
   const st = e.target.closest('button[data-status]');
   if (st) {
     e.preventDefault();
@@ -688,11 +742,11 @@ document.getElementById('section-body').addEventListener('click', async (e) => {
     await aPost('/api/admin/bans', { action: 'delete', id: parseInt(db.dataset.delBan, 10) });
     show(SECTION);
   }
-});
+}
 
 if (KEY) {
   document.getElementById('admin-key').value = KEY;
-  unlock();
+  unlock(true);
 } else {
   document.getElementById('admin-key').focus();
 }

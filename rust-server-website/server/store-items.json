@@ -16,7 +16,7 @@
   {
     "id": "site-badge",
     "name": "'Supporter' badge on the site",
-    "description": "A permanent badge on your public site profile.",
+    "description": "A permanent badge on your public site profile. Active instantly.",
     "cost": 5000,
     "command": ""
   },

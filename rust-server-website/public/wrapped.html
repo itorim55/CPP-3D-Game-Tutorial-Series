@@ -26,7 +26,13 @@
   const params = new URLSearchParams(location.search);
   const id = params.get('id');
   const el = document.getElementById('content');
-  if (!id) { el.innerHTML = `<p>Missing <code>id</code> parameter.</p>`; return; }
+  if (!id) {
+    // link partilhado sem parâmetros: se houver sessão, salta para o próprio wrapped
+    const u = await me();
+    if (u.loggedIn) { location.replace(`/wrapped?id=${encodeURIComponent(u.steamId)}`); return; }
+    el.innerHTML = `<p>${t('wr.noId')} <a href="/stats">${t('player.backToStats')}</a></p>`;
+    return;
+  }
 
   let w;
   try { w = await api(`/api/wrapped?id=${encodeURIComponent(id)}${params.get('wipe') ? `&wipe=${params.get('wipe')}` : ''}`); }
@@ -78,7 +84,7 @@
       ${big(fmtNum(w.kills), t('wr.kills'), t('wr.killsSub'))}
       ${big(fmtNum(w.deaths), t('wr.deaths'), t('wr.deathsSub'))}
       ${big(w.kd.toFixed(2), 'K/D', w.hsRate ? t('wr.hsSub', w.hsRate) : '')}
-      ${big(w.bestDistance ? w.bestDistance + 'm' : '—', t('wr.longest'), esc(w.favWeapon ? t('wr.withWeapon', w.favWeapon.weapon) : ''))}
+      ${big(w.bestDistance ? w.bestDistance + 'm' : '—', t('wr.longest'), esc(w.bestDistanceWeapon ? t('wr.withWeapon', w.bestDistanceWeapon) : ''))}
       ${big(w.hours + 'h', t('wr.hours'), '')}
       ${big(fmtNum(w.farm), t('wr.farm'), '')}
       ${big('💥 ' + fmtNum(w.structures), t('wr.structures'), '')}
@@ -94,7 +100,8 @@
       ${t('wr.footer')} · <a href="/player?id=${encodeURIComponent(w.player.steamId)}">${t('wr.fullProfile')}</a></p>`;
 
   document.getElementById('share').addEventListener('click', () => {
-    navigator.clipboard.writeText(location.origin + `/wrapped?id=${encodeURIComponent(w.player.steamId)}${w.wipe.id ? `&wipe=${w.wipe.id}` : ''}`);
+    if (navigator.clipboard?.writeText)
+      navigator.clipboard.writeText(location.origin + `/wrapped?id=${encodeURIComponent(w.player.steamId)}${w.wipe.id ? `&wipe=${w.wipe.id}` : ''}`).catch(() => {});
     const b = document.getElementById('share');
     b.textContent = '✓ ' + t('wr.shared');
     setTimeout(() => { b.textContent = '⧉ ' + t('wr.share'); }, 2000);

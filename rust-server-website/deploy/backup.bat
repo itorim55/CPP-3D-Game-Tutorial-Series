@@ -8,7 +8,9 @@ if not exist "deploy\backups" mkdir "deploy\backups"
 rem data AAAA-MM-DD independente do formato regional
 for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd"') do set TODAY=%%i
 
-copy /y "data\stats.db" "deploy\backups\stats-%TODAY%.db" >nul
+rem A BD corre em modo WAL: um copy simples perde as transacoes no -wal.
+rem VACUUM INTO tira um snapshot consistente sem parar o site.
+node -e "new (require('node:sqlite').DatabaseSync)('data/stats.db').exec(\"VACUUM INTO 'deploy/backups/stats-%TODAY%.db'\")"
 if errorlevel 1 (
   echo [backup] FALHOU — o site esta a correr? O ficheiro data\stats.db existe?
   exit /b 1

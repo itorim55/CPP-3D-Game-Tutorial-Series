@@ -199,10 +199,14 @@ async function refreshKillfeed(first) {
 }
 
 // ---------- estado do servidor: refresca a cada 30 s ----------
+let heroReady = false; // o bloco de init corre no 1º status BEM-SUCEDIDO, não no 1º pedido
+
 async function refreshStatus(first) {
   try {
     const r = await fetch('/api/status');
     const s = await r.json();
+    first = first || !heroReady;
+    heroReady = true;
     const hb = s.heartbeat;
 
     document.getElementById('live-badge').style.visibility = s.online ? 'visible' : 'hidden';
@@ -237,7 +241,8 @@ async function refreshStatus(first) {
       const ip = s.info.ip || 'client.connect <ip>:28015';
       document.getElementById('connect-text').textContent = ip;
       document.getElementById('connect-btn').addEventListener('click', () => {
-        navigator.clipboard.writeText(ip);
+        // navigator.clipboard só existe em contextos seguros (HTTPS/localhost)
+        if (navigator.clipboard?.writeText) navigator.clipboard.writeText(ip).catch(() => {});
         document.getElementById('connect-text').textContent = t('home.copied');
         setTimeout(() => { document.getElementById('connect-text').textContent = ip; }, 2000);
       });
@@ -256,7 +261,7 @@ async function refreshStatus(first) {
 async function refreshStreaks() {
   try {
     const st = await api('/api/streaks');
-    if (!st.rows.length) return;
+    if (!st.rows.length) { document.getElementById('streaks-mini').innerHTML = ''; return; }
     // chip compacto no cabeçalho do killfeed: o maior streak ativo (+ quantos mais)
     const top = st.rows[0], extra = st.rows.length - 1;
     document.getElementById('streaks-mini').innerHTML =

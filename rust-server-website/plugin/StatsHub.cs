@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("StatsHub", "Rustworthy", "1.5.0")]
+    [Info("StatsHub", "Rustworthy", "1.6.0")]
     [Description("Sends kills, sessions, farming and heartbeats to the stats website and delivers store rewards")]
     public class StatsHub : RustPlugin
     {
@@ -43,6 +43,9 @@ namespace Oxide.Plugins
 
             [JsonProperty("Auto server demo on report pressure (seconds, 0 = off)")]
             public float AutoDemoSeconds = 60f;
+
+            [JsonProperty("Auto demo: distinct reporters in 24h to trigger")]
+            public int AutoDemoReportThreshold = 3;
 
             [JsonProperty("Reward poll interval (seconds)")]
             public float RedemptionPollInterval = 60f;
@@ -97,6 +100,9 @@ namespace Oxide.Plugins
 
         private void Unload()
         {
+            // timers morrem com o unload — fechar demos abertas primeiro
+            foreach (var target in _activeDemos.ToList())
+                StopDemo(target);
             foreach (var player in BasePlayer.activePlayerList.ToList())
                 CreditPlayer(player);
             Flush();
@@ -105,6 +111,8 @@ namespace Oxide.Plugins
         // Wipe novo (novo save) — avisa o site para abrir uma wipe nova
         private void OnNewSave(string filename)
         {
+            _demoRecorded.Clear();      // wipe nova, pressão de reports recomeça
+            _reportPressure.Clear();
             Post("/api/wipe", new Dictionary<string, object>
             {
                 ["mapSeed"] = World.Seed.ToString(),
@@ -177,6 +185,9 @@ namespace Oxide.Plugins
             a[0]++;
         }
 
+        // vários chumbos da mesma caçadeira aterram no mesmo frame — contam como 1 acerto
+        private readonly Dictionary<string, int> _lastHitFrame = new Dictionary<string, int>();
+
         private void OnPlayerAttack(BasePlayer attacker, HitInfo info)
         {
             if (attacker == null || info == null || attacker.IsNpc) return;
@@ -184,6 +195,9 @@ namespace Oxide.Plugins
             if (victim == null || victim.IsNpc || victim == attacker) return;
             var weapon = info.Weapon?.ShortPrefabName ?? "unknown";
             var key = attacker.UserIDString + "|" + weapon;
+            int frame;
+            if (_lastHitFrame.TryGetValue(key, out frame) && frame == UnityEngine.Time.frameCount) return;
+            _lastHitFrame[key] = UnityEngine.Time.frameCount;
             int[] a;
             if (!_aim.TryGetValue(key, out a)) _aim[key] = a = new int[3];
             a[1]++;
@@ -192,11 +206,14 @@ namespace Oxide.Plugins
 
         private void FlushAim()
         {
+            // só remove o que foi enviado — amostras pequenas (armas lentas:
+            // bolt, arco, pistola) continuam a acumular até chegarem às 20
+            var flushed = new List<string>();
             foreach (var kv in _aim)
             {
-                if (kv.Value[0] < 20) continue; // amostras pequenas não interessam
+                if (kv.Value[0] < 20) continue;
                 var parts = kv.Key.Split('|');
-                Enqueue(new Dictionary<string, object>
+                _queue.Add(new Dictionary<string, object>
                 {
                     ["type"] = "accuracy",
                     ["ts"] = Now(),
@@ -206,8 +223,9 @@ namespace Oxide.Plugins
                     ["hits"] = kv.Value[1],
                     ["headshots"] = kv.Value[2],
                 });
+                flushed.Add(kv.Key);
             }
-            _aim.Clear();
+            foreach (var key in flushed) _aim.Remove(key);
         }
 
         // ---- notices: mensagens do site para jogadores (ex.: obrigado por reportar) ----
@@ -223,6 +241,8 @@ namespace Oxide.Plugins
         {
             [JsonProperty("rows")] public List<NoticeRow> Rows;
         }
+
+        private readonly HashSet<int> _noticesShown = new HashSet<int>();
 
         private void PollNotices()
         {
@@ -240,37 +260,50 @@ namespace Oxide.Plugins
                 {
                     ulong uid;
                     if (!ulong.TryParse(n.SteamId, out uid)) { delivered.Add(n.Id); continue; }
+                    // já mostrado numa ronda cujo ack falhou? re-ack sem repetir o chat
+                    if (_noticesShown.Contains(n.Id)) { delivered.Add(n.Id); continue; }
                     var target = BasePlayer.FindByID(uid);
                     if (target == null || !target.IsConnected) continue; // fica pendente até estar online
                     target.ChatMessage(n.Text);
+                    _noticesShown.Add(n.Id);
                     delivered.Add(n.Id);
                 }
+                if (_noticesShown.Count > 2000) _noticesShown.Clear();
                 if (delivered.Count > 0)
                     Post("/api/plugin/notices/ack", new Dictionary<string, object> { ["ids"] = delivered });
             }, this, RequestMethod.GET, headers, 10f);
         }
 
-        // pressão de reports em memória -> demo server-side automática do alvo
-        private readonly Dictionary<string, HashSet<string>> _reportPressure = new Dictionary<string, HashSet<string>>();
+        // pressão de reports em memória (reporter -> hora, janela 24h, igual ao site)
+        private readonly Dictionary<string, Dictionary<string, double>> _reportPressure = new Dictionary<string, Dictionary<string, double>>();
         private readonly HashSet<string> _demoRecorded = new HashSet<string>();
+        private readonly HashSet<string> _activeDemos = new HashSet<string>();
 
         private void MaybeAutoDemo(string targetId, string reporterId)
         {
             if (_config.AutoDemoSeconds <= 0) return;
-            HashSet<string> reporters;
+            Dictionary<string, double> reporters;
             if (!_reportPressure.TryGetValue(targetId, out reporters))
-                _reportPressure[targetId] = reporters = new HashSet<string>();
-            reporters.Add(reporterId);
-            if (reporters.Count < 3 || _demoRecorded.Contains(targetId)) return;
+                _reportPressure[targetId] = reporters = new Dictionary<string, double>();
+            var now = UnityEngine.Time.realtimeSinceStartup;
+            reporters[reporterId] = now;
+            // só contam reporters distintos das últimas 24h — como o alerta do site
+            foreach (var old in reporters.Where(r => now - r.Value > 86400).Select(r => r.Key).ToList())
+                reporters.Remove(old);
+            if (reporters.Count < Math.Max(1, _config.AutoDemoReportThreshold) || _demoRecorded.Contains(targetId)) return;
             _demoRecorded.Add(targetId);
             // demo nativa do Rust: fica em server/<identity>/demos/ — prova real da perspetiva
             ConsoleSystem.Run(ConsoleSystem.Option.Server.Quiet(), $"demo.record {targetId}");
-            Puts($"[StatsHub] Auto demo started for {targetId} ({reporters.Count} distinct reporters)");
-            timer.Once(_config.AutoDemoSeconds, () =>
-            {
-                ConsoleSystem.Run(ConsoleSystem.Option.Server.Quiet(), $"demo.stop {targetId}");
-                Puts($"[StatsHub] Auto demo finished for {targetId}");
-            });
+            _activeDemos.Add(targetId);
+            Puts($"[StatsHub] Auto demo started for {targetId} ({reporters.Count} distinct reporters/24h)");
+            timer.Once(_config.AutoDemoSeconds, () => StopDemo(targetId));
+        }
+
+        private void StopDemo(string targetId)
+        {
+            if (!_activeDemos.Remove(targetId)) return;
+            ConsoleSystem.Run(ConsoleSystem.Option.Server.Quiet(), $"demo.stop {targetId}");
+            Puts($"[StatsHub] Auto demo finished for {targetId}");
         }
 
         // Report F7 dentro do jogo -> fila de prioridade da staff no site/Discord
@@ -404,8 +437,8 @@ namespace Oxide.Plugins
             if (crate == null) return;
             var hackerId = crate.originalHackerPlayerId;
             if (hackerId == 0) return;
-            var hacker = BasePlayer.FindByID(hackerId);          // online?
-                       ?? BasePlayer.FindSleeping(hackerId);      // ou a dormir
+            var hacker = BasePlayer.FindByID(hackerId)           // online?
+                      ?? BasePlayer.FindSleeping(hackerId);      // ou a dormir
             Enqueue(new Dictionary<string, object>
             {
                 ["type"] = "mapevent",
@@ -527,10 +560,20 @@ namespace Oxide.Plugins
         private void Enqueue(Dictionary<string, object> evt)
         {
             _queue.Add(evt);
-            if (_queue.Count >= 400) Flush(); // não deixar crescer demasiado
+            if (_queue.Count >= 400 && !_flushing) Flush(); // não deixar crescer demasiado
         }
 
+        private bool _flushing;
+
         private void Flush()
+        {
+            if (_flushing) return; // Enqueue dentro do próprio flush não pode reentrar
+            _flushing = true;
+            try { FlushInner(); }
+            finally { _flushing = false; }
+        }
+
+        private void FlushInner()
         {
             FlushAim();
             // agregar farm acumulado como eventos "gather"
@@ -562,7 +605,14 @@ namespace Oxide.Plugins
             for (int i = 0; i < pending.Count; i += chunkSize)
             {
                 var batch = pending.GetRange(i, Math.Min(chunkSize, pending.Count - i));
-                Post("/api/ingest", new Dictionary<string, object> { ["events"] = batch }, success =>
+                // batchId: o site ignora lotes repetidos, por isso um retry após
+                // timeout nunca duplica kills/gemas/playtime
+                var payload = new Dictionary<string, object>
+                {
+                    ["events"] = batch,
+                    ["batchId"] = Guid.NewGuid().ToString("N"),
+                };
+                Post("/api/ingest", payload, success =>
                 {
                     if (!success)
                     {

@@ -6,6 +6,8 @@
 const https = require('node:https');
 
 /** Envia um payload para um webhook do Discord. Fire-and-forget: nunca lança. */
+const _warned = new Set(); // um aviso por código de erro, não spam por post
+
 function send(webhookUrl, payload) {
   if (!webhookUrl || !webhookUrl.startsWith('https://discord.com/api/webhooks/')) return;
   try {
@@ -14,7 +16,14 @@ function send(webhookUrl, payload) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
       timeout: 8000,
-    }, (res) => { res.resume(); });
+    }, (res) => {
+      res.resume();
+      // um webhook apagado (404) ou rate-limited (429) falha em silêncio sem isto
+      if (res.statusCode >= 300 && !_warned.has(res.statusCode)) {
+        _warned.add(res.statusCode);
+        console.warn(`[discord] webhook respondeu ${res.statusCode} — verifica os URLs em config.json (discordWebhooks)`);
+      }
+    });
     req.on('error', () => {});
     req.on('timeout', () => req.destroy());
     req.end(body);

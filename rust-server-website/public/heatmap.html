@@ -52,8 +52,9 @@ async function load(wipeId) {
     ctx.fillStyle = '#0e1015';
     ctx.fillRect(0, 0, SIZE, SIZE);
     if (data.mapImage) {
+      // sem crossOrigin: não fazemos leitura de píxeis, e exigir CORS
+      // rejeitava imagens válidas de CDNs sem Access-Control-Allow-Origin
       const img = new Image();
-      img.crossOrigin = 'anonymous';
       img.onload = () => { ctx.globalAlpha = 0.55; ctx.drawImage(img, 0, 0, SIZE, SIZE); ctx.globalAlpha = 1; resolve(); };
       img.onerror = () => resolve();
       img.src = data.mapImage;
@@ -133,7 +134,7 @@ async function load(wipeId) {
 
   document.getElementById('meta').textContent =
     t('heat.deaths', fmtNum(data.points.length), mapSize) +
-    (data.mapImage ? '' : t('heat.tip'));
+    ''; // a dica de configuração (mapImage) é assunto de operador, não dos visitantes
 }
 
 // anel na zona mais mortífera + inspeção célula-a-célula com mira

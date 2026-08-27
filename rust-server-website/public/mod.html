@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mod Room</title>
+<title data-i18n-key="modpage.title">Mod Room</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpolygon points='0,0 50,0 64,14 64,64 0,64' fill='%23ff5b26'/%3E%3Ctext x='32' y='47' font-family='Arial,sans-serif' font-size='40' font-weight='900' text-anchor='middle' fill='%230b0d11'%3ER%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -78,7 +78,7 @@
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line)">
         ${pfp(r.avatar, r.name, 22)}
         <b>${esc(r.name || r.target_id)}</b>
-        ${r.reporters24h >= 3 ? '<span class="badge failed">PRIORITY</span>' : ''}
+        ${r.reporters24h >= 3 ? `<span class="badge failed">${t('mod.priority')}</span>` : ''}
         <span style="font-size:12.5px;color:var(--ink-2)">${r.reporters24h}/24h · ${r.total} total</span>
         <a href="/player?id=${encodeURIComponent(r.target_id)}" style="margin-left:auto;font-size:12.5px">${t('mod.profile')} ↗</a>
       </div>`).join('')

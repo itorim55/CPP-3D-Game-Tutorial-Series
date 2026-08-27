@@ -268,7 +268,11 @@ for (const sql of [
   'ALTER TABLE ow_cases ADD COLUMN clip_file TEXT',
   'ALTER TABLE players ADD COLUMN steam_flags TEXT',
   'ALTER TABLE bans ADD COLUMN steam_id TEXT',
+  'ALTER TABLE redemptions ADD COLUMN sent_ts INTEGER',
 ]) { try { db.exec(sql); } catch { /* coluna já existe */ } }
+
+// bounty de reporters pago (uma vez por alvo banido — sobrevive a delete+recreate do ban)
+db.exec('CREATE TABLE IF NOT EXISTS bounties_paid (steam_id TEXT PRIMARY KEY, ts INTEGER NOT NULL)');
 
 // estatística de pontaria agregada pelo plugin (tiros vs acertos vs headshots)
 db.exec(`
@@ -363,10 +367,10 @@ CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_id, ts);
 function now() { return Math.floor(Date.now() / 1000); }
 
 function currentWipe() {
-  let w = db.prepare('SELECT * FROM wipes ORDER BY started_at DESC LIMIT 1').get();
+  let w = db.prepare('SELECT * FROM wipes ORDER BY started_at DESC, id DESC LIMIT 1').get();
   if (!w) {
     db.prepare('INSERT INTO wipes (started_at, label) VALUES (?, ?)').run(now(), 'First wipe');
-    w = db.prepare('SELECT * FROM wipes ORDER BY started_at DESC LIMIT 1').get();
+    w = db.prepare('SELECT * FROM wipes ORDER BY started_at DESC, id DESC LIMIT 1').get();
   }
   return w;
 }
@@ -465,6 +469,10 @@ function addNotice(steamId, text) {
 }
 
 function pendingNotices(limit = 50) {
+  // notices de jogadores que nunca mais voltaram expiram — senão 50 antigas
+  // entupiam a fila para sempre e as novas nunca chegavam a ninguém
+  db.prepare('UPDATE notices SET delivered_ts = -1 WHERE delivered_ts IS NULL AND ts < ?')
+    .run(now() - 14 * 86400);
   return db.prepare(
     'SELECT id, steam_id, text FROM notices WHERE delivered_ts IS NULL ORDER BY id LIMIT ?').all(limit);
 }
@@ -525,7 +533,7 @@ function precisionBoard(wipeId, limit = 50) {
     JOIN players p ON p.steam_id = a.steam_id
     LEFT JOIN (
       SELECT attacker_id, COUNT(*) kills, AVG(distance) avgd
-      FROM kills WHERE wipe_id = $w AND distance IS NOT NULL GROUP BY attacker_id
+      FROM kills WHERE wipe_id = $w GROUP BY attacker_id
     ) k ON k.attacker_id = a.steam_id
     WHERE a.wipe_id = $w
     GROUP BY a.steam_id
@@ -614,6 +622,14 @@ function deleteChatMessage(id) {
 
 // ---------- resumo do painel admin (badges de pendentes) ----------
 
+function bountyAlreadyPaid(steamId) {
+  return !!db.prepare('SELECT 1 FROM bounties_paid WHERE steam_id = ?').get(steamId);
+}
+
+function markBountyPaid(steamId) {
+  db.prepare('INSERT OR IGNORE INTO bounties_paid (steam_id, ts) VALUES (?, ?)').run(steamId, now());
+}
+
 function adminSummary() {
   const wipe = currentWipe();
   const one = (sql, ...a) => db.prepare(sql).get(...a).n;
@@ -690,10 +706,12 @@ function syncStoreItems(items) {
            it.active === false ? 0 : 1, i);
     ids.push(it.id);
   });
-  // desativa itens que já não estão no ficheiro
+  // desativa itens que já não estão no ficheiro (lista vazia = loja fechada)
   if (ids.length) {
     db.prepare(`UPDATE store_items SET active = 0
                 WHERE id NOT IN (${ids.map(() => '?').join(',')})`).run(...ids);
+  } else {
+    db.prepare('UPDATE store_items SET active = 0').run();
   }
 }
 
@@ -708,9 +726,12 @@ function redeem(steamId, itemId) {
   if (w.gems < item.cost) return { error: `Not enough gems (you have ${w.gems}, you need ${item.cost}).` };
   db.prepare('UPDATE wallets SET gems = gems - ? WHERE steam_id = ?').run(item.cost, steamId);
   const command = item.command ? item.command.replaceAll('{steamid}', steamId) : null;
-  db.prepare('INSERT INTO redemptions (ts, steam_id, item_id, cost, command) VALUES (?, ?, ?, ?, ?)')
-    .run(now(), steamId, itemId, item.cost, command);
-  return { ok: true, auto: !!command };
+  // perks do próprio site (ex.: badge Supporter) não têm nada para entregar
+  // no jogo — ficam 'delivered' no ato, em vez de 'pending' para sempre
+  const siteOnly = /^site-/.test(itemId) && !command;
+  db.prepare('INSERT INTO redemptions (ts, steam_id, item_id, cost, command, status) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(now(), steamId, itemId, item.cost, command, siteOnly ? 'delivered' : 'pending');
+  return { ok: true, auto: !!command, instant: siteOnly };
 }
 
 function myRedemptions(steamId) {
@@ -721,11 +742,15 @@ function myRedemptions(steamId) {
 }
 
 function pendingPluginRedemptions() {
+  // 'sent' há mais de 10 min sem confirmação = a resposta perdeu-se a caminho
+  // do plugin — volta à fila (o plugin tolera uma execução duplicada rara)
   const rows = db.prepare(`
     SELECT id, steam_id, command FROM redemptions
-    WHERE status = 'pending' AND command IS NOT NULL ORDER BY id LIMIT 20`).all();
-  const mark = db.prepare("UPDATE redemptions SET status = 'sent' WHERE id = ?");
-  for (const r of rows) mark.run(r.id);
+    WHERE command IS NOT NULL AND (
+      status = 'pending' OR (status = 'sent' AND COALESCE(sent_ts, 0) < ?)
+    ) ORDER BY id LIMIT 20`).all(now() - 600);
+  const mark = db.prepare("UPDATE redemptions SET status = 'sent', sent_ts = ? WHERE id = ?");
+  for (const r of rows) mark.run(now(), r.id);
   return rows;
 }
 
@@ -858,7 +883,7 @@ function mapRound() { return parseInt(getInfo('map_round') || '1', 10); }
 function mapVoteOpen() { return getInfo('map_vote_open') === '1'; }
 
 function previousWipeId() {
-  const rows = db.prepare('SELECT id FROM wipes ORDER BY started_at DESC LIMIT 2').all();
+  const rows = db.prepare('SELECT id FROM wipes ORDER BY started_at DESC, id DESC LIMIT 2').all();
   return rows.length > 1 ? rows[1].id : null;
 }
 
@@ -1022,13 +1047,13 @@ function achievements(steamId, wipeId) {
   if (burst && burst.n >= 5) add('🔥', 'On Fire', `${burst.n} kills in a single hour`);
 
   const night = db.prepare(`
-    SELECT COUNT(*) n FROM kills WHERE attacker_id = ? AND ((ts % 86400) / 3600) BETWEEN 0 AND 5`).get(steamId);
+    SELECT COUNT(*) n FROM kills WHERE attacker_id = ? AND CAST(strftime('%H', ts, 'unixepoch', 'localtime') AS INTEGER) BETWEEN 0 AND 5`).get(steamId);
   if (night.n >= 10) add('🦉', 'Night Owl', '10+ kills in the small hours');
 
   const gatherRows = db.prepare('SELECT resource, amount FROM gather WHERE steam_id = ? AND wipe_id = ?').all(steamId, wipeId);
   const g = Object.fromEntries(gatherRows.map((r) => [r.resource, r.amount]));
   if ((g['wood'] || 0) >= 100000) add('🌲', 'Lumberjack', '100k+ wood in one wipe');
-  if ((g['stone'] || 0) >= 100000) add('⛏️', 'Miner', '100k+ stone in one wipe');
+  if ((g['stones'] || 0) >= 100000) add('⛏️', 'Miner', '100k+ stone in one wipe');
   if ((g['sulfur.ore'] || 0) >= 50000) add('💥', 'Sulfur King', '50k+ sulfur in one wipe');
 
   if ((p?.playtime_s || 0) >= 100 * 3600) add('🏆', 'Veteran', '100+ hours on the server');
@@ -1042,8 +1067,10 @@ function achievements(steamId, wipeId) {
   if ((me.bradley || 0) >= 3) add('🛡️', 'Tank Buster', `${me.bradley} Bradleys destroyed this wipe`);
   if ((me.crate || 0) >= 5) add('📦', 'Fast Hands', `${me.crate} crates hacked this wipe`);
 
+  // mesmo critério do catálogo público: streak ativa E jogador visto nas últimas 24h
+  const lastSeen = db.prepare('SELECT last_seen FROM players WHERE steam_id = ?').get(steamId)?.last_seen || 0;
   const streak = playerStreak(steamId, wipeId);
-  if (streak >= 10) add('⚡', 'Rampage', `${streak} kills without dying (ongoing!)`);
+  if (streak >= 10 && lastSeen > now() - 86400) add('⚡', 'Rampage', `${streak} kills without dying (ongoing!)`);
 
   const supporter = db.prepare(`
     SELECT COUNT(*) n FROM redemptions WHERE steam_id = ? AND item_id = 'site-badge'
@@ -1058,10 +1085,12 @@ function achievements(steamId, wipeId) {
 function watchlist(wipeId) {
   const base = db.prepare(`
     SELECT p.steam_id, p.name, p.avatar, p.steam_flags, p.first_seen, p.playtime_s,
+           COALESCE(pw.seconds, 0) wipe_seconds,
            COUNT(*) kills, COALESCE(SUM(k.headshot), 0) hs,
            COALESCE(SUM(k.distance >= 150), 0) far,
            COALESCE(MAX(k.distance), 0) maxd
     FROM kills k JOIN players p ON p.steam_id = k.attacker_id
+    LEFT JOIN playtime_wipe pw ON pw.steam_id = k.attacker_id AND pw.wipe_id = k.wipe_id
     WHERE k.wipe_id = ? GROUP BY k.attacker_id HAVING kills >= 10`).all(wipeId);
 
   const bursts = Object.fromEntries(db.prepare(`
@@ -1089,8 +1118,9 @@ function watchlist(wipeId) {
     if (r.far >= 5) { score += 15; reasons.push(`${r.far} kills beyond 150m`); }
     const burst = bursts[r.steam_id] || 0;
     if (burst >= 12) { score += 15; reasons.push(`${burst} kills in a single hour`); }
-    const hours = (r.playtime_s || 0) / 3600;
-    if (hours >= 1 && r.kills / hours >= 8) { score += 10; reasons.push(`${Math.round(r.kills / hours)} kills/hour played`); }
+    // horas desta wipe: as kills também são desta wipe — sinal comparável
+    const hours = (r.wipe_seconds || 0) / 3600;
+    if (hours >= 1 && r.kills / hours >= 8) { score += 10; reasons.push(`${Math.round(r.kills / hours)} kills/hour this wipe`); }
     const nReps = reps[r.steam_id] || 0;
     if (nReps) { score += Math.min(30, nReps * 10); reasons.push(`reported by ${nReps} player(s) in 24h`); }
 
@@ -1170,6 +1200,11 @@ function wrapped(steamId, wipeId) {
     SELECT weapon, COUNT(*) n FROM kills
     WHERE attacker_id = ? AND wipe_id = ? AND weapon IS NOT NULL
     GROUP BY weapon ORDER BY n DESC LIMIT 1`).get(steamId, wipeId) || null;
+  // a arma da kill mais longa é a DESSA kill, não a arma favorita
+  const longestKill = db.prepare(`
+    SELECT weapon, distance FROM kills
+    WHERE attacker_id = ? AND wipe_id = ? AND distance IS NOT NULL
+    ORDER BY distance DESC LIMIT 1`).get(steamId, wipeId) || null;
   const topVictim = db.prepare(`
     SELECT pv.name, pv.avatar, k.victim_id steam_id, COUNT(*) n FROM kills k
     LEFT JOIN players pv ON pv.steam_id = k.victim_id
@@ -1194,6 +1229,7 @@ function wrapped(steamId, wipeId) {
     kd: Math.round((k.kills / Math.max(d.n, 1)) * 100) / 100,
     headshots: k.hs, hsRate: k.kills ? Math.round((k.hs / k.kills) * 100) : 0,
     bestDistance: Math.round(k.dist),
+    bestDistanceWeapon: longestKill?.weapon || null,
     rank, totalKillers,
     favWeapon,
     topVictim, nemesis,
@@ -1263,7 +1299,7 @@ function achievementsCatalog(wipeId) {
   add('🦉', 'Night Owl', '10+ kills in the small hours (00–06)', rows(`
     SELECT x.steam_id, p.name, p.avatar, x.v FROM (
       SELECT attacker_id steam_id, COUNT(*) v FROM kills
-      WHERE ((ts % 86400) / 3600) BETWEEN 0 AND 5 GROUP BY attacker_id HAVING v >= 10
+      WHERE CAST(strftime('%H', ts, 'unixepoch', 'localtime') AS INTEGER) BETWEEN 0 AND 5 GROUP BY attacker_id HAVING v >= 10
     ) x ${KJ} ORDER BY x.v DESC LIMIT ?`), (v) => `${fmt(v)} night kills`);
 
   const gatherBadge = (icon, name, desc, resource, min, unit) =>
@@ -1272,7 +1308,7 @@ function achievementsCatalog(wipeId) {
         SELECT steam_id, amount v FROM gather WHERE wipe_id = ? AND resource = ? AND amount >= ?
       ) x ${KJ} ORDER BY x.v DESC LIMIT ?`, wipeId, resource, min), (v) => `${fmt(v)} ${unit}`);
   gatherBadge('🌲', 'Lumberjack', '100k+ wood in one wipe', 'wood', 100000, 'wood');
-  gatherBadge('⛏️', 'Miner', '100k+ stone in one wipe', 'stone', 100000, 'stone');
+  gatherBadge('⛏️', 'Miner', '100k+ stone in one wipe', 'stones', 100000, 'stone');
   gatherBadge('💥', 'Sulfur King', '50k+ sulfur in one wipe', 'sulfur.ore', 50000, 'sulfur');
 
   add('🏆', 'Veteran', '100+ hours on the server', rows(`
@@ -1340,7 +1376,7 @@ function wipeSummary(wipeId) {
     WHERE k.wipe_id = ? AND k.distance IS NOT NULL ORDER BY k.distance DESC LIMIT 1`, wipeId);
   const topHeadshots = one(`
     SELECT p.name, p.steam_id, SUM(headshot) n FROM kills k JOIN players p ON p.steam_id = k.attacker_id
-    WHERE k.wipe_id = ? GROUP BY k.attacker_id ORDER BY n DESC LIMIT 1`, wipeId);
+    WHERE k.wipe_id = ? GROUP BY k.attacker_id HAVING n > 0 ORDER BY n DESC LIMIT 1`, wipeId);
   const topDeaths = one(`
     SELECT p.name, p.steam_id, COUNT(*) n FROM kills k JOIN players p ON p.steam_id = k.victim_id
     WHERE k.wipe_id = ? GROUP BY k.victim_id ORDER BY n DESC LIMIT 1`, wipeId);
@@ -1505,8 +1541,12 @@ function currentStreaks(wipeId, min = 3, limit = 10) {
     JOIN players p ON p.steam_id = k.attacker_id
     WHERE k.wipe_id = ?
       AND p.last_seen > ?
-      AND k.ts > COALESCE(
-        (SELECT MAX(d.ts) FROM kills d WHERE d.victim_id = k.attacker_id AND d.wipe_id = k.wipe_id), 0)
+      AND k.ts > COALESCE((
+        SELECT MAX(t) FROM (
+          SELECT MAX(d.ts) t FROM kills d WHERE d.victim_id = k.attacker_id AND d.wipe_id = k.wipe_id
+          UNION ALL
+          SELECT MAX(v.ts) t FROM pve_deaths v WHERE v.victim_id = k.attacker_id AND v.wipe_id = k.wipe_id
+        )), 0)
     GROUP BY k.attacker_id
     HAVING streak >= ?
     ORDER BY streak DESC
@@ -1517,10 +1557,14 @@ function currentStreaks(wipeId, min = 3, limit = 10) {
 function playerStreak(steamId, wipeId) {
   const r = db.prepare(`
     SELECT COUNT(*) n FROM kills k
-    WHERE k.wipe_id = ? AND k.attacker_id = ?
-      AND k.ts > COALESCE(
-        (SELECT MAX(d.ts) FROM kills d WHERE d.victim_id = ? AND d.wipe_id = ?), 0)
-  `).get(wipeId, steamId, steamId, wipeId);
+    WHERE k.wipe_id = $wid AND k.attacker_id = $sid
+      AND k.ts > COALESCE((
+        SELECT MAX(t) FROM (
+          SELECT MAX(d.ts) t FROM kills d WHERE d.victim_id = $sid AND d.wipe_id = $wid
+          UNION ALL
+          SELECT MAX(v.ts) t FROM pve_deaths v WHERE v.victim_id = $sid AND v.wipe_id = $wid
+        )), 0)
+  `).get({ sid: steamId, wid: wipeId });
   return r.n;
 }
 
@@ -1622,7 +1666,7 @@ const ELO_TIERS = [
 ];
 
 function eloTier(rating) {
-  return ELO_TIERS.find(([min]) => rating >= min)[1];
+  return (ELO_TIERS.find(([min]) => rating >= min) || ELO_TIERS[ELO_TIERS.length - 1])[1];
 }
 
 function eloLeaderboard(wipeId, limit = 50) {
@@ -1914,6 +1958,7 @@ module.exports = {
   recordAccuracy, addNotice, pendingNotices, markNoticesDelivered, reportersOf, modStats,
   aliases, setSignup, removeSignup, listSignups, precisionBoard, isFirstKill, combatSnapshot,
   setRole, removeRole, listRoles, isMod, addChatMessage, chatMessages, deleteChatMessage, adminSummary,
+  bountyAlreadyPaid, markBountyPaid,
   killfeed, searchPlayers, status, staffList, banList, banStats,
   addApplication, recentApplicationFromIp, listApplications, setApplicationStatus, startWipe,
   // gemas e loja

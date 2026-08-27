@@ -97,7 +97,10 @@ document.getElementById('cases').addEventListener('click', async (e) => {
   try {
     await apiPost('/api/owcases/vote', { caseId, vote: b.dataset.vote });
     load();
-  } catch (err) { alert('⚠️ ' + err.message); }
+  } catch (err) {
+    alert('⚠️ ' + err.message);
+    load().catch(() => {}); // o caso pode ter fechado entretanto — refrescar o estado real
+  }
 });
 
 load().catch(console.error);
