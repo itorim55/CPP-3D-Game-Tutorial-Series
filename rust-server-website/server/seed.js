@@ -177,9 +177,21 @@ function seed() {
       .run(1, id, opts[i % opts.length].id, 1 + rnd(5));
   });
 
-  // espalhar o registo de tempo de jogo pelos últimos 10 dias
-  // (o addPlaytime regista tudo "agora"; em produção chega de 5 em 5 min)
-  store.db.prepare(`UPDATE playtime_log SET ts = ? - ABS(RANDOM() % ?)`).run(now, 10 * 86400);
+  // repartir o tempo de jogo em sessões realistas (≤5 h) espalhadas por 10 dias
+  // — um bloco único de 120 h numa janela de 24 h daria horas impossíveis
+  {
+    const all = store.db.prepare('SELECT steam_id, SUM(seconds) s FROM playtime_log GROUP BY steam_id').all();
+    store.db.prepare('DELETE FROM playtime_log').run();
+    const ins = store.db.prepare('INSERT INTO playtime_log (ts, steam_id, seconds) VALUES (?, ?, ?)');
+    for (const row of all) {
+      let left = row.s;
+      while (left > 0) {
+        const chunk = Math.min(left, 1800 + rnd(3600 * 4.5));
+        ins.run(now - rnd(10 * 86400), row.steam_id, chunk);
+        left -= chunk;
+      }
+    }
+  }
   // e marcar toda a gente como vista nas últimas ~20 h (para streaks/atividade)
   store.db.prepare(`UPDATE players SET last_seen = ? - ABS(RANDOM() % 72000)`).run(now);
 

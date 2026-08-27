@@ -176,6 +176,8 @@ async function loadBoardInner(my, body, head) {
   const lb = await api(`/api/leaderboard?by=${by}&${periodQuery()}&limit=100`);
   const u = await me();
   if (my !== boardSeq) return;
+  // na tabela de horas, quem tem 0 h na janela é só ruído
+  if (by === 'playtime') lb.rows = lb.rows.filter((r) => r.playtime_s > 0);
 
   const metricKey = KEYMAP[by] || 'kills';
   const tabEl = document.querySelector('#metric-tabs button.active');
