@@ -31,6 +31,8 @@
 (async () => {
   const { rows } = await api('/api/achievements');
   const SHOW = 8; // avatares visíveis por badge
+  // badges já conquistados primeiro — os "Nobody yet" descem para o fim
+  rows.sort((a, b) => (b.holders.length ? 1 : 0) - (a.holders.length ? 1 : 0));
 
   document.getElementById('badges').innerHTML = rows.map((b) => {
     const shown = b.holders.slice(0, SHOW);

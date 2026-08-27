@@ -46,6 +46,26 @@
   <!-- alerta de raid a decorrer (aparece sozinho quando há) -->
   <div id="raid-alert" class="raid-alert" style="display:none"></div>
 
+  <!-- ============ PORQUÊ JOGAR AQUI ============ -->
+  <h2 class="section" data-i18n="home.whyPlay">Why play here?</h2>
+  <div class="why-grid">
+    <div class="card why lift">
+      <span class="ico">🛡️</span>
+      <h3 data-i18n="home.antiCheat">Serious anti-cheat</h3>
+      <p data-i18n="home.antiCheatDesc">Cheaters caught live, evidence recorded, <a href="/staff">bans public</a>. Moderation is the product here.</p>
+    </div>
+    <div class="card why lift">
+      <span class="ico">📊</span>
+      <h3 data-i18n="home.liveStats">Live statistics</h3>
+      <p data-i18n="home.liveStatsDesc">Every kill, death, headshot and resource tracked in real time. Search your name and follow your progress wipe after wipe.</p>
+    </div>
+    <div class="card why lift">
+      <span class="ico">⚖️</span>
+      <h3 data-i18n="home.noP2w">Zero pay-to-win</h3>
+      <p data-i18n="home.noP2wDesc">No paid kits, no loot for sale. Supporting gets you cosmetics and chat colors only — <a href="/loja">see the store</a>: the game is the same for everyone.</p>
+    </div>
+  </div>
+
   <!-- ============ ESTATÍSTICAS AO VIVO ============ -->
   <section class="stat-row">
     <div class="stat">
@@ -97,6 +117,15 @@
           </table>
         </div>
       </div>
+
+      <div class="panel" id="news-card" style="display:none">
+        <div class="panel-head">
+          <h3 data-i18n="home.newsTitle">📰 Latest news</h3>
+          <span class="spacer"></span>
+          <a href="/novidades" style="font-size:13px" data-i18n="home.newsAll">all news →</a>
+        </div>
+        <div class="panel-body" id="news-body"></div>
+      </div>
     </div>
 
     <div style="display:flex;flex-direction:column;gap:18px;min-width:0">
@@ -104,17 +133,13 @@
         <div class="panel-head">
           <h3 data-i18n="home.liveKillfeed">Live killfeed</h3>
           <span class="spacer"></span>
+          <span class="hot-mini" id="streaks-mini"></span>
           <span class="heat" id="combat-heat" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           <span class="live-badge"><span class="pulse"></span>LIVE</span>
         </div>
         <div class="panel-body">
           <div class="kill-list" id="killfeed"><span data-i18n="loading">loading…</span></div>
         </div>
-      </div>
-
-      <div class="panel" id="streaks-card" style="display:none">
-        <div class="panel-head"><h3 data-i18n="home.onFire">🔥 On fire right now</h3></div>
-        <div class="panel-body" id="streaks"></div>
       </div>
 
       <div class="panel" id="home-chat-panel">
@@ -128,25 +153,6 @@
     </div>
   </section>
 
-  <!-- ============ PORQUÊ JOGAR AQUI ============ -->
-  <h2 class="section" data-i18n="home.whyPlay">Why play here?</h2>
-  <div class="why-grid">
-    <div class="card why lift">
-      <span class="ico">🛡️</span>
-      <h3 data-i18n="home.antiCheat">Serious anti-cheat</h3>
-      <p data-i18n="home.antiCheatDesc">Active <b>camomo_10</b>-style moderation: cheaters caught live, evidence recorded, and public bans. See the <a href="/staff">ban list</a>.</p>
-    </div>
-    <div class="card why lift">
-      <span class="ico">📊</span>
-      <h3 data-i18n="home.liveStats">Live statistics</h3>
-      <p data-i18n="home.liveStatsDesc">Every kill, death, headshot and resource tracked in real time. Search your name and follow your progress wipe after wipe.</p>
-    </div>
-    <div class="card why lift">
-      <span class="ico">⚖️</span>
-      <h3 data-i18n="home.noP2w">Zero pay-to-win</h3>
-      <p data-i18n="home.noP2wDesc">No paid kits, no loot for sale. Supporting the server gets you cosmetics and chat colors only — the game is the same for everyone.</p>
-    </div>
-  </div>
 </main>
 
 <footer></footer>
@@ -251,12 +257,11 @@ async function refreshStreaks() {
   try {
     const st = await api('/api/streaks');
     if (!st.rows.length) return;
-    document.getElementById('streaks-card').style.display = '';
-    document.getElementById('streaks').innerHTML = st.rows.slice(0, 5).map((s) => `
-      <div class="fire-row">
-        <b>🔥 ${s.streak}</b> ${playerLink(s.steam_id, s.name)}
-        <span class="lbl">${t('home.streakUnit')}</span>
-      </div>`).join('');
+    // chip compacto no cabeçalho do killfeed: o maior streak ativo (+ quantos mais)
+    const top = st.rows[0], extra = st.rows.length - 1;
+    document.getElementById('streaks-mini').innerHTML =
+      `🔥 ${playerLink(top.steam_id, top.name)} <b>×${top.streak}</b>${extra > 0 ? ` <span class="more">+${extra}</span>` : ''}`;
+    document.getElementById('streaks-mini').title = t('home.onFire');
   } catch {}
 }
 
@@ -339,6 +344,19 @@ function startSpotlight(items) {
     const st = (await api('/api/streaks').catch(() => null))?.rows?.[0];
     if (st) spots.push({ lbl: t('spot.onFire'), val: `🔥 ${playerLink(st.steam_id, st.name)} · ${st.streak}` });
     startSpotlight(spots);
+  } catch {}
+
+  // última novidade do servidor — montra viva da página /novidades
+  try {
+    const posts = (await api('/api/posts')).rows.slice(0, 2);
+    if (posts.length) {
+      document.getElementById('news-card').style.display = '';
+      document.getElementById('news-body').innerHTML = posts.map((p) => `
+        <a class="news-row" href="/novidades">
+          <b>${esc(p.title)}</b>
+          <span class="meta">${fmtDate(p.ts)}</span>
+        </a>`).join('');
+    }
   } catch {}
 
   // ciclos ao vivo

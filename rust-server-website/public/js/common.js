@@ -87,12 +87,60 @@ function siteStatus() {
 const NAV_LINKS = [
   ['/', 'nav.home'],
   ['/stats', 'nav.stats'],
-  ['/loja', 'nav.store'],
   ['/mapa', 'nav.map'],
-  ['/overwatch', 'nav.overwatch'],
-  ['/regras', 'nav.rules'],
-  ['/staff', 'nav.staff'],
+  ['/loja', 'nav.store'],
+  ['/staff', 'nav.trust'],
 ];
+
+// sub-navegação em pills nos dois hubs: STATS e TRUST
+const SUBNAVS = {
+  stats: {
+    pages: ['/stats', '/heatmap', '/resumo', '/conquistas', '/vs'],
+    items: [
+      ['/stats', 'sub.leaderboards'],
+      ['/stats#teams', 'sub.teams'],
+      ['/heatmap', 'sub.heatmap'],
+      ['/resumo', 'sub.recap'],
+      ['/conquistas', 'sub.ach'],
+      ['/vs', 'sub.vs'],
+    ],
+  },
+  trust: {
+    pages: ['/staff', '/regras', '/overwatch', '/apelo', '/candidatura'],
+    items: [
+      ['/staff', 'sub.staffBans'],
+      ['/regras', 'nav.rules'],
+      ['/overwatch', 'nav.overwatch'],
+      ['/apelo', 'sub.appeal'],
+      ['/candidatura', 'nav.apply'],
+    ],
+  },
+};
+
+function mountSubnav() {
+  const path = location.pathname.replace(/\.html$/, '') || '/';
+  const hub = Object.values(SUBNAVS).find((h) => h.pages.includes(path));
+  const main = document.querySelector('main');
+  if (!hub || !main || document.querySelector('.subnav')) return;
+  const row = document.createElement('nav');
+  row.className = 'subnav';
+  row.innerHTML = hub.items.map(([href, key]) => {
+    const active = href.split('#')[0] === path && (!href.includes('#') || location.hash === '#' + href.split('#')[1]);
+    return `<a href="${href}" ${active ? 'class="active"' : ''}>${t(key)}</a>`;
+  }).join('');
+  main.prepend(row);
+  // pill "My stats" para quem tem sessão iniciada — salto direto para o próprio perfil
+  if (hub === SUBNAVS.stats) {
+    me().then((u) => {
+      if (!u.loggedIn) return;
+      const a = document.createElement('a');
+      a.href = `/player?id=${u.steamId}`;
+      a.className = 'mine';
+      a.textContent = t('sub.mine');
+      row.appendChild(a);
+    });
+  }
+}
 
 function renderChrome() {
   const header = document.querySelector('header');
@@ -152,6 +200,8 @@ function renderChrome() {
       chip.textContent = t('nav.login');
     }
   });
+
+  mountSubnav();
 
   siteStatus().then((s) => {
     const d = document.getElementById('discord-link');
@@ -250,9 +300,12 @@ function buildTickerItems(s, kf, lb) {
   return items;
 }
 
+const TICKER_QUIET = ['/apelo', '/candidatura', '/regras'];
+
 async function renderTicker() {
   const header = document.querySelector('header');
   if (!header || document.querySelector('.ticker')) return;
+  if (TICKER_QUIET.includes(location.pathname.replace(/\.html$/, '') || '/')) return;
   try {
     const [s, kf, lb] = await Promise.all([
       siteStatus(),

@@ -16,9 +16,9 @@
 <main>
   <h2 class="section" style="margin-top:6px" data-i18n="ow.title">Community Overwatch 🕵️</h2>
 
-  <div class="card">
-    <h3 data-i18n="ow.sub">The community hunts cheaters too</h3>
-    <p style="color:var(--ink-2);font-size:14px" data-i18n="ow.desc">
+  <details class="card exp">
+    <summary><h3 style="display:inline" data-i18n="ow.sub">The community hunts cheaters too</h3></summary>
+    <p style="color:var(--ink-2);font-size:14px;margin-top:10px" data-i18n="ow.desc">
       Staff publish clips of suspicious players here — <b>always anonymous</b>
       (no names, so there are no witch-hunts). Watch the clip and give your verdict.
       Community votes <b>don't ban anyone</b>: they're one more signal for the staff
@@ -26,7 +26,10 @@
       You need <b>5 h+ of playtime</b> on the server to vote — and you only see the
       results after voting, so you're not influenced.
     </p>
-  </div>
+    <p style="color:var(--ink-muted);font-size:13px" data-i18n="ow.reportHint">
+      Cases are anonymous by design — seen something suspicious yourself? Report in-game with <b>F7</b> or on Discord.
+    </p>
+  </details>
 
   <div id="login-hint"></div>
   <div id="cases" class="grid cols-2" style="margin-top:18px" data-i18n="loading">loading…</div>

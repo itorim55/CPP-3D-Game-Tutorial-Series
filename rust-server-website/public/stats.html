@@ -16,6 +16,7 @@
 <main>
   <h2 class="section" style="margin-top:6px" data-i18n="stats.title">Leaderboards</h2>
 
+  <div id="view-boards">
   <div class="tabs" id="metric-tabs">
     <button data-by="kills" class="active" data-i18n="stats.mKills">Kills</button>
     <button data-by="deaths" data-i18n="stats.mDeaths">Deaths</button>
@@ -35,10 +36,6 @@
       <option value="all" data-i18n="stats.wAll">All time (every wipe)</option>
     </select>
   </div>
-  <p style="color:var(--ink-muted);font-size:12.5px;margin:-6px 0 12px" data-i18n="stats.hint">
-    💡 The short windows (hour/day) also help the community spot suspicious spikes —
-    a player with abnormal kills in the last hour deserves an F7 report. Elo is seasonal (resets every wipe, minimum 5 fights).
-  </p>
 
   <div style="margin:12px 0;max-width:360px">
     <input type="text" id="search" placeholder="🔍 search player…" data-i18n-ph="stats.searchPh" autocomplete="off">
@@ -60,8 +57,11 @@
       <tbody id="lb-body"><tr><td colspan="8" data-i18n="loading">loading…</td></tr></tbody>
     </table>
   </div>
+  <p style="margin-top:14px;font-size:13px"><a href="/" data-i18n="stats.kfLink">☠ Live killfeed is on the home page →</a></p>
+  </div>
 
-  <h2 class="section"><span data-i18n="stats.teamsTitle">Top teams</span> <small data-i18n="stats.teamsSub">this wipe · native Rust teams</small></h2>
+  <div id="view-teams" style="display:none">
+  <h2 class="section" style="margin-top:6px"><span data-i18n="stats.teamsTitle">Top teams</span> <small data-i18n="stats.teamsSub">this wipe · native Rust teams</small></h2>
   <div class="table-wrap">
     <table>
       <thead><tr><th>#</th><th data-i18n="stats.thTeam">Team</th><th data-i18n="stats.thMembers">Members</th><th class="num" data-i18n="stats.thKills">Kills</th><th class="num" data-i18n="stats.thDeaths">Deaths</th><th class="num">K/D</th></tr></thead>
@@ -79,16 +79,7 @@
       <tbody id="raids-body"><tr><td colspan="5" data-i18n="loading">loading…</td></tr></tbody>
     </table>
   </div>
-
-  <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap">
-    <a class="btn ghost" href="/vs" data-i18n="stats.vsLink">⚔️ 1v1 comparator</a>
-    <a class="btn ghost" href="/heatmap" data-i18n="stats.heatLink">🗺️ Death heatmap</a>
-    <a class="btn ghost" href="/resumo" data-i18n="stats.sumLink">🏁 Wipe recap</a>
-    <a class="btn ghost" href="/conquistas" data-i18n="stats.achLink">🏅 Achievements</a>
   </div>
-
-  <h2 class="section" data-i18n="stats.killfeedTitle">Full killfeed</h2>
-  <div class="kill-list" id="killfeed" style="max-height:none" data-i18n="loading">loading…</div>
 </main>
 
 <footer></footer>
@@ -230,7 +221,7 @@ function syncWindowSelect() {
   const eloActive = by === 'elo' || by === 'precision';
   if (eloActive) sel.value = ''; // Elo é sempre a wipe atual
   sel.disabled = eloActive;
-  sel.title = eloActive ? t('stats.eloWindowNote') : '';
+  sel.title = eloActive ? t('stats.eloWindowNote') : t('stats.hint');
   sel.style.opacity = eloActive ? '0.5' : '';
 }
 
@@ -305,33 +296,30 @@ async function loadRaids() {
     </tr>`).join('') || `<tr><td colspan="5">${t('stats.noRaids')}</td></tr>`;
 }
 
+// vista por hash: /stats (classificações) ↔ /stats#teams (equipas & raids, carregado só quando aberto)
+let teamsLoaded = false;
+function syncView() {
+  const teams = location.hash === '#teams';
+  document.getElementById('view-boards').style.display = teams ? 'none' : '';
+  document.getElementById('view-teams').style.display = teams ? '' : 'none';
+  document.querySelectorAll('.subnav a').forEach((a) => {
+    const h = a.getAttribute('href');
+    if (h === '/stats') a.classList.toggle('active', !teams);
+    if (h === '/stats#teams') a.classList.toggle('active', teams);
+  });
+  if (teams && !teamsLoaded) {
+    teamsLoaded = true;
+    loadTeams().catch(console.error);
+    loadRaids().catch(console.error);
+    loadMapEvents().catch(console.error);
+  }
+}
+window.addEventListener('hashchange', syncView);
+
 (async () => {
+  syncView();
   await loadWipes();
   await loadBoard();
-
-  // quem está em streak agora — /api/streaks não era usado nesta página
-  api('/api/streaks').then((st) => {
-    if (!st.rows.length) return;
-    document.getElementById('metric-tabs').insertAdjacentHTML('afterend',
-      `<div class="hot-strip"><span class="hot-lbl">${t('stats.hotNow')}</span>` +
-      st.rows.map((r) => `<span class="hot-chip">${pfp(r.avatar, r.name, 20)}${playerLink(r.steam_id, r.name)}<b>🔥${r.streak}</b></span>`).join('') +
-      '</div>');
-  }).catch(() => {});
-
-  loadTeams().catch(console.error);
-  loadRaids().catch(console.error);
-  loadMapEvents().catch(console.error);
-  const kf = await api('/api/killfeed?limit=50');
-  document.getElementById('killfeed').innerHTML = kf.rows.map((k) => `
-    <div class="kill">
-      <span class="pa">${pfp(k.attacker_avatar, k.attacker_name, 22)}</span>
-      <span class="k">${k.attacker_name ? playerLink(k.attacker_id, k.attacker_name) : '?'}</span>
-      <span class="x">▸</span>
-      <span class="pv">${pfp(k.victim_avatar, k.victim_name, 22)}</span>
-      <span class="v">${k.victim_name ? playerLink(k.victim_id, k.victim_name) : '?'}</span>
-      <span class="ago">${timeAgo(k.ts)}</span>
-      <span class="wpn">${esc(k.weapon || '?')}${k.distance ? ` · ${Math.round(k.distance)}m` : ''}${k.headshot ? ' <b class="hs">HS</b>' : ''}</span>
-    </div>`).join('') || `<p style="color:var(--ink-muted)">${t('stats.noKills')}</p>`;
 })();
 </script>
 </body>

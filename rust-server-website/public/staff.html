@@ -14,47 +14,39 @@
 <header></header>
 
 <main>
-  <h2 class="section" style="margin-top:6px" data-i18n="staff.title">Our team</h2>
+  <h2 class="section" style="margin-top:6px" data-i18n="staff.hubTitle">Trust &amp; transparency</h2>
   <p style="color:var(--ink-2);max-width:760px" data-i18n="staff.intro">
     Moderation inspired by the best of the Rust community — the <b style="color:var(--ink)">camomo_10</b> standard:
     catch cheaters with evidence, never abuse admin powers, and show everything to the community.
     Here the admins are no mystery: you know who they are, what they do, and how many bans they've issued.
   </p>
 
-  <div class="grid cols-2" id="staff-grid" style="margin-top:18px" data-i18n="loading">loading…</div>
-
-  <h2 class="section" data-i18n="staff.codeTitle">The Moderator Code</h2>
-  <div class="card prose" style="max-width:820px">
-    <p data-i18n="staff.codeIntro">Every team member signs and follows this code. Violations mean immediate removal from the team — no exceptions.</p>
-    <div class="pledge" data-i18n="staff.p1"><b>1. Zero playing admins.</b> Staff don't play on the server they moderate — not on their main, not on alts. No spawning items, no noclip/vanish for advantage, no peeking into anyone's base "just to look". If the community can't trust the referee, the server dies.</div>
-    <div class="pledge" data-i18n="staff.p2"><b>2. Evidence, always.</b> Every verification is screen-recorded. No cheating ban without a recording, and evidence is kept for at least 30 days to answer appeals — published whenever possible, camomo_10 style.</div>
-    <div class="pledge" data-i18n="staff.p3"><b>3. Public bans.</b> Every ban appears on the public list below, with the reason and the admin responsible. The community can contest any decision on Discord.</div>
-    <div class="pledge" data-i18n="staff.p4"><b>4. Total neutrality.</b> An admin never moderates situations involving their own team/friends — the case goes to another staff member.</div>
-    <div class="pledge" data-i18n="staff.p5"><b>5. Respect, always.</b> Even with cheaters and toxic players: professionalism. We represent the server.</div>
-  </div>
-
   <h2 class="section"><span data-i18n="staff.receipts">The receipts</span> <small data-i18n="staff.receiptsSub">this wipe — proof the moderation actually happens</small></h2>
-  <div class="grid cols-4" id="mod-stats" data-i18n="loading">loading…</div>
+  <div class="grid cols-3" id="mod-stats" data-i18n="loading">loading…</div>
 
-  <h2 class="section"><span data-i18n="staff.transparency">Ban transparency</span> <small data-i18n="staff.last30">last 30 days</small></h2>
-  <div class="grid cols-3" id="ban-stats">
-    <div class="card tile"><div class="big" id="bans-30d">—</div><div class="label" data-i18n="staff.bans30">bans in the last 30 days</div></div>
-    <div class="card tile"><div class="big" id="bans-total">—</div><div class="label" data-i18n="staff.bansTotal">bans in total</div></div>
-    <div class="card tile"><div class="big" id="mod-month">—</div><div class="label" data-i18n="staff.modMonth">moderator of the month 🏆</div></div>
-  </div>
-
-  <div class="table-wrap" style="margin-top:16px">
+  <h2 class="section" id="bans"><span data-i18n="staff.transparency">Ban transparency</span> <small data-i18n="staff.last30">last 30 days</small></h2>
+  <p style="font-size:13.5px;color:var(--ink-2)" data-i18n="staff.appealLine">Banned and think it's a mistake? <a href="/apelo">Appeal here →</a></p>
+  <div class="table-wrap" style="margin-top:10px">
     <table>
       <thead><tr><th data-i18n="staff.thWhen">When</th><th data-i18n="staff.thPlayer">Player</th><th data-i18n="staff.thReason">Reason</th><th data-i18n="staff.thAdmin">Admin</th><th data-i18n="staff.thEvidence">Evidence</th></tr></thead>
       <tbody id="ban-list"><tr><td colspan="5" data-i18n="loading">loading…</td></tr></tbody>
     </table>
   </div>
 
-  <div class="card" style="margin-top:28px;text-align:center;padding:32px">
-    <h2 style="font-family:var(--font-display);font-size:30px;letter-spacing:2px" data-i18n="staff.joinTitle">WANT TO JOIN THE TEAM?</h2>
-    <p style="color:var(--ink-2);margin:10px 0 18px" data-i18n="staff.joinDesc">We're looking for dedicated moderators who want to keep the server clean — and we publicly recognize those who do it well.</p>
-    <a class="btn" href="/candidatura" data-i18n="staff.joinBtn">Apply now →</a>
+  <h2 class="section" data-i18n="staff.title">Our team</h2>
+  <div class="grid cols-2" id="staff-grid" style="margin-top:14px" data-i18n="loading">loading…</div>
+
+  <h2 class="section" data-i18n="staff.codeTitle">The Moderator Code</h2>
+  <div class="card prose" style="max-width:820px" id="mod-code">
+    <p data-i18n="staff.codeIntro">Every team member signs and follows this code. Violations mean immediate removal from the team — no exceptions. <span style="color:var(--ink-muted)" data-i18n="staff.codeHint">Click a rule to read it in full.</span></p>
+    <div class="pledge" data-i18n="staff.p1"><b>1. Zero playing admins.</b> Staff don't play on the server they moderate — not on their main, not on alts. No spawning items, no noclip/vanish for advantage, no peeking into anyone's base "just to look". If the community can't trust the referee, the server dies.</div>
+    <div class="pledge" data-i18n="staff.p2"><b>2. Evidence, always.</b> Every verification is screen-recorded. No cheating ban without a recording, and evidence is kept for at least 30 days to answer appeals — published whenever possible, camomo_10 style.</div>
+    <div class="pledge" data-i18n="staff.p3"><b>3. Public bans.</b> Every ban appears on the public list above, with the reason and the admin responsible. Anyone can contest any decision — <a href="/apelo">appeal here</a>.</div>
+    <div class="pledge" data-i18n="staff.p4"><b>4. Total neutrality.</b> An admin never moderates situations involving their own team/friends — the case goes to another staff member.</div>
+    <div class="pledge" data-i18n="staff.p5"><b>5. Respect, always.</b> Even with cheaters and toxic players: professionalism. We represent the server.</div>
   </div>
+
+  <p style="margin-top:24px"><a class="btn ghost" href="/candidatura" data-i18n="staff.joinLine">🛡️ Want to join the team? Apply →</a></p>
 </main>
 
 <footer></footer>
@@ -65,13 +57,14 @@
 (async () => {
   const data = await api('/api/staff');
 
-  // prova de trabalho: números da limpeza nesta wipe
-  if (data.modStats) {
-    const ms = data.modStats;
+  // prova de trabalho: banda única — wipe atual + histórico de bans
+  {
+    const ms = data.modStats || { bans: 0, reports: 0, appealsAnswered: 0, owClosed: 0 };
     const tile = (big, label) => `<div class="card tile"><div class="big">${fmtNum(big)}</div><div class="label">${label}</div></div>`;
     document.getElementById('mod-stats').innerHTML =
       tile(ms.bans, t('staff.rBans')) + tile(ms.reports, t('staff.rReports')) +
-      tile(ms.appealsAnswered, t('staff.rAppeals')) + tile(ms.owClosed, t('staff.rOw'));
+      tile(ms.appealsAnswered, t('staff.rAppeals')) + tile(ms.owClosed, t('staff.rOw')) +
+      tile(data.banStats.last30d, t('staff.bans30')) + tile(data.banStats.total, t('staff.bansTotal'));
   }
 
   document.getElementById('staff-grid').innerHTML = data.staff.map((m) => `
@@ -85,11 +78,6 @@
       </div>
     </div>`).join('') || `<p style="color:var(--ink-muted)">${t('staff.noTeam')}</p>`;
 
-  document.getElementById('bans-30d').textContent = data.banStats.last30d;
-  document.getElementById('bans-total').textContent = data.banStats.total;
-  const top = data.banStats.byStaff[0];
-  document.getElementById('mod-month').textContent = top ? top.staff_name : '—';
-
   const bans = await api('/api/bans');
   document.getElementById('ban-list').innerHTML = bans.rows.map((b) => `
     <tr>
@@ -100,6 +88,14 @@
       <td>${b.evidence ? `<a href="${esc(b.evidence)}" target="_blank" rel="noopener">${t('staff.view')}</a>` : '—'}</td>
     </tr>`).join('') || `<tr><td colspan="5">${t('staff.noBans')}</td></tr>`;
 })();
+
+// Código do Moderador: colapsado à linha do título; clicar expande (delegado — sobrevive ao i18n)
+document.querySelectorAll('#mod-code .pledge').forEach((p) => p.classList.add('closed'));
+document.getElementById('mod-code').addEventListener('click', (e) => {
+  if (e.target.closest('a')) return;
+  const p = e.target.closest('.pledge');
+  if (p) p.classList.toggle('closed');
+});
 </script>
 </body>
 </html>

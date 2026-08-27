@@ -66,8 +66,11 @@
     ${p.team ? `<p style="margin-top:12px;font-size:14px;color:var(--ink-2)">${t('player.team')}
       ${p.team.members.map((m, i) => playerLink(m, p.team.names[i])).join(', ')}</p>` : ''}
 
-    <h2 class="section">${t('vs.thisWipe')}</h2>
-    <div class="grid cols-4">
+    <div class="seg" id="scope-seg" style="margin-top:26px">
+      <button class="active" data-scope="wipe">${t('vs.thisWipe')}</button>
+      <button data-scope="all">${t('vs.allTime')}</button>
+    </div>
+    <div class="grid cols-4" id="tiles-wipe">
       ${statTile(fmtNum(w.kills), t('player.kills'))}
       ${statTile(fmtNum(w.deaths), t('player.deathsPvp'))}
       ${statTile(w.kd.toFixed(2), 'K/D')}
@@ -78,24 +81,26 @@
       ${statTile(hours(p.playtimeS), t('player.playtimeTotal'))}
       ${p.aim ? statTile(`🎯 ${p.aim.accPct}%`, t('player.aimTile', fmtNum(p.aim.shots))) : ''}
     </div>
+    <div class="grid cols-4" id="tiles-all" style="display:none">
+      ${statTile(fmtNum(a.kills), t('player.kills'))}
+      ${statTile(fmtNum(a.deaths), t('player.deaths'))}
+      ${statTile(a.kd.toFixed(2), 'K/D')}
+      ${statTile(fmtNum(a.headshots), t('player.headshots'))}
+    </div>
 
     <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
       <a class="btn ghost" href="/vs?a=${encodeURIComponent(p.steamId)}">${t('player.compare')}</a>
       <a class="btn ghost" href="/wrapped?id=${encodeURIComponent(p.steamId)}">🎁 ${t('player.wrapped')}</a>
     </div>
 
+    <div class="card" style="border-left:3px solid var(--line-2);margin-top:18px;padding:13px 18px">
+      <p style="font-size:13.5px;color:var(--ink-2);margin:0">${t('player.reportBox')}</p>
+    </div>
+
     ${p.trend && p.trend.length >= 2 ? `
     <h2 class="section">${t('player.progress')}</h2>
     <div class="card"><div id="trend-chart"></div>
       <p style="color:var(--ink-muted);font-size:12px;margin-top:8px">${t('player.progressHint')}</p></div>` : ''}
-
-    <h2 class="section">${t('vs.allTime')}</h2>
-    <div class="grid cols-4">
-      ${statTile(fmtNum(a.kills), t('player.kills'))}
-      ${statTile(fmtNum(a.deaths), t('player.deaths'))}
-      ${statTile(a.kd.toFixed(2), 'K/D')}
-      ${statTile(fmtNum(a.headshots), t('player.headshots'))}
-    </div>
 
     <div class="grid cols-2" style="margin-top:28px">
       <div class="card">
@@ -126,7 +131,9 @@
 
     <h2 class="section">${t('player.activity')}</h2>
     <div class="feed">
-      ${p.recent.map((k) => {
+      ${(actRow => p.recent.slice(0, 10).map(actRow).join('') +
+        (p.recent.length > 10 ? `<div id="act-more" style="display:none">${p.recent.slice(10).map(actRow).join('')}</div>
+          <button class="btn ghost" id="act-more-btn" style="margin-top:10px;padding:7px 16px;font-size:12.5px">${t('player.moreActivity', p.recent.length - 10)}</button>` : ''))((k) => {
         const isKill = k.attacker_id === p.steamId;
         return `<div class="row">
           <span class="who ${isKill ? 'k' : 'v'}">${isKill ? t('player.killed') : t('player.diedTo')}</span>
@@ -135,8 +142,21 @@
           ${k.headshot ? '<span class="hs">HS</span>' : ''}
           <span class="meta">${timeAgo(k.ts)}</span>
         </div>`;
-      }).join('') || `<p style="color:var(--ink-muted)">${t('player.noActivity')}</p>`}
+      }) || `<p style="color:var(--ink-muted)">${t('player.noActivity')}</p>`}
     </div>`;
+
+  // toggle wipe/all-time + expandir atividade
+  document.getElementById('scope-seg').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-scope]');
+    if (!b) return;
+    document.querySelectorAll('#scope-seg button').forEach((x) => x.classList.toggle('active', x === b));
+    document.getElementById('tiles-wipe').style.display = b.dataset.scope === 'wipe' ? '' : 'none';
+    document.getElementById('tiles-all').style.display = b.dataset.scope === 'all' ? '' : 'none';
+  });
+  document.getElementById('act-more-btn')?.addEventListener('click', (e) => {
+    document.getElementById('act-more').style.display = '';
+    e.target.remove();
+  });
 
   const trendEl = document.getElementById('trend-chart');
   if (trendEl) {

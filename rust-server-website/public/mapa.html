@@ -16,14 +16,14 @@
 <main>
   <h2 class="section" style="margin-top:6px" data-i18n="map.title">Next map vote</h2>
 
-  <div class="card">
-    <h3 data-i18n="map.how">How it works</h3>
-    <p style="color:var(--ink-2);font-size:14px" data-i18n="map.howDesc">
+  <details class="card exp">
+    <summary><h3 style="display:inline" data-i18n="map.how">How it works</h3></summary>
+    <p style="color:var(--ink-2);font-size:14px;margin-top:10px" data-i18n="map.howDesc">
       Before every wipe, the community picks the map. Your vote is worth more the more you play:
       <b style="color:var(--accent)">1 base vote + 1 per 10 hours played last wipe (max 5)</b>.
       The people who build the server decide the server. You can change your vote while voting is open.
     </p>
-  </div>
+  </details>
 
   <div id="state-banner"></div>
   <div class="grid cols-3" id="options" style="margin-top:16px" data-i18n="loading">loading…</div>

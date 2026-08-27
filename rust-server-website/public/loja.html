@@ -23,8 +23,8 @@
     <h3 data-i18n="store.how">How it works</h3>
     <p style="color:var(--ink-2);font-size:14px" data-i18n="store.howDesc">
       You earn <b style="color:var(--gold)" id="rate">1,000 gems for every hour played</b> on the server —
-      automatically, no effort needed. Gems are traded here for <b>100% cosmetic</b> rewards:
-      nothing in the store gives an in-game advantage.
+      automatically, no effort needed. Rewards here <b>never affect combat, loot or progression</b>;
+      queue skip is the single convenience perk, everything else is cosmetic.
       Sign in with Steam to see your balance and redeem.
     </p>
   </div>
@@ -46,19 +46,9 @@
     <div id="donate-area" style="margin-top:14px"></div>
   </div>
 
-  <div id="my-redemptions" style="display:none">
-    <h2 class="section" data-i18n="store.myRedemptions">My redemptions</h2>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th data-i18n="store.thWhen">When</th><th data-i18n="store.thItem">Item</th><th class="num" data-i18n="store.thCost">Cost</th><th data-i18n="store.thStatus">Status</th></tr></thead>
-        <tbody id="redemption-rows"></tbody>
-      </table>
-    </div>
-    <p style="color:var(--ink-muted);font-size:12.5px;margin-top:8px" data-i18n="store.deliveryNote">
-      Automatic redemptions are delivered in-game within ~1 minute (if you're online).
-      Manual-delivery items are handled by staff within 24 h.
-    </p>
-  </div>
+  <p id="my-redemptions" style="display:none;margin-top:22px;font-size:14px">
+    <a href="/conta" data-i18n="store.myRedLink">📦 My redemptions &amp; delivery status →</a>
+  </p>
 </main>
 
 <footer></footer>
@@ -83,15 +73,10 @@ async function load() {
 
   if (user.loggedIn) {
     document.getElementById('balance').textContent = gems(user.wallet.gems);
-    if (user.redemptions.length) {
-      document.getElementById('my-redemptions').style.display = '';
-      document.getElementById('redemption-rows').innerHTML = user.redemptions.map((r) => `
-        <tr><td>${timeAgo(r.ts)}</td><td>${esc(r.name || '?')}</td>
-        <td class="num">${fmtNum(r.cost)} 💎</td>
-        <td><span class="badge ${esc(r.status)}">${tStatus(r.status)}</span></td></tr>`).join('');
-    }
+    if (user.redemptions.length) document.getElementById('my-redemptions').style.display = '';
   } else {
-    document.getElementById('balance').textContent = t('store.enterToSee');
+    // sem sessão: UMA única superfície de login (o aviso) — o chip de saldo esconde-se
+    document.getElementById('balance').style.display = 'none';
     document.getElementById('login-hint').style.display = '';
   }
 
@@ -104,9 +89,9 @@ async function load() {
         <span class="cost">${fmtNum(it.cost)} 💎</span>
       </div>
       <p style="color:var(--ink-2);font-size:13.5px;margin:8px 0 14px">${esc(it.description || '')}</p>
-      <button class="btn" data-id="${esc(it.id)}" ${canAfford ? '' : 'disabled'}>
-        ${user.loggedIn ? (canAfford ? t('store.redeem') : t('store.notEnough')) : t('store.loginToRedeem')}
-      </button>
+      ${user.loggedIn ? `<button class="btn" data-id="${esc(it.id)}" ${canAfford ? '' : 'disabled'}>
+        ${canAfford ? t('store.redeem') : t('store.notEnough')}
+      </button>` : ''}
     </div>`;
   }).join('') || `<p style="color:var(--ink-muted)">${t('store.empty')}</p>`;
 }

@@ -90,18 +90,8 @@
       ${duel('💀', t('wr.nemesis'), w.nemesis)}
     </div>
 
-    ${w.trend && w.trend.length >= 2 ? `
-      <h2 class="section">${t('player.progress')}</h2>
-      <div class="card"><div id="trend"></div></div>` : ''}
-
     <p style="margin-top:22px;color:var(--ink-muted);font-size:12.5px">
       ${t('wr.footer')} · <a href="/player?id=${encodeURIComponent(w.player.steamId)}">${t('wr.fullProfile')}</a></p>`;
-
-  const trendEl = document.getElementById('trend');
-  if (trendEl) {
-    renderAreaChart(trendEl, w.trend.map((d) => ({ hour: d.ts, kd: d.kd })),
-      { xFmt: 'day', yKey: 'kd', yLabel: 'K/D' });
-  }
 
   document.getElementById('share').addEventListener('click', () => {
     navigator.clipboard.writeText(location.origin + `/wrapped?id=${encodeURIComponent(w.player.steamId)}${w.wipe.id ? `&wipe=${w.wipe.id}` : ''}`);
