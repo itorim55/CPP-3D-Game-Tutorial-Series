@@ -357,8 +357,32 @@ async function renderBans() {
 }
 
 async function renderMap() {
-  const state = await api('/api/mapvote');
+  const [state, settings] = await Promise.all([api('/api/mapvote'), aGet('/api/admin/settings')]);
+  // ISO -> valor de <input datetime-local> (hora local, sem segundos)
+  const toLocal = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
   body().innerHTML = `
+    <form id="wipe-settings" class="composer">
+      <div class="c-head"><b>⏱️ Wipe settings</b>
+        <span class="sub">live — no config edits, no restarts</span></div>
+      <div class="form-grid">
+        <div class="field"><label>Next wipe (your local time)</label>
+          <input type="datetime-local" name="nextWipe" value="${esc(toLocal(settings.nextWipe))}">
+          <p class="hint">Drives the countdown on the home page and TV. Clear it to hide the countdown.</p></div>
+        <div class="field"><label>Map image URL (heatmap overlay)</label>
+          <input name="mapImage" maxlength="300" value="${esc(settings.mapImage || '')}" placeholder="https://content.rustmaps.com/…/map_raw.png">
+          <p class="hint">From rustmaps.com for this wipe's seed+size. Empty = stylized grid.</p></div>
+      </div>
+      <div class="form-foot">
+        <span class="hint">Saved instantly to the live site.</span>
+        <button class="btn">Save settings</button>
+      </div>
+    </form>` + `
     <div class="card" style="margin-bottom:14px">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <b>Round ${state.round}</b> ${badge(state.open ? 'open' : 'closed')}
@@ -385,6 +409,25 @@ async function renderMap() {
         <span style="color:var(--ink-muted);font-size:13px">seed ${esc(o.seed || '—')} · ${o.size || '—'}</span>
         <span style="margin-left:auto;font-size:13px"><b>${o.votes}</b> points (${o.voters} voters)</span>
       </div>`).join('');
+
+  document.getElementById('wipe-settings').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('.btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const fd = new FormData(e.target);
+    const local = fd.get('nextWipe');
+    try {
+      await aPost('/api/admin/settings', {
+        nextWipe: local ? new Date(local).toISOString() : '',
+        mapImage: fd.get('mapImage').trim(),
+      });
+      btn.textContent = '✓ Saved';
+      setTimeout(() => { btn.disabled = false; btn.textContent = 'Save settings'; }, 1500);
+    } catch (err) {
+      alert('⚠️ ' + err.message);
+      btn.disabled = false; btn.textContent = 'Save settings';
+    }
+  });
 
   document.getElementById('map-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -740,8 +783,10 @@ document.getElementById('section-body').addEventListener('click', (e) => {
 });
 
 async function handleBodyClick(e) {
+  // botões de formulário ficam de fora: desativá-los durante o clique cancela
+  // o submit no Chrome, e os composers já têm a sua própria proteção
   const anyBtn = e.target.closest('#section-body button');
-  if (anyBtn) {
+  if (anyBtn && !anyBtn.closest('form')) {
     if (anyBtn.disabled) return;
     anyBtn.disabled = true;
     setTimeout(() => { anyBtn.disabled = false; }, 1500); // rearma caso não haja re-render

@@ -798,7 +798,7 @@ details.exp > summary:hover h3 { color: var(--accent); }
 /* ---------------------------------------------------------- formulários */
 
 input:not([type]), input[type=text], input[type=password], input[type=number],
-input[type=email], input[type=url], input[type=search], select, textarea {
+input[type=email], input[type=url], input[type=search], input[type=datetime-local], select, textarea {
   background: var(--inset); border: 1px solid var(--line); color: var(--ink);
   padding: 11px 13px; font-family: var(--font-body); font-size: 14.5px;
   width: 100%; border-radius: var(--radius);

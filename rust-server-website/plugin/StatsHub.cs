@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("StatsHub", "Rustworthy", "1.6.0")]
+    [Info("StatsHub", "Rustworthy", "1.7.0")]
     [Description("Sends kills, sessions, farming and heartbeats to the stats website and delivers store rewards")]
     public class StatsHub : RustPlugin
     {
@@ -49,6 +49,9 @@ namespace Oxide.Plugins
 
             [JsonProperty("Reward poll interval (seconds)")]
             public float RedemptionPollInterval = 60f;
+
+            [JsonProperty("Apply site bans in-game (banid)")]
+            public bool ApplySiteBans = true;
         }
 
         protected override void LoadDefaultConfig() => _config = new PluginConfig();
@@ -95,6 +98,8 @@ namespace Oxide.Plugins
                 timer.Every(_config.RedemptionPollInterval, PollRedemptions);
             if (!string.IsNullOrEmpty(_config.ApiKey))
                 timer.Every(_config.RedemptionPollInterval, PollNotices);
+            if (_config.ApplySiteBans && !string.IsNullOrEmpty(_config.ApiKey))
+                timer.Every(_config.RedemptionPollInterval, PollSiteBans);
             SendHeartbeat();
         }
 
@@ -550,6 +555,47 @@ namespace Oxide.Plugins
                         ["ok"] = ok,
                     });
                 }
+            }, this, RequestMethod.GET, headers, 10f);
+        }
+
+        private class BanRow
+        {
+            [JsonProperty("id")] public int Id;
+            [JsonProperty("steam_id")] public string SteamId;
+            [JsonProperty("reason")] public string Reason;
+        }
+
+        private class BanResponse
+        {
+            [JsonProperty("rows")] public List<BanRow> Rows;
+        }
+
+        // Bans registados no site (com SteamID) são aplicados aqui com banid —
+        // um clique no console = registo público + embed no Discord + ban no jogo.
+        private void PollSiteBans()
+        {
+            var url = _config.SiteUrl.TrimEnd('/') + "/api/plugin/bans";
+            var headers = new Dictionary<string, string> { ["X-API-Key"] = _config.ApiKey };
+            webrequest.Enqueue(url, null, (code, response) =>
+            {
+                if (code < 200 || code >= 300 || string.IsNullOrEmpty(response)) return;
+                BanResponse data;
+                try { data = JsonConvert.DeserializeObject<BanResponse>(response); }
+                catch { return; }
+                if (data?.Rows == null || data.Rows.Count == 0) return;
+                var applied = new List<int>();
+                foreach (var row in data.Rows)
+                {
+                    ulong uid;
+                    if (!ulong.TryParse(row.SteamId, out uid)) { applied.Add(row.Id); continue; }
+                    // aspas/novas linhas fora da razão — vai para a consola do servidor
+                    var reason = (row.Reason ?? "banned via site").Replace("\"", "'").Replace("\n", " ");
+                    ConsoleSystem.Run(ConsoleSystem.Option.Server.Quiet(), $"banid {uid} \"site\" \"{reason}\"");
+                    Puts($"[StatsHub] Site ban applied: {uid} ({reason})");
+                    applied.Add(row.Id);
+                }
+                if (applied.Count > 0)
+                    Post("/api/plugin/bans/ack", new Dictionary<string, object> { ["ids"] = applied });
             }, this, RequestMethod.GET, headers, 10f);
         }
 

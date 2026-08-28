@@ -138,6 +138,62 @@ deploy\backup.bat             # corre à mão, ou agenda no Task Scheduler (diá
 2. Edita `oxide/config/StatsHub.json`: `Site URL` = o teu URL público, `API key` = a `apiKey` do `server\config.json`.
 3. `oxide.reload StatsHub` — em ~1 minuto o heartbeat aparece no site (bolinha verde na home).
 
+O plugin também **aplica no jogo os bans registados no console do site** (com
+SteamID): faz poll a cada minuto e corre `banid`. Desativável na config do
+plugin ("Apply site bans in-game").
+
+## 6-B. Servidor de TESTE no teu próprio PC
+
+Para testares tudo interligado antes de alugar um host (o servidor de jogo e o
+site podem correr no mesmo PC):
+
+```powershell
+# 1. SteamCMD
+mkdir C:\steamcmd; cd C:\steamcmd
+Invoke-WebRequest https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip -OutFile steamcmd.zip
+Expand-Archive steamcmd.zip -DestinationPath .
+
+# 2. Rust Dedicated Server (~10 GB — demora)
+.\steamcmd.exe +force_install_dir C:\rustserver +login anonymous +app_update 258550 validate +quit
+
+# 3. Oxide/uMod: descarrega https://umod.org/games/rust (Oxide.Rust.zip)
+#    e extrai POR CIMA de C:\rustserver (substitui os ficheiros)
+
+# 4. Plugin: copia plugin\StatsHub.cs para C:\rustserver\oxide\plugins\
+```
+
+Cria `C:\rustserver\start-test.bat`:
+
+```bat
+@echo off
+cd /d C:\rustserver
+RustDedicated.exe -batchmode -nographics ^
+  +server.hostname "Rustworthy TEST" +server.port 28015 +server.maxplayers 8 ^
+  +server.worldsize 2000 +server.seed 12345 +server.identity test ^
+  +rcon.port 28016 +rcon.password teste123 +rcon.web 1
+```
+
+Mapa 2000 arranca em poucos minutos. Depois do 1º arranque, edita
+`C:\rustserver\oxide\config\StatsHub.json`:
+`"Site URL": "http://localhost:8080"` (mesmo PC = localhost chega!) e
+`"API key"` = a apiKey do site. No jogo: F1 → `client.connect 127.0.0.1:28015`.
+
+## 6-C. Teste de interligação (a prova real)
+
+Com site + tunnel + Discord + servidor de teste a correr:
+
+- [ ] **Heartbeat**: bolinha verde + jogadores online na home em ~1 min
+- [ ] **Login Steam**: entra no site pelo URL público com a tua conta
+- [ ] **Kill**: mata alguém (ou um amigo) → aparece no killfeed do site
+- [ ] **Playtime/gemas**: após ~5 min in-game, o saldo 💎 sobe em /conta
+- [ ] **F7 report**: reporta alguém no jogo → aparece em Reports no console
+- [ ] **Loja**: resgata um item com comando → entregue no jogo em ~1 min
+- [ ] **Ban bridge**: regista um ban no console COM SteamID → `banid` corre
+      no servidor de jogo em ~1 min (vê a consola do jogo)
+- [ ] **News → Discord**: publica uma novidade → embed no #announcements
+- [ ] **Ban → Discord**: o ban de teste apareceu no #ban-log
+- [ ] **Wipe settings**: muda a data no console (Map vote) → countdown da home muda
+
 ## 7. Checklist final antes de divulgar
 
 - [ ] `data\` apagada e site arrancado SEM `--seed` (dados de demonstração fora)

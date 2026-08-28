@@ -43,12 +43,16 @@ const OWNER_STEAM_ID = config.ownerSteamId !== undefined ? config.ownerSteamId :
 if (OWNER_STEAM_ID) store.setRole(String(OWNER_STEAM_ID), 'admin');
 for (const [k, v] of Object.entries({
   server_name: config.serverName, server_ip: config.serverIp,
-  discord: config.discord, next_wipe: config.nextWipe,
+  discord: config.discord,
   brand_accent: config.brandAccent || 'RUST', brand_rest: config.brandRest || '',
-  map_image: config.mapImage, // imagem de fundo do heatmap (URL da imagem do mapa)
   next_map_seed: config.nextMapSeed, next_map_size: config.nextMapSize, // hype pré-wipe
   donate: config.donateUrl, // link de donations (PayPal/Ko-fi/Tebex) — vazio esconde o botão
 })) if (v !== undefined && v !== null && v !== '') store.setInfo(k, v);
+// next_wipe e map_image geridos no console (Map vote -> Wipe settings): o
+// config.json é só o valor inicial — um boot nunca esmaga o que a UI definiu
+for (const [k, v] of Object.entries({ next_wipe: config.nextWipe, map_image: config.mapImage })) {
+  if (v && store.getInfo(k) === null) store.setInfo(k, v);
+}
 if (!config.brandRest) store.setInfo('brand_rest', '');
 
 // sincroniza os itens da loja a partir de store-items.json (editável pelo dono)

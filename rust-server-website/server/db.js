@@ -274,6 +274,16 @@ for (const sql of [
 // bounty de reporters pago (uma vez por alvo banido — sobrevive a delete+recreate do ban)
 db.exec('CREATE TABLE IF NOT EXISTS bounties_paid (steam_id TEXT PRIMARY KEY, ts INTEGER NOT NULL)');
 
+// fila de bans site -> servidor de jogo: o plugin faz poll e executa banid
+db.exec(`CREATE TABLE IF NOT EXISTS ban_queue (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts       INTEGER NOT NULL,
+  steam_id TEXT NOT NULL,
+  reason   TEXT,
+  status   TEXT NOT NULL DEFAULT 'pending',  -- pending|sent|applied
+  sent_ts  INTEGER
+)`);
+
 // estatística de pontaria agregada pelo plugin (tiros vs acertos vs headshots)
 db.exec(`
 CREATE TABLE IF NOT EXISTS accuracy (
@@ -626,6 +636,31 @@ function deleteChatMessage(id) {
 }
 
 // ---------- resumo do painel admin (badges de pendentes) ----------
+
+// ban registado no site com SteamID -> o servidor de jogo aplica-o em <=60s
+function queueGameBan(steamId, reason) {
+  const open = db.prepare(
+    "SELECT 1 FROM ban_queue WHERE steam_id = ? AND status != 'applied'").get(steamId);
+  if (open) return; // já está a caminho
+  db.prepare('INSERT INTO ban_queue (ts, steam_id, reason) VALUES (?, ?, ?)')
+    .run(now(), steamId, reason || null);
+}
+
+function pendingGameBans() {
+  // 'sent' sem confirmação após 10 min volta à fila (resposta perdida)
+  const rows = db.prepare(`
+    SELECT id, steam_id, reason FROM ban_queue
+    WHERE status = 'pending' OR (status = 'sent' AND COALESCE(sent_ts, 0) < ?)
+    ORDER BY id LIMIT 20`).all(now() - 600);
+  const mark = db.prepare("UPDATE ban_queue SET status = 'sent', sent_ts = ? WHERE id = ?");
+  for (const r of rows) mark.run(now(), r.id);
+  return rows;
+}
+
+function markGameBansApplied(ids) {
+  const stmt = db.prepare("UPDATE ban_queue SET status = 'applied' WHERE id = ?");
+  for (const id of ids) stmt.run(id | 0);
+}
 
 function bountyAlreadyPaid(steamId) {
   return !!db.prepare('SELECT 1 FROM bounties_paid WHERE steam_id = ?').get(steamId);
@@ -1963,7 +1998,7 @@ module.exports = {
   recordAccuracy, addNotice, pendingNotices, markNoticesDelivered, reportersOf, modStats,
   aliases, setSignup, removeSignup, listSignups, precisionBoard, isFirstKill, combatSnapshot,
   setRole, removeRole, listRoles, isMod, roleOf, addChatMessage, chatMessages, deleteChatMessage, adminSummary,
-  bountyAlreadyPaid, markBountyPaid,
+  bountyAlreadyPaid, markBountyPaid, queueGameBan, pendingGameBans, markGameBansApplied,
   killfeed, searchPlayers, status, staffList, banList, banStats,
   addApplication, recentApplicationFromIp, listApplications, setApplicationStatus, startWipe,
   // gemas e loja

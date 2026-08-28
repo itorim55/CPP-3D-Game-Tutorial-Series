@@ -348,6 +348,14 @@ function route(req, res, url, body, config, session) {
     if (p === '/api/plugin/redemptions' && req.method === 'GET') {
       json(res, 200, { rows: store.pendingPluginRedemptions() }); return true;
     }
+    if (p === '/api/plugin/bans' && req.method === 'GET') {
+      json(res, 200, { rows: store.pendingGameBans() }); return true;
+    }
+    if (p === '/api/plugin/bans/ack') {
+      const ids = Array.isArray(body?.ids) ? body.ids.slice(0, 100) : [];
+      store.markGameBansApplied(ids);
+      json(res, 200, { ok: true }); return true;
+    }
     if (req.method !== 'POST') { json(res, 405, { error: 'Method not allowed' }); return true; }
     if (!body) { json(res, 400, { error: 'Invalid JSON' }); return true; }
 
@@ -651,6 +659,11 @@ function route(req, res, url, body, config, session) {
           json(res, 200, { rows: store.listRoles() }); return true;
         case '/api/admin/summary':
           json(res, 200, store.adminSummary()); return true;
+        case '/api/admin/settings':
+          json(res, 200, {
+            nextWipe: store.getInfo('next_wipe') || '',
+            mapImage: store.getInfo('map_image') || '',
+          }); return true;
         case '/api/admin/watchlist':
           json(res, 200, { rows: store.watchlist(store.currentWipe().id) }); return true;
         case '/api/admin/bans': json(res, 200, { rows: store.listBansAdmin() }); return true;
@@ -680,6 +693,23 @@ function route(req, res, url, body, config, session) {
           if (!title || !text) { json(res, 400, { error: 'Title and body are required' }); return true; }
           store.addPost(title, text);
           discord.newsPost(config.discordWebhooks?.announcements, { title, body: text, siteUrl: config.siteUrl });
+          json(res, 200, { ok: true }); return true;
+        }
+        case '/api/admin/settings': {
+          if ('nextWipe' in body) {
+            const v = clean(body.nextWipe, 40) || '';
+            if (v && Number.isNaN(new Date(v).getTime())) {
+              json(res, 400, { error: 'Invalid date' }); return true;
+            }
+            store.setInfo('next_wipe', v);
+          }
+          if ('mapImage' in body) {
+            const raw = clean(body.mapImage, 300);
+            if (raw && !cleanUrl(body.mapImage)) {
+              json(res, 400, { error: 'Map image must be an http(s) link' }); return true;
+            }
+            store.setInfo('map_image', cleanUrl(body.mapImage) || '');
+          }
           json(res, 200, { ok: true }); return true;
         }
         case '/api/admin/posts/delete':
@@ -742,6 +772,8 @@ function route(req, res, url, body, config, session) {
             json(res, 400, { error: 'Player, reason and admin are required' }); return true;
           }
           store.addBan(ban);
+          // com SteamID, o ban também é aplicado NO JOGO pelo plugin (banid)
+          if (banSteamId) store.queueGameBan(banSteamId, ban.reason);
           discord.banAnnounce(config.discordWebhooks?.bans, ban, config.siteUrl);
           // psicologia de comunidade: quem reportou o banido recebe obrigado + bounty
           // (uma única vez por alvo — apagar+recriar o ban para corrigir um typo
