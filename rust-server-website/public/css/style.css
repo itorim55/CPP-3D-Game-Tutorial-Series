@@ -773,6 +773,18 @@ details.exp > summary::after { content: " ▸"; color: var(--ink-muted); font-si
 details.exp[open] > summary::after { content: " ▾"; }
 details.exp > summary:hover h3 { color: var(--accent); }
 
+/* botões de zoom do heatmap */
+.map-btns {
+  position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column;
+  gap: 4px; z-index: 5;
+}
+.map-btns button {
+  width: 34px; height: 34px; font-size: 17px; line-height: 1; cursor: pointer;
+  background: rgba(18, 21, 27, .88); color: var(--ink-2);
+  border: 1px solid var(--line-2); font-family: var(--font-mono);
+}
+.map-btns button:hover { color: var(--accent); border-color: var(--accent); }
+
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0; }
 .tabs button {
   background: var(--surface); color: var(--ink-2); border: 1px solid var(--line);

@@ -107,6 +107,7 @@ const EN_JS = {
   'tv.headshot': 'HEADSHOT', 'tv.longshot': 'LONGSHOT',
   'map.leading': 'LEADING',
   'heat.hotzone': 'HOT ZONE', 'heat.cellDeaths': 'deaths',
+  'heat.zoomHint': 'scroll to zoom \u00b7 drag to move \u00b7 double-click to reset',
   'sum.myWrapped': 'My Wipe Wrapped',
 
   // spotlight do hero (JS)
@@ -335,6 +336,7 @@ const I18N = {
     'tv.headshot': 'HEADSHOT', 'tv.longshot': 'TIRO LONGO',
     'map.leading': 'A LIDERAR',
     'heat.hotzone': 'ZONA QUENTE', 'heat.cellDeaths': 'mortes',
+    'heat.zoomHint': 'roda para zoom \u00b7 arrasta para mover \u00b7 duplo-clique rep\u00f5e',
     'spot.leader': 'líder da wipe',
     'spot.longest': 'kill mais longa',
     'spot.onFire': 'em fogo agora',

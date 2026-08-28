@@ -23,9 +23,16 @@
     North is up; game coordinates normalized to map size.
   </p>
 
-  <div class="card" style="margin-top:16px;max-width:820px">
-    <div style="position:relative" id="map-wrap">
-      <canvas id="map" style="width:100%;display:block;background:#0e1015"></canvas>
+  <div class="card" style="margin-top:16px;max-width:1100px">
+    <div style="position:relative;overflow:hidden;touch-action:none" id="map-wrap">
+      <div id="map-zoom" style="transform-origin:0 0">
+        <canvas id="map" style="width:100%;display:block;background:#0e1015"></canvas>
+      </div>
+      <div class="map-btns">
+        <button id="z-in" title="zoom in">+</button>
+        <button id="z-out" title="zoom out">−</button>
+        <button id="z-reset" title="reset">⟲</button>
+      </div>
     </div>
     <p id="meta" style="color:var(--ink-muted);font-size:12.5px;margin-top:10px"></p>
   </div>
@@ -36,7 +43,7 @@
 <script src="/js/i18n.js"></script>
 <script src="/js/common.js"></script>
 <script>
-const SIZE = 760; // resolução interna do canvas
+const SIZE = 1200; // resolução interna do canvas (alta para aguentar zoom)
 let runId = 0;    // aborta animações antigas quando se muda de wipe
 
 async function load(wipeId) {
@@ -133,21 +140,23 @@ async function load(wipeId) {
   }
 
   document.getElementById('meta').textContent =
-    t('heat.deaths', fmtNum(data.points.length), mapSize) +
-    ''; // a dica de configuração (mapImage) é assunto de operador, não dos visitantes
+    t('heat.deaths', fmtNum(data.points.length), mapSize) + ' · ' + t('heat.zoomHint');
 }
 
 // anel na zona mais mortífera + inspeção célula-a-célula com mira
 function instrument(cells, canvas) {
   const wrap = document.getElementById('map-wrap');
+  const zoomEl = document.getElementById('map-zoom');
   wrap.querySelectorAll('.hotzone, .xh-v, .xh-h, .cell-tip').forEach((e) => e.remove());
+  zoomEl.querySelectorAll('.hotzone').forEach((e) => e.remove());
 
   let best = 0, bi = -1;
   for (let i = 0; i < 100; i++) if (cells[i] > best) { best = cells[i]; bi = i; }
   const letters = 'ABCDEFGHIJ';
   if (bi >= 0 && best > 0) {
     const col = bi % 10, row = (bi / 10) | 0;
-    wrap.insertAdjacentHTML('beforeend',
+    // dentro da camada de zoom: a marca acompanha o mapa quando amplias/arrastas
+    zoomEl.insertAdjacentHTML('beforeend',
       `<div class="hotzone" style="left:${(col + 0.5) * 10}%;top:${(row + 0.5) * 10}%">
          <i></i><b>${t('heat.hotzone')} ${letters[col]}${row} · ${best}</b></div>`);
   }
@@ -156,10 +165,12 @@ function instrument(cells, canvas) {
     '<div class="xh-v"></div><div class="xh-h"></div><div class="chart-tip cell-tip"></div>');
   const xv = wrap.querySelector('.xh-v'), xh = wrap.querySelector('.xh-h'), tip = wrap.querySelector('.cell-tip');
   canvas.onmousemove = (ev) => {
-    const r = canvas.getBoundingClientRect();
-    const px = ev.clientX - r.left, py = ev.clientY - r.top;
-    const col = Math.min(9, Math.max(0, Math.floor(px / r.width * 10)));
-    const row = Math.min(9, Math.max(0, Math.floor(py / r.height * 10)));
+    // célula: relativa ao canvas TRANSFORMADO; mira: relativa à janela (wrap)
+    const cr = canvas.getBoundingClientRect();
+    const wr = wrap.getBoundingClientRect();
+    const col = Math.min(9, Math.max(0, Math.floor((ev.clientX - cr.left) / cr.width * 10)));
+    const row = Math.min(9, Math.max(0, Math.floor((ev.clientY - cr.top) / cr.height * 10)));
+    const px = ev.clientX - wr.left, py = ev.clientY - wr.top;
     xv.style.cssText = `display:block;left:${px}px`;
     xh.style.cssText = `display:block;top:${py}px`;
     tip.style.display = 'block';
@@ -169,6 +180,59 @@ function instrument(cells, canvas) {
   canvas.onmouseleave = () => {
     xv.style.display = xh.style.display = tip.style.display = 'none';
   };
+}
+
+// ---------- zoom (roda) + pan (arrastar) + reset (duplo-clique / ⟲) ----------
+{
+  const wrap = document.getElementById('map-wrap');
+  const zoomEl = document.getElementById('map-zoom');
+  let zoom = 1, panX = 0, panY = 0;
+
+  const apply = () => {
+    const W = wrap.clientWidth, H = zoomEl.getBoundingClientRect().height / zoom || W;
+    panX = Math.min(0, Math.max(W - W * zoom, panX));
+    panY = Math.min(0, Math.max(H - H * zoom, panY));
+    zoomEl.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+    wrap.style.cursor = zoom > 1 ? 'grab' : '';
+  };
+
+  const zoomAt = (mx, my, factor) => {
+    const nz = Math.min(6, Math.max(1, zoom * factor));
+    panX = mx - (mx - panX) * (nz / zoom);
+    panY = my - (my - panY) * (nz / zoom);
+    zoom = nz;
+    if (zoom === 1) { panX = panY = 0; }
+    apply();
+  };
+
+  wrap.addEventListener('wheel', (ev) => {
+    ev.preventDefault();
+    const r = wrap.getBoundingClientRect();
+    zoomAt(ev.clientX - r.left, ev.clientY - r.top, ev.deltaY < 0 ? 1.25 : 0.8);
+  }, { passive: false });
+
+  wrap.addEventListener('dblclick', () => { zoom = 1; panX = panY = 0; apply(); });
+  document.getElementById('z-in').addEventListener('click', () => zoomAt(wrap.clientWidth / 2, wrap.clientHeight / 2, 1.4));
+  document.getElementById('z-out').addEventListener('click', () => zoomAt(wrap.clientWidth / 2, wrap.clientHeight / 2, 1 / 1.4));
+  document.getElementById('z-reset').addEventListener('click', () => { zoom = 1; panX = panY = 0; apply(); });
+
+  // arrastar para navegar quando ampliado (rato e toque)
+  let dragging = false, lx = 0, ly = 0;
+  wrap.addEventListener('pointerdown', (ev) => {
+    if (zoom <= 1 || ev.target.closest('.map-btns')) return;
+    dragging = true; lx = ev.clientX; ly = ev.clientY;
+    wrap.setPointerCapture(ev.pointerId);
+    wrap.style.cursor = 'grabbing';
+  });
+  wrap.addEventListener('pointermove', (ev) => {
+    if (!dragging) return;
+    panX += ev.clientX - lx; panY += ev.clientY - ly;
+    lx = ev.clientX; ly = ev.clientY;
+    apply();
+  });
+  const endDrag = () => { dragging = false; wrap.style.cursor = zoom > 1 ? 'grab' : ''; };
+  wrap.addEventListener('pointerup', endDrag);
+  wrap.addEventListener('pointercancel', endDrag);
 }
 
 (async () => {
