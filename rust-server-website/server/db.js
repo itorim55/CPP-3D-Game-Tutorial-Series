@@ -591,6 +591,11 @@ function isMod(steamId) {
   return !!db.prepare('SELECT 1 FROM roles WHERE steam_id = ?').get(steamId);
 }
 
+function roleOf(steamId) {
+  if (!steamId) return null;
+  return db.prepare('SELECT role FROM roles WHERE steam_id = ?').get(steamId)?.role || null;
+}
+
 // ---------- chat do site ----------
 
 function addChatMessage(channel, steamId, text) {
@@ -1957,7 +1962,7 @@ module.exports = {
   setSteamFlags, addReport, reportPressure, reportsAdmin, watchlist,
   recordAccuracy, addNotice, pendingNotices, markNoticesDelivered, reportersOf, modStats,
   aliases, setSignup, removeSignup, listSignups, precisionBoard, isFirstKill, combatSnapshot,
-  setRole, removeRole, listRoles, isMod, addChatMessage, chatMessages, deleteChatMessage, adminSummary,
+  setRole, removeRole, listRoles, isMod, roleOf, addChatMessage, chatMessages, deleteChatMessage, adminSummary,
   bountyAlreadyPaid, markBountyPaid,
   killfeed, searchPlayers, status, staffList, banList, banStats,
   addApplication, recentApplicationFromIp, listApplications, setApplicationStatus, startWipe,

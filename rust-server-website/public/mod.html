@@ -42,7 +42,7 @@
         <div class="panel">
           <div class="panel-head"><h3>${t('mod.watchlist')}</h3>
             <span class="spacer"></span>
-            <a href="/admin" style="font-size:13px">${t('mod.fullAdmin')}</a></div>
+            ${user.role === 'admin' ? `<a class="btn ghost" href="/admin" style="padding:6px 14px;font-size:12px">⚙️ ${t('mod.fullAdmin')}</a>` : ''}</div>
           <div class="panel-body" id="mod-watch">${skelHTML(4)}</div>
         </div>
         <div class="panel">

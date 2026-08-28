@@ -530,6 +530,7 @@ function route(req, res, url, body, config, session) {
           name: prof?.name || null,
           avatar: prof?.avatar || null,
           isMod: store.isMod(session.steamId),
+          role: store.roleOf(session.steamId),
           playtimeS: prof?.playtimeS || 0,
           wallet: store.getWallet(session.steamId),
           voteWeight: store.voteWeight(session.steamId),
