@@ -179,9 +179,11 @@ function renderChrome() {
       const sep = header.querySelector('.sep');
       if (sep) {
         const a = document.createElement('a');
-        a.href = '/mod';
+        // admins entram direto no ops console; mods na sala deles
+        a.href = u.role === 'admin' ? '/admin' : '/mod';
         a.textContent = 'MOD';
-        a.className = 'modlink' + (location.pathname.replace(/\.html$/, '') === '/mod' ? ' active' : '');
+        const here = location.pathname.replace(/\.html$/, '');
+        a.className = 'modlink' + (here === '/mod' || here === '/admin' ? ' active' : '');
         sep.parentNode.insertBefore(a, sep);
       }
     }

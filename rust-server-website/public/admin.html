@@ -107,7 +107,7 @@
   <div id="login-card" style="max-width:440px;margin:70px auto 0">
     <div class="card" style="padding:30px;border-top:3px solid var(--accent)">
       <h2 style="font-family:var(--font-stencil);font-size:26px;letter-spacing:2px">OPS<span style="color:var(--accent)">/</span>CONSOLE</h2>
-      <p style="color:var(--ink-muted);font-size:13px;margin:8px 0 16px">Full control room. The key lives in <code>server/config.json</code> (adminKey) — never share it.</p>
+      <p style="color:var(--ink-muted);font-size:13px;margin:8px 0 16px">Site admins get in automatically with their <a href="/auth/steam">Steam sign-in</a>. The key below is the fallback — it lives in <code>server/config.json</code> (adminKey), never share it.</p>
       <input type="password" id="admin-key" placeholder="adminKey…" autocomplete="off">
       <button class="btn" style="margin-top:12px;width:100%" id="load-btn">Unlock</button>
     </div>
@@ -126,6 +126,8 @@
       <div class="ad-item" data-s="apps"><span class="i">📋</span>Applications<b class="cnt" data-cnt="appsPending"></b></div>
       <div class="ad-item" data-s="appeals"><span class="i">⚖️</span>Appeals<b class="cnt" data-cnt="appealsPending"></b></div>
       <div class="ad-item" data-s="team"><span class="i">👥</span>Team</div>
+      <div class="ad-group">Staff</div>
+      <div class="ad-item" data-s="chat"><span class="i">💬</span>Staff chat</div>
       <div class="ad-group">Operations</div>
       <div class="ad-item" data-s="redemptions"><span class="i">💎</span>Deliveries<b class="cnt" data-cnt="redemptionsPending"></b></div>
       <div class="ad-item" data-s="map"><span class="i">🗺️</span>Map vote</div>
@@ -149,7 +151,7 @@
 let KEY = sessionStorage.getItem('adminKey') || '';
 let SECTION = 'overview';
 
-const H = () => ({ 'X-Admin-Key': KEY });
+const H = () => (KEY ? { 'X-Admin-Key': KEY } : {});
 const aGet = (p) => fetch(p, { headers: H() }).then((r) => {
   if (!r.ok) { const err = new Error(r.status); err.status = r.status; throw err; }
   return r.json();
@@ -610,7 +612,12 @@ function wireCounts(form) {
   });
 }
 
-const SECTIONS = { overview: renderOverview, apps: renderApps, reports: renderReports, watch: renderWatchlist, team: renderTeam, appeals: renderAppeals, redemptions: renderRedemptions, ow: renderOw, bans: renderBans, map: renderMap, posts: renderPosts };
+async function renderChat() {
+  body().innerHTML = '<div style="max-width:760px"><div id="admin-chat"></div></div>';
+  initChat(document.getElementById('admin-chat'), { defaultChannel: 'staff' });
+}
+
+const SECTIONS = { chat: renderChat, overview: renderOverview, apps: renderApps, reports: renderReports, watch: renderWatchlist, team: renderTeam, appeals: renderAppeals, redemptions: renderRedemptions, ow: renderOw, bans: renderBans, map: renderMap, posts: renderPosts };
 
 const SECTION_META = {
   overview: ['Overview', 'what needs your attention right now'],
@@ -621,6 +628,7 @@ const SECTION_META = {
   apps: ['Applications', 'moderator candidates'],
   appeals: ['Appeals', 'answered by a different admin than the one who banned'],
   team: ['Team', 'site roles: mods get /mod, staff chat and the MOD nav link'],
+  chat: ['Staff chat', 'private channel — the same one mods see in their room'],
   redemptions: ['Deliveries', 'gem store redemptions — auto via plugin, manual marked here'],
   map: ['Map vote', 'candidate maps for the next wipe'],
   posts: ['News', 'server changelog, shown on the site'],
@@ -650,10 +658,11 @@ async function show(section) {
 
 async function unlock(auto = false) {
   KEY = document.getElementById('admin-key').value.trim();
-  if (!KEY) return;
+  if (!KEY && !auto) return; // manual sem chave não faz nada; auto tenta a sessão Steam
   try {
     await aGet('/api/admin/summary');
-    sessionStorage.setItem('adminKey', KEY);
+    if (KEY) sessionStorage.setItem('adminKey', KEY);
+    else document.getElementById('lock-btn').style.display = 'none'; // sessão Steam: nada para "trancar"
     document.getElementById('login-card').style.display = 'none';
     document.getElementById('panel').style.display = '';
     show('overview');
@@ -665,7 +674,7 @@ async function unlock(auto = false) {
       if (!auto) alert('Invalid key.');
       document.getElementById('admin-key').value = '';
       document.getElementById('admin-key').focus();
-    } else {
+    } else if (!auto) {
       alert('⚠️ Server unreachable — is it running? (' + e.message + ')');
     }
   }
@@ -744,12 +753,9 @@ async function handleBodyClick(e) {
   }
 }
 
-if (KEY) {
-  document.getElementById('admin-key').value = KEY;
-  unlock(true);
-} else {
-  document.getElementById('admin-key').focus();
-}
+document.getElementById('admin-key').value = KEY;
+document.getElementById('admin-key').focus();
+unlock(true); // com chave guardada OU sessão Steam de admin, entra direto
 </script>
 </body>
 </html>

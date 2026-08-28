@@ -620,9 +620,13 @@ function route(req, res, url, body, config, session) {
 
   // --- administração ---
   if (p.startsWith('/api/admin/')) {
-    // só via header (nunca query string — evita vazar a chave em logs/histórico)
+    // duas fechaduras válidas: a adminKey via header (emergência/setup), ou a
+    // sessão Steam de quem tem cargo 'admin' na tabela roles — assim o dono
+    // entra no ops console só com o login, sem colar chaves
     const key = req.headers['x-admin-key'];
-    if (!config.adminKey || !keysMatch(key, config.adminKey)) { json(res, 401, { error: 'Invalid admin key' }); return true; }
+    const viaKey = config.adminKey && key && keysMatch(key, config.adminKey);
+    const viaRole = session && store.roleOf(session.steamId) === 'admin';
+    if (!viaKey && !viaRole) { json(res, 401, { error: 'Admin access required' }); return true; }
 
     if (req.method === 'GET') {
       switch (p) {
