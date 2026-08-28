@@ -95,13 +95,12 @@ const NAV_LINKS = [
 // sub-navegação em pills nos dois hubs: STATS e TRUST
 const SUBNAVS = {
   stats: {
-    pages: ['/stats', '/heatmap', '/resumo', '/conquistas', '/vs'],
+    pages: ['/stats', '/heatmap', '/resumo', '/vs'],
     items: [
       ['/stats', 'sub.leaderboards'],
       ['/stats#teams', 'sub.teams'],
       ['/heatmap', 'sub.heatmap'],
       ['/resumo', 'sub.recap'],
-      ['/conquistas', 'sub.ach'],
       ['/vs', 'sub.vs'],
     ],
   },
