@@ -179,8 +179,8 @@ function renderChrome() {
       const sep = header.querySelector('.sep');
       if (sep) {
         const a = document.createElement('a');
-        // admins entram direto no ops console; mods na sala deles
-        a.href = u.role === 'admin' ? '/admin' : '/mod';
+        // console único da staff — a página mostra as secções do cargo de cada um
+        a.href = '/admin';
         a.textContent = 'MOD';
         const here = location.pathname.replace(/\.html$/, '');
         a.className = 'modlink' + (here === '/mod' || here === '/admin' ? ' active' : '');

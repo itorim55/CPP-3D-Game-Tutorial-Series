@@ -104,35 +104,41 @@
 </header>
 
 <main>
-  <div id="login-card" style="max-width:440px;margin:70px auto 0">
+  <div id="login-card" style="max-width:460px;margin:70px auto 0;display:none">
     <div class="card" style="padding:30px;border-top:3px solid var(--accent)">
-      <h2 style="font-family:var(--font-stencil);font-size:26px;letter-spacing:2px">OPS<span style="color:var(--accent)">/</span>CONSOLE</h2>
-      <p style="color:var(--ink-muted);font-size:13px;margin:8px 0 16px">Site admins get in automatically with their <a href="/auth/steam">Steam sign-in</a>. The key below is the fallback — it lives in <code>server/config.json</code> (adminKey), never share it.</p>
-      <input type="password" id="admin-key" placeholder="adminKey…" autocomplete="off">
-      <button class="btn" style="margin-top:12px;width:100%" id="load-btn">Unlock</button>
+      <h2 style="font-family:var(--font-stencil);font-size:26px;letter-spacing:2px">STAFF<span style="color:var(--accent)">/</span>CONSOLE</h2>
+      <p style="color:var(--ink-muted);font-size:13px;margin:8px 0 16px" id="acc-msg">
+        One console for the whole team. Sign in with Steam — your role decides what you see.</p>
+      <a class="btn" style="width:100%;text-align:center" id="acc-steam" href="/auth/steam">Sign in with Steam</a>
+      <details style="margin-top:16px">
+        <summary style="cursor:pointer;color:var(--ink-muted);font-size:12.5px">Emergency access (adminKey)</summary>
+        <p style="color:var(--ink-muted);font-size:12px;margin:8px 0">For when Steam sign-in is down. Lives in <code>server/config.json</code> — never share it.</p>
+        <input type="password" id="admin-key" placeholder="adminKey…" autocomplete="off">
+        <button class="btn ghost" style="margin-top:10px;width:100%" id="load-btn">Unlock with key</button>
+      </details>
     </div>
   </div>
 
   <div id="panel" class="ad-wrap" style="display:none;margin-top:6px">
     <aside class="ad-side" id="ad-side">
       <div class="ad-brand"><b>R</b>//OPS</div>
-      <div class="ad-item" data-s="overview"><span class="i">⌂</span>Overview<b class="cnt" id="cnt-total"></b></div>
+      <div class="ad-item adm-only" data-s="overview"><span class="i">⌂</span>Overview<b class="cnt" id="cnt-total"></b></div>
       <div class="ad-group">Moderation</div>
       <div class="ad-item" data-s="reports"><span class="i">🚨</span>Reports<b class="cnt hot" data-cnt="reportsPriority"></b></div>
       <div class="ad-item" data-s="watch"><span class="i">🎯</span>Watchlist<b class="cnt hot" data-cnt="watchHigh"></b></div>
-      <div class="ad-item" data-s="ow"><span class="i">🕵️</span>Overwatch<b class="cnt" data-cnt="owOpen"></b></div>
-      <div class="ad-item" data-s="bans"><span class="i">🔨</span>Bans</div>
-      <div class="ad-group">Community</div>
-      <div class="ad-item" data-s="apps"><span class="i">📋</span>Applications<b class="cnt" data-cnt="appsPending"></b></div>
-      <div class="ad-item" data-s="appeals"><span class="i">⚖️</span>Appeals<b class="cnt" data-cnt="appealsPending"></b></div>
-      <div class="ad-item" data-s="team"><span class="i">👥</span>Team</div>
+      <div class="ad-item adm-only" data-s="ow"><span class="i">🕵️</span>Overwatch<b class="cnt" data-cnt="owOpen"></b></div>
+      <div class="ad-item adm-only" data-s="bans"><span class="i">🔨</span>Bans</div>
+      <div class="ad-group adm-only">Community</div>
+      <div class="ad-item adm-only" data-s="apps"><span class="i">📋</span>Applications<b class="cnt" data-cnt="appsPending"></b></div>
+      <div class="ad-item adm-only" data-s="appeals"><span class="i">⚖️</span>Appeals<b class="cnt" data-cnt="appealsPending"></b></div>
+      <div class="ad-item adm-only" data-s="team"><span class="i">👥</span>Team</div>
       <div class="ad-group">Staff</div>
       <div class="ad-item" data-s="chat"><span class="i">💬</span>Staff chat</div>
-      <div class="ad-group">Operations</div>
-      <div class="ad-item" data-s="redemptions"><span class="i">💎</span>Deliveries<b class="cnt" data-cnt="redemptionsPending"></b></div>
-      <div class="ad-item" data-s="map"><span class="i">🗺️</span>Map vote</div>
-      <div class="ad-item" data-s="posts"><span class="i">📰</span>News</div>
-      <div class="ad-foot"><a href="/">← site</a><a href="/mod">🛡️ mod room</a><a id="lock-btn">🔒 lock</a></div>
+      <div class="ad-group adm-only">Operations</div>
+      <div class="ad-item adm-only" data-s="redemptions"><span class="i">💎</span>Deliveries<b class="cnt" data-cnt="redemptionsPending"></b></div>
+      <div class="ad-item adm-only" data-s="map"><span class="i">🗺️</span>Map vote</div>
+      <div class="ad-item adm-only" data-s="posts"><span class="i">📰</span>News</div>
+      <div class="ad-foot"><a href="/">← site</a><a id="lock-btn">🔒 lock</a></div>
     </aside>
     <section style="min-width:0">
       <div class="ad-head">
@@ -152,6 +158,9 @@ let KEY = sessionStorage.getItem('adminKey') || '';
 let SECTION = 'overview';
 
 const H = () => (KEY ? { 'X-Admin-Key': KEY } : {});
+let MODE = null; // 'admin' (tudo) ou 'mod' (watchlist/reports/chat)
+// watchlist e reports existem nos dois mundos com os MESMOS dados — só muda o prefixo
+const EP = (name) => (MODE === 'mod' ? '/api/mod/' : '/api/admin/') + name;
 const aGet = (p) => fetch(p, { headers: H() }).then((r) => {
   if (!r.ok) { const err = new Error(r.status); err.status = r.status; throw err; }
   return r.json();
@@ -476,7 +485,7 @@ async function renderTeam() {
 }
 
 async function renderReports() {
-  const { rows } = await aGet('/api/admin/reports');
+  const { rows } = await aGet(EP('reports'));
   body().innerHTML = `
     <p style="color:var(--ink-muted);font-size:13px;margin-bottom:12px">
       In-game F7 reports, grouped by target. <b style="color:var(--bad)">Red</b> = 3+ different
@@ -506,7 +515,7 @@ async function renderReports() {
     box.style.display = '';
     box.innerHTML = '<p style="color:var(--ink-muted);font-size:13px">loading…</p>';
     let list;
-    try { ({ rows: list } = await aGet(`/api/admin/reports?target=${encodeURIComponent(id)}`)); }
+    try { ({ rows: list } = await aGet(EP('reports') + `?target=${encodeURIComponent(id)}`)); }
     catch (err) { box.innerHTML = `<p style="color:var(--bad);font-size:13px">Error: ${esc(err.message)}</p>`; return; }
     box.innerHTML = list.map((x) => `
       <div style="border-left:2px solid var(--line-2);padding:6px 12px;margin:6px 0;font-size:13px">
@@ -518,7 +527,7 @@ async function renderReports() {
 }
 
 async function renderWatchlist() {
-  const { rows } = await aGet('/api/admin/watchlist');
+  const { rows } = await aGet(EP('watchlist'));
   body().innerHTML = `
     <p style="color:var(--ink-muted);font-size:13px;margin-bottom:12px">
       Automatic risk radar for this wipe (10+ kills). Ranks who deserves spectate first —
@@ -584,6 +593,7 @@ async function renderOverview() {
 // ---------- badges da sidebar ----------
 
 async function updateBadges() {
+  if (MODE !== 'admin') return;
   try {
     const sum = await aGet('/api/admin/summary');
     let total = 0;
@@ -656,25 +666,37 @@ async function show(section) {
 
 // ---------- eventos globais ----------
 
-async function unlock(auto = false) {
+function enter(mode) {
+  MODE = mode;
+  document.getElementById('login-card').style.display = 'none';
+  document.getElementById('panel').style.display = '';
+  if (mode === 'mod') {
+    document.querySelectorAll('.adm-only').forEach((el) => { el.style.display = 'none'; });
+    document.querySelector('.ad-brand').innerHTML = '<b>R</b>//STAFF';
+    document.getElementById('lock-btn').style.display = 'none';
+    show('watch');
+  } else {
+    // lock só faz sentido no modo chave (limpa a chave guardada)
+    if (!KEY) document.getElementById('lock-btn').style.display = 'none';
+    show('overview');
+  }
+}
+
+// entrada manual com a adminKey (emergência)
+async function unlock() {
   KEY = document.getElementById('admin-key').value.trim();
-  if (!KEY && !auto) return; // manual sem chave não faz nada; auto tenta a sessão Steam
+  if (!KEY) return;
   try {
     await aGet('/api/admin/summary');
-    if (KEY) sessionStorage.setItem('adminKey', KEY);
-    else document.getElementById('lock-btn').style.display = 'none'; // sessão Steam: nada para "trancar"
-    document.getElementById('login-card').style.display = 'none';
-    document.getElementById('panel').style.display = '';
-    show('overview');
+    sessionStorage.setItem('adminKey', KEY);
+    enter('admin');
   } catch (e) {
     if (e.status === 401 || e.status === 403) {
-      // chave rodada/errada: esquecer a guardada e voltar ao login limpo
       sessionStorage.removeItem('adminKey');
       KEY = '';
-      if (!auto) alert('Invalid key.');
+      alert('Invalid key.');
       document.getElementById('admin-key').value = '';
-      document.getElementById('admin-key').focus();
-    } else if (!auto) {
+    } else {
       alert('⚠️ Server unreachable — is it running? (' + e.message + ')');
     }
   }
@@ -753,9 +775,22 @@ async function handleBodyClick(e) {
   }
 }
 
-document.getElementById('admin-key').value = KEY;
-document.getElementById('admin-key').focus();
-unlock(true); // com chave guardada OU sessão Steam de admin, entra direto
+// arranque: o cargo da sessão Steam decide o modo; a chave guardada é o plano B
+(async () => {
+  const u = await me().catch(() => ({ loggedIn: false }));
+  if (u.role === 'admin' || KEY) {
+    try { await aGet('/api/admin/summary'); enter('admin'); return; }
+    catch (e) { if (e.status === 401 || e.status === 403) { sessionStorage.removeItem('adminKey'); KEY = ''; } }
+  }
+  if (u.loggedIn && u.isMod) { enter('mod'); return; }
+  // sem acesso: mostrar o cartão certo
+  document.getElementById('login-card').style.display = '';
+  if (u.loggedIn) {
+    document.getElementById('acc-msg').innerHTML =
+      'Signed in as <b>' + esc(u.name || u.steamId) + '</b> — no staff role on this account. The owner adds roles in Team.';
+    document.getElementById('acc-steam').style.display = 'none';
+  }
+})();
 </script>
 </body>
 </html>

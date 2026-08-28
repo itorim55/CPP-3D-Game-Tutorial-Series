@@ -50,8 +50,7 @@ const EN_JS = {
   'status.sent': 'sent', 'status.delivered': 'delivered', 'status.failed': 'failed',
   'status.open': 'open', 'status.closed': 'closed',
   'status.cheater': 'cheater', 'status.innocent': 'innocent', 'status.inconclusive': 'inconclusive',
-  'mod.priority': 'PRIORITY',
-  'conta.title': 'My account', 'modpage.title': 'Mod Room',
+  'conta.title': 'My account',
 
   // home
   'home.copied': 'copied! paste in F1 console', 'home.copy': 'copy',
@@ -80,14 +79,6 @@ const EN_JS = {
   'chat.ph': 'say something…', 'chat.send': 'Send',
   'chat.login': '🔒 Sign in with Steam to chat.',
   'chat.empty': 'No messages yet — say hi!',
-  'mod.title': '🛡️ Mod Room',
-  'mod.sub': 'Staff only. The watchlist ranks who deserves spectate first; priority reports need eyes now.',
-  'mod.denied': 'Staff only. If you should have access, ask the owner to add your SteamID in the admin panel (Team tab).',
-  'mod.watchlist': 'Watchlist', 'mod.reports': 'Reports', 'mod.chatTitle': 'Staff chat',
-  'mod.fullAdmin': 'full admin →',
-  'mod.watchEmpty': 'Nobody trips the radar right now. 🕊️',
-  'mod.reportsEmpty': 'No reports. 🎉',
-  'mod.profile': 'profile',
 
   // squad up / precisão / próximo mapa (JS)
   'su.counter': '$1 team(s) · $2 player(s) confirmed for next wipe',
@@ -287,8 +278,7 @@ const I18N = {
     'status.sent': 'enviado', 'status.delivered': 'entregue', 'status.failed': 'falhou',
     'status.open': 'aberto', 'status.closed': 'fechado',
     'status.cheater': 'cheater confirmado', 'status.innocent': 'inocente', 'status.inconclusive': 'inconclusivo',
-    'mod.priority': 'PRIORIDADE',
-    'conta.title': 'A minha conta', 'modpage.title': 'Sala de Mods',
+    'conta.title': 'A minha conta',
 
     // home (JS)
     'home.copied': 'copiado! cola na consola F1', 'home.copy': 'copiar',
@@ -313,14 +303,6 @@ const I18N = {
     'chat.ph': 'diz qualquer coisa…', 'chat.send': 'Enviar',
     'chat.login': '🔒 Entra com a Steam para falar no chat.',
     'chat.empty': 'Ainda sem mensagens — diz olá!',
-    'mod.title': '🛡️ Sala de Mods',
-    'mod.sub': 'Só staff. A watchlist ordena quem merece spectate primeiro; reports com prioridade precisam de olhos já.',
-    'mod.denied': 'Só staff. Se devias ter acesso, pede ao dono para adicionar o teu SteamID no painel admin (separador Team).',
-    'mod.watchlist': 'Watchlist', 'mod.reports': 'Reports', 'mod.chatTitle': 'Chat da staff',
-    'mod.fullAdmin': 'admin completo →',
-    'mod.watchEmpty': 'Ninguém a disparar o radar agora. 🕊️',
-    'mod.reportsEmpty': 'Sem reports. 🎉',
-    'mod.profile': 'perfil',
     'su.title': 'Junta a equipa para a wipe',
     'su.sub': 'regista o teu grupo — mostra a todos que a wipe vai estar cheia',
     'su.counter': '$1 equipa(s) · $2 jogador(es) confirmados para a próxima wipe',
