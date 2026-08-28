@@ -98,8 +98,11 @@
 
 <header>
   <nav class="nav">
-    <a class="logo" href="/"><b data-brand></b> <span style="font-size:13px;color:var(--ink-muted);letter-spacing:0">admin</span></a>
-    <div class="links"><a href="/">← back to site</a></div>
+    <a class="logo" href="/"><b data-brand></b> <span style="font-size:13px;color:var(--ink-muted);letter-spacing:0">staff</span></a>
+    <div class="links">
+      <span id="who-chip" style="display:none;align-items:center;gap:8px;font-size:13px;color:var(--ink-2)"></span>
+      <a href="/">← back to site</a>
+    </div>
   </nav>
 </header>
 
@@ -666,6 +669,19 @@ async function show(section) {
 
 // ---------- eventos globais ----------
 
+function showWho(u) {
+  const chip = document.getElementById('who-chip');
+  const badge = (txt, hot) => `<span style="font-family:var(--font-mono);font-size:10px;letter-spacing:1px;padding:2px 8px;border:1px solid ${hot ? 'var(--accent)' : 'rgba(255,176,32,.5)'};color:${hot ? 'var(--accent)' : 'var(--ember)'}">${txt}</span>`;
+  if (u && u.loggedIn) {
+    chip.innerHTML = `${pfp(u.avatar, u.name, 24)}<b>${esc(u.name || u.steamId)}</b>` +
+      badge(MODE === 'admin' ? 'ADMIN' : 'MOD', MODE === 'admin');
+  } else {
+    // entrada pela adminKey sem sessão Steam
+    chip.innerHTML = badge('ADMIN · KEY', true);
+  }
+  chip.style.display = 'inline-flex';
+}
+
 function enter(mode) {
   MODE = mode;
   document.getElementById('login-card').style.display = 'none';
@@ -690,6 +706,7 @@ async function unlock() {
     await aGet('/api/admin/summary');
     sessionStorage.setItem('adminKey', KEY);
     enter('admin');
+    showWho(await me().catch(() => null));
   } catch (e) {
     if (e.status === 401 || e.status === 403) {
       sessionStorage.removeItem('adminKey');
@@ -779,10 +796,10 @@ async function handleBodyClick(e) {
 (async () => {
   const u = await me().catch(() => ({ loggedIn: false }));
   if (u.role === 'admin' || KEY) {
-    try { await aGet('/api/admin/summary'); enter('admin'); return; }
+    try { await aGet('/api/admin/summary'); enter('admin'); showWho(u); return; }
     catch (e) { if (e.status === 401 || e.status === 403) { sessionStorage.removeItem('adminKey'); KEY = ''; } }
   }
-  if (u.loggedIn && u.isMod) { enter('mod'); return; }
+  if (u.loggedIn && u.isMod) { enter('mod'); showWho(u); return; }
   // sem acesso: mostrar o cartão certo
   document.getElementById('login-card').style.display = '';
   if (u.loggedIn) {
