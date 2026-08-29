@@ -329,6 +329,10 @@ try {
   }
 } catch { /* pasta vazia */ }
 
+// hype de wipe: verifica a cada 30 min se estamos a <24h do wipe (1 post único)
+setTimeout(() => api.checkWipeHype(config), 10e3).unref();
+setInterval(() => api.checkWipeHype(config), 30 * 60e3).unref();
+
 server.listen(PORT, HOST, () => {
   console.log(`Site running at http://${HOST}:${PORT} (public URL: ${SITE_URL})`);
   console.log(`Plugin API key (X-API-Key): ${config.apiKey}`);

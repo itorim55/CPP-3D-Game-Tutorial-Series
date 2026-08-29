@@ -419,10 +419,24 @@ function route(req, res, url, body, config, session) {
               summary.topHours && `⏱️ Most hours: ${summary.topHours.name} (${Math.round(summary.topHours.seconds / 3600)} h)`,
               summary.topDeaths && `🧲 Punching bag: ${summary.topDeaths.name} (${summary.topDeaths.n} deaths)`,
               ``,
+              `🛡️ State of the server — moderation this wipe:`,
+              `${summary.modStats.bans} cheater ban(s) · ${summary.modStats.reports} F7 report(s) processed · ` +
+                `${summary.modStats.appealsAnswered} appeal(s) answered · ${summary.modStats.owClosed} overwatch verdict(s). ` +
+                `Every ban and every admin action is public — check the Trust page.`,
+              ``,
               `Full recap: /resumo?wipe=${oldWipe.id}`,
             ].filter((x) => x !== null && x !== undefined).join('\n'));
           discord.wipeSummaryPost(config.discordWebhooks?.announcements, summary,
             (config.siteUrl || '').replace(/\/$/, ''));
+        }
+      }
+      // agenda automática: o countdown aponta sempre para o próximo force
+      // wipe da Facepunch (1ª quinta-feira do mês, 19:00 UTC) — zero trabalho
+      // manual; o dono pode sempre sobrepor no console (Wipe settings)
+      {
+        const cur = store.getInfo('next_wipe');
+        if (!cur || new Date(cur).getTime() <= Date.now()) {
+          store.setInfo('next_wipe', nextForceWipe());
         }
       }
       json(res, 200, { ok: true, wipe: newWipe });
@@ -836,4 +850,42 @@ function route(req, res, url, body, config, session) {
   return false;
 }
 
-module.exports = { route, json };
+// 1ª quinta-feira do próximo mês às 19:00 UTC (o force wipe da Facepunch)
+function nextForceWipe(from = new Date()) {
+  const first = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + 1, 1, 19, 0, 0));
+  first.setUTCDate(1 + ((4 - first.getUTCDay() + 7) % 7)); // 4 = quinta
+  return first.toISOString();
+}
+
+// ---------- hype de wipe: post automático no Discord 24h antes ----------
+// Um único post por wipe (sem spam): countdown + mapa vencedor da votação.
+
+function checkWipeHype(config) {
+  try {
+    const url = config.discordWebhooks?.announcements;
+    const nw = store.getInfo('next_wipe');
+    if (!url || !nw) return;
+    const ms = new Date(nw).getTime() - Date.now();
+    if (!(ms > 0 && ms <= 24 * 3600e3)) return;
+    if (store.getInfo('wipe_hype_for') === nw) return; // já anunciado
+    store.setInfo('wipe_hype_for', nw);
+    const hours = Math.max(1, Math.round(ms / 3600e3));
+    const site = String(config.siteUrl || '').replace(/\/$/, '');
+    const map = store.mapState(null);
+    const leader = (map.options || []).slice().sort((a, b) => b.votes - a.votes)[0];
+    discord.send(url, {
+      embeds: [{
+        color: 0xff5b26,
+        title: `⏳ WIPE IN ~${hours}H`,
+        description:
+          `Fresh island ${nw.slice(0, 10)} — get your crew ready.\n` +
+          (leader ? `🗺️ Community's map pick so far: **${leader.label}**` +
+            `${leader.seed ? ` (seed ${leader.seed}${leader.size ? `, ${leader.size}` : ''})` : ''} · ${leader.votes} points\n` : '') +
+          (site ? `[Vote / change your vote](${site}/mapa) · [Squad up](${site}/mapa)` : ''),
+        footer: { text: 'Monthly force wipe · map + blueprints' },
+      }],
+    });
+  } catch { /* o hype nunca pode derrubar nada */ }
+}
+
+module.exports = { route, json, checkWipeHype };
