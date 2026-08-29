@@ -144,6 +144,7 @@ const EN_JS = {
   'stats.kfLink': '\u2620 Live killfeed is on the home page \u2192',
   'home.newsTitle': '\ud83d\udcf0 Latest news', 'home.newsAll': 'all news \u2192',
   'staff.bans30': 'bans in the last 30 days', 'staff.bansTotal': 'bans in total',
+  'staff.actEmpty': 'No privileged commands used yet. \ud83d\udd4a\ufe0f',
   'player.reportBox': '\ud83d\udea9 Suspect this player? Report in-game with <b>F7</b> or on Discord \u2014 confirmed cheaters end up on the <a href="/staff#bans">public ban list</a>.',
   'player.moreActivity': 'show $1 older \u2192',
   'nf.title': 'Not found', 'nf.sub': 'sector not found on this map',
@@ -543,6 +544,10 @@ const I18N = {
     // staff (HTML)
     'staff.title': 'A nossa equipa',
     'staff.hubTitle': 'Confiança e transparência',
+    'staff.actTitle': 'Atividade dos admins',
+    'staff.actSub': 'todos os comandos privilegiados, públicos — ninguém abusa do cargo em segredo',
+    'staff.thCommand': 'Comando',
+    'staff.actEmpty': 'Nenhum comando privilegiado usado ainda. \ud83d\udd4a\ufe0f',
     'store.myRedLink': '\ud83d\udce6 Os meus resgates e estado de entrega \u2192',
     'ow.reportHint': 'Os casos s\u00e3o an\u00f3nimos por design \u2014 viste algo suspeito? Reporta no jogo com <b>F7</b> ou no Discord.',
     'staff.appealLine': 'Foste banido e achas que é um erro? <a href="/apelo">Apela aqui \u2192</a>',

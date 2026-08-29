@@ -33,6 +33,14 @@
     </table>
   </div>
 
+  <h2 class="section"><span data-i18n="staff.actTitle">Admin activity</span> <small data-i18n="staff.actSub">every privileged command, public — nobody abuses the role in secret</small></h2>
+  <div class="table-wrap" style="margin-top:10px;max-height:340px;overflow-y:auto">
+    <table>
+      <thead><tr><th data-i18n="staff.thWhen">When</th><th data-i18n="staff.thAdmin">Admin</th><th data-i18n="staff.thCommand">Command</th></tr></thead>
+      <tbody id="act-list"><tr><td colspan="3" data-i18n="loading">loading…</td></tr></tbody>
+    </table>
+  </div>
+
   <h2 class="section" data-i18n="staff.title">Our team</h2>
   <div class="grid cols-2" id="staff-grid" style="margin-top:14px" data-i18n="loading">loading…</div>
 
@@ -77,6 +85,13 @@
         ${m.since ? `<div class="blurb" style="color:var(--ink-muted)">${t('staff.since', new Date(m.since * 1000).toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' }))}</div>` : ''}
       </div>
     </div>`).join('') || `<p style="color:var(--ink-muted)">${t('staff.noTeam')}</p>`;
+
+  document.getElementById('act-list').innerHTML = (data.adminActions || []).map((a) => `
+    <tr>
+      <td>${timeAgo(a.ts)}</td>
+      <td>${a.steam_id === 'server' ? '<span style="color:var(--ink-muted)">CONSOLE/RCON</span>' : esc(a.name || a.steam_id)}</td>
+      <td style="white-space:normal"><code style="font-size:12px">${esc(a.command)}</code></td>
+    </tr>`).join('') || `<tr><td colspan="3">${t('staff.actEmpty')}</td></tr>`;
 
   const bans = await api('/api/bans');
   document.getElementById('ban-list').innerHTML = bans.rows.map((b) => `

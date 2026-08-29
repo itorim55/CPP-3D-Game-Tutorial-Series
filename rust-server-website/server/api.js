@@ -144,6 +144,13 @@ function handleIngest(body, config) {
         accepted++;
         break;
       }
+      case 'admincmd': {
+        // comando privilegiado executado no servidor — vai direto para o registo público
+        if (!e.command) break;
+        store.recordAdminAction(ts, clean(e.steamId, 20) || 'server', clean(e.name, 64), clean(e.command, 200));
+        accepted++;
+        break;
+      }
       case 'report': {
         // report F7 feito dentro do jogo — vai para a fila da staff
         if (!e.reporterId || !e.targetId) break;
@@ -514,6 +521,7 @@ function route(req, res, url, body, config, session) {
         json(res, 200, {
           staff: store.staffList(), banStats: store.banStats(),
           modStats: store.modStats(wipe.started_at),
+          adminActions: store.listAdminActions(40),
         }); return true;
       }
       case '/api/bans':

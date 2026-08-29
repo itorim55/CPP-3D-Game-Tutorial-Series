@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("StatsHub", "Rustworthy", "1.7.0")]
+    [Info("StatsHub", "Rustworthy", "1.8.0")]
     [Description("Sends kills, sessions, farming and heartbeats to the stats website and delivers store rewards")]
     public class StatsHub : RustPlugin
     {
@@ -52,6 +52,9 @@ namespace Oxide.Plugins
 
             [JsonProperty("Apply site bans in-game (banid)")]
             public bool ApplySiteBans = true;
+
+            [JsonProperty("Public admin action log (give/spawn/teleport...)")]
+            public bool LogAdminActions = true;
         }
 
         protected override void LoadDefaultConfig() => _config = new PluginConfig();
@@ -556,6 +559,42 @@ namespace Oxide.Plugins
                     });
                 }
             }, this, RequestMethod.GET, headers, 10f);
+        }
+
+        // Transparência total: comandos privilegiados executados por admins
+        // (ou pela consola/RCON) ficam PÚBLICOS no site — ninguém abusa do
+        // cargo em segredo. Prefixos vigiados:
+        private static readonly string[] WatchedCmds =
+        {
+            "inventory.give", "giveall", "giveto", "givearm", "entity.spawn", "spawn.",
+            "teleport", "teleportany", "teleport2me", "teleportpos",
+            "godmode", "vanish", "noclip", "demo.record", "demo.stop",
+            "kick", "banid", "unban", "mutechat", "unmutechat", "entity.deleteby",
+        };
+
+        private object OnServerCommand(ConsoleSystem.Arg arg)
+        {
+            if (!_config.LogAdminActions || arg?.cmd == null) return null;
+            var conn = arg.Connection;
+            // jogadores normais não conseguem correr estes comandos; se vier de um
+            // jogador, só interessa se for admin/moderador (authLevel >= 1)
+            if (conn != null && conn.authLevel < 1) return null;
+            var cmd = arg.cmd.FullName ?? "";
+            var interesting = false;
+            foreach (var w in WatchedCmds)
+                if (cmd.StartsWith(w, StringComparison.OrdinalIgnoreCase)) { interesting = true; break; }
+            if (!interesting) return null;
+            var full = string.IsNullOrEmpty(arg.FullString) ? cmd : cmd + " " + arg.FullString;
+            if (full.Length > 190) full = full.Substring(0, 190) + "…";
+            Enqueue(new Dictionary<string, object>
+            {
+                ["type"] = "admincmd",
+                ["ts"] = Now(),
+                ["steamId"] = conn != null ? conn.userid.ToString() : "server",
+                ["name"] = conn != null ? conn.username : "CONSOLE/RCON",
+                ["command"] = full,
+            });
+            return null;
         }
 
         private class BanRow

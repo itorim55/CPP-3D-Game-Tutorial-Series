@@ -274,6 +274,17 @@ for (const sql of [
 // bounty de reporters pago (uma vez por alvo banido — sobrevive a delete+recreate do ban)
 db.exec('CREATE TABLE IF NOT EXISTS bounties_paid (steam_id TEXT PRIMARY KEY, ts INTEGER NOT NULL)');
 
+// registo público de ações de admin no jogo (transparência total: give,
+// spawn, teleport, godmode... — tudo o que a staff faz fica visível no site)
+db.exec(`CREATE TABLE IF NOT EXISTS admin_actions (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts       INTEGER NOT NULL,
+  steam_id TEXT NOT NULL,          -- 'server' = consola/RCON
+  name     TEXT,
+  command  TEXT NOT NULL
+)`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_admin_actions_ts ON admin_actions(ts)');
+
 // fila de bans site -> servidor de jogo: o plugin faz poll e executa banid
 db.exec(`CREATE TABLE IF NOT EXISTS ban_queue (
   id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -660,6 +671,18 @@ function pendingGameBans() {
 function markGameBansApplied(ids) {
   const stmt = db.prepare("UPDATE ban_queue SET status = 'applied' WHERE id = ?");
   for (const id of ids) stmt.run(id | 0);
+}
+
+function recordAdminAction(ts, steamId, name, command) {
+  db.prepare('INSERT INTO admin_actions (ts, steam_id, name, command) VALUES (?, ?, ?, ?)')
+    .run(ts, steamId, name || null, command);
+  // manter 90 dias — o registo público não precisa de crescer para sempre
+  if (Math.random() < 0.02) db.prepare('DELETE FROM admin_actions WHERE ts < ?').run(now() - 90 * 86400);
+}
+
+function listAdminActions(limit = 40) {
+  return db.prepare(
+    'SELECT ts, steam_id, name, command FROM admin_actions ORDER BY id DESC LIMIT ?').all(limit);
 }
 
 function bountyAlreadyPaid(steamId) {
@@ -1999,6 +2022,7 @@ module.exports = {
   aliases, setSignup, removeSignup, listSignups, precisionBoard, isFirstKill, combatSnapshot,
   setRole, removeRole, listRoles, isMod, roleOf, addChatMessage, chatMessages, deleteChatMessage, adminSummary,
   bountyAlreadyPaid, markBountyPaid, queueGameBan, pendingGameBans, markGameBansApplied,
+  recordAdminAction, listAdminActions,
   killfeed, searchPlayers, status, staffList, banList, banStats,
   addApplication, recentApplicationFromIp, listApplications, setApplicationStatus, startWipe,
   // gemas e loja
