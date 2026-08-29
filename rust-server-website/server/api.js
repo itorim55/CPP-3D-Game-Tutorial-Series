@@ -207,6 +207,33 @@ function checkFirstKillFlags(steamId, name, wipeId, config) {
   } catch { /* nunca derrubar o ingest */ }
 }
 
+// ---------- alerta de pressão de votos do Overwatch ----------
+// A comunidade não bane ninguém — mas quando X votantes distintos dizem
+// "cheater" no mesmo caso, a staff é avisada no Discord para o rever JÁ.
+
+function checkOwVotePressure(caseId, tally, config) {
+  try {
+    const url = config.discordWebhooks?.staff;
+    const threshold = Math.max(2, config.owVoteAlertThreshold ?? 5);
+    if (!url || !tally || tally.cheat < threshold) return;
+    const c = store.owCaseForAlert(caseId);
+    if (!c || c.alerted) return;
+    store.markOwVoteAlerted(caseId);
+    const site = String(config.siteUrl || '').replace(/\/$/, '');
+    discord.send(url, {
+      embeds: [{
+        color: 0xd05c5c,
+        title: '🕵️ Overwatch case under community pressure',
+        description: `**${c.title}**\n` +
+          `🚨 **${tally.cheat}** cheater vote(s) · 🤔 ${tally.unsure} unsure · ✅ ${tally.clean} clean\n` +
+          `The community thinks this one is real — review the clip and close the case.` +
+          (site ? `\n[Watch & decide](${site}/overwatch) · console: ${site}/admin` : ''),
+        footer: { text: 'Votes never ban — a human always decides.' },
+      }],
+    });
+  } catch { /* nunca deixar um alerta rebentar o voto */ }
+}
+
 // ---------- alerta de pressão de reports ----------
 // Quando N jogadores DIFERENTES reportam o mesmo alvo em 24 h, a staff
 // recebe prioridade máxima no Discord para ir para o spectate.
@@ -615,7 +642,10 @@ function route(req, res, url, body, config, session) {
     let r;
     if (p === '/api/redeem') r = store.redeem(session.steamId, clean(body.itemId, 64));
     else if (p === '/api/mapvote/vote') r = store.castMapVote(session.steamId, body.optionId | 0);
-    else if (p === '/api/owcases/vote') r = store.voteOw(session.steamId, body.caseId | 0, clean(body.vote, 10));
+    else if (p === '/api/owcases/vote') {
+      r = store.voteOw(session.steamId, body.caseId | 0, clean(body.vote, 10));
+      if (r.ok) checkOwVotePressure(body.caseId | 0, r.tally, config);
+    }
     else {
       const text = clean(body.text, 4000);
       if (!text || text.length < 20) r = { error: 'Describe your appeal with at least 20 characters.' };

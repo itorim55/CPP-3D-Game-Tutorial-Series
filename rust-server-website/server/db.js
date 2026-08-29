@@ -269,6 +269,7 @@ for (const sql of [
   'ALTER TABLE players ADD COLUMN steam_flags TEXT',
   'ALTER TABLE bans ADD COLUMN steam_id TEXT',
   'ALTER TABLE redemptions ADD COLUMN sent_ts INTEGER',
+  'ALTER TABLE ow_cases ADD COLUMN vote_alerted INTEGER',
 ]) { try { db.exec(sql); } catch { /* coluna já existe */ } }
 
 // bounty de reporters pago (uma vez por alvo banido — sobrevive a delete+recreate do ban)
@@ -913,6 +914,15 @@ function voteOw(steamId, caseId, vote) {
     ON CONFLICT(case_id, steam_id) DO UPDATE SET vote = excluded.vote
   `).run(caseId | 0, steamId, vote);
   return { ok: true, tally: owTally(caseId | 0) };
+}
+
+// alerta de pressão de votos: um caso só avisa a staff UMA vez
+function owCaseForAlert(caseId) {
+  return db.prepare('SELECT id, title, COALESCE(vote_alerted, 0) alerted FROM ow_cases WHERE id = ?').get(caseId);
+}
+
+function markOwVoteAlerted(caseId) {
+  db.prepare('UPDATE ow_cases SET vote_alerted = 1 WHERE id = ?').run(caseId);
 }
 
 function addOwCase(title, clipUrl, clipFile = null) {
@@ -2022,7 +2032,7 @@ module.exports = {
   aliases, setSignup, removeSignup, listSignups, precisionBoard, isFirstKill, combatSnapshot,
   setRole, removeRole, listRoles, isMod, roleOf, addChatMessage, chatMessages, deleteChatMessage, adminSummary,
   bountyAlreadyPaid, markBountyPaid, queueGameBan, pendingGameBans, markGameBansApplied,
-  recordAdminAction, listAdminActions,
+  recordAdminAction, listAdminActions, owCaseForAlert, markOwVoteAlerted,
   killfeed, searchPlayers, status, staffList, banList, banStats,
   addApplication, recentApplicationFromIp, listApplications, setApplicationStatus, startWipe,
   // gemas e loja
