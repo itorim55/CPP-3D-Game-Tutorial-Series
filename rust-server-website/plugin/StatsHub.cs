@@ -2,12 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
+using Oxide.Core;
 using Oxide.Core.Libraries;
 using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("StatsHub", "Rustworthy", "1.8.0")]
+    [Info("StatsHub", "Rustworthy", "1.9.0")]
     [Description("Sends kills, sessions, farming and heartbeats to the stats website and delivers store rewards")]
     public class StatsHub : RustPlugin
     {
@@ -93,17 +94,32 @@ namespace Oxide.Plugins
             foreach (var player in BasePlayer.activePlayerList)
                 _lastCredit[player.userID] = UnityEngine.Time.realtimeSinceStartup;
 
-            timer.Every(_config.FlushInterval, Flush);
+            LoadOutbox(); // lotes que ficaram por enviar num unload/restart anterior
+
+            timer.Every(Math.Max(5f, _config.FlushInterval), Flush);
             timer.Every(_config.HeartbeatInterval, SendHeartbeat);
             timer.Every(_config.CreditInterval, CreditPlaytime);
             timer.Every(_config.CreditInterval, SendTeams);
-            if (_config.ExecuteRedemptions)
-                timer.Every(_config.RedemptionPollInterval, PollRedemptions);
-            if (!string.IsNullOrEmpty(_config.ApiKey))
-                timer.Every(_config.RedemptionPollInterval, PollNotices);
-            if (_config.ApplySiteBans && !string.IsNullOrEmpty(_config.ApiKey))
-                timer.Every(_config.RedemptionPollInterval, PollSiteBans);
+            if (_config.ExecuteRedemptions && HasKey)
+                timer.Every(Math.Max(10f, _config.RedemptionPollInterval), PollRedemptions);
+            if (HasKey)
+                timer.Every(Math.Max(10f, _config.RedemptionPollInterval), PollNotices);
+            if (_config.ApplySiteBans && HasKey)
+                timer.Every(Math.Max(10f, _config.RedemptionPollInterval), PollSiteBans);
+            if (!HasKey)
+                PrintWarning("[StatsHub] API key not set — edit oxide/config/StatsHub.json (copy apiKey from the site's server/config.json) and reload.");
             SendHeartbeat();
+        }
+
+        private bool HasKey => !string.IsNullOrEmpty(_config.ApiKey) && _config.ApiKey != "PUT-YOUR-KEY-HERE";
+
+        private bool _warned401;
+        private bool CheckAuth(int code)
+        {
+            if (code != 401 || _warned401) return code == 401;
+            _warned401 = true;
+            PrintWarning("[StatsHub] The site rejected the API key (401). Fix 'API key (apiKey from the site config.json)' in oxide/config/StatsHub.json.");
+            return true;
         }
 
         private void Unload()
@@ -114,6 +130,7 @@ namespace Oxide.Plugins
             foreach (var player in BasePlayer.activePlayerList.ToList())
                 CreditPlayer(player);
             Flush();
+            SaveOutbox(); // os POSTs em voo podem não voltar antes do unload — guardar em disco
         }
 
         // Wipe novo (novo save) — avisa o site para abrir uma wipe nova
@@ -121,11 +138,29 @@ namespace Oxide.Plugins
         {
             _demoRecorded.Clear();      // wipe nova, pressão de reports recomeça
             _reportPressure.Clear();
-            Post("/api/wipe", new Dictionary<string, object>
+            // o site pode estar a reiniciar precisamente no wipe: guardar e
+            // reenviar em cada flush até haver 2xx (o site é idempotente 1h)
+            _pendingWipe = new Dictionary<string, object>
             {
                 ["mapSeed"] = World.Seed.ToString(),
                 ["mapSize"] = World.Size,
                 ["label"] = $"Wipe {DateTime.UtcNow:yyyy-MM-dd}",
+            };
+            SendPendingWipe();
+        }
+
+        private Dictionary<string, object> _pendingWipe;
+        private bool _wipeInFlight;
+
+        private void SendPendingWipe()
+        {
+            if (_pendingWipe == null || _wipeInFlight) return;
+            _wipeInFlight = true;
+            var payload = _pendingWipe;
+            Post("/api/wipe", payload, ok =>
+            {
+                _wipeInFlight = false;
+                if (ok && ReferenceEquals(_pendingWipe, payload)) _pendingWipe = null;
             });
         }
 
@@ -258,6 +293,7 @@ namespace Oxide.Plugins
             var headers = new Dictionary<string, string> { ["X-API-Key"] = _config.ApiKey };
             webrequest.Enqueue(url, null, (code, response) =>
             {
+                if (CheckAuth(code)) return;
                 if (code < 200 || code >= 300 || string.IsNullOrEmpty(response)) return;
                 NoticeResponse data;
                 try { data = JsonConvert.DeserializeObject<NoticeResponse>(response); }
@@ -301,7 +337,7 @@ namespace Oxide.Plugins
             if (reporters.Count < Math.Max(1, _config.AutoDemoReportThreshold) || _demoRecorded.Contains(targetId)) return;
             _demoRecorded.Add(targetId);
             // demo nativa do Rust: fica em server/<identity>/demos/ — prova real da perspetiva
-            ConsoleSystem.Run(ConsoleSystem.Option.Server.Quiet(), $"demo.record {targetId}");
+            RunSelf($"demo.record {targetId}");
             _activeDemos.Add(targetId);
             Puts($"[StatsHub] Auto demo started for {targetId} ({reporters.Count} distinct reporters/24h)");
             timer.Once(_config.AutoDemoSeconds, () => StopDemo(targetId));
@@ -310,7 +346,7 @@ namespace Oxide.Plugins
         private void StopDemo(string targetId)
         {
             if (!_activeDemos.Remove(targetId)) return;
-            ConsoleSystem.Run(ConsoleSystem.Option.Server.Quiet(), $"demo.stop {targetId}");
+            RunSelf($"demo.stop {targetId}");
             Puts($"[StatsHub] Auto demo finished for {targetId}");
         }
 
@@ -509,6 +545,7 @@ namespace Oxide.Plugins
                 ["type"] = "teams",
                 ["ts"] = Now(),
                 ["teams"] = teams,
+                ["truncated"] = mgr.teams.Count > teams.Count, // o site não apaga o que não coube
             });
         }
 
@@ -528,12 +565,15 @@ namespace Oxide.Plugins
             [JsonProperty("rows")] public List<RedemptionRow> Rows;
         }
 
+        private readonly Dictionary<int, bool> _redeemed = new Dictionary<int, bool>();
+
         private void PollRedemptions()
         {
             var url = _config.SiteUrl.TrimEnd('/') + "/api/plugin/redemptions";
             var headers = new Dictionary<string, string> { ["X-API-Key"] = _config.ApiKey };
             webrequest.Enqueue(url, null, (code, response) =>
             {
+                if (CheckAuth(code)) return;
                 if (code < 200 || code >= 300 || string.IsNullOrEmpty(response)) return;
                 RedemptionResponse data;
                 try { data = JsonConvert.DeserializeObject<RedemptionResponse>(response); }
@@ -541,21 +581,44 @@ namespace Oxide.Plugins
                 if (data?.Rows == null) return;
                 foreach (var row in data.Rows)
                 {
-                    var ok = true;
-                    try
+                    bool ok;
+                    if (_redeemed.ContainsKey(row.Id))
                     {
-                        Puts($"Reward #{row.Id} for {row.SteamId}: {row.Command}");
-                        ConsoleSystem.Run(ConsoleSystem.Option.Server.Quiet(), row.Command);
+                        // já executámos e o /complete perdeu-se — só confirmar, nunca repetir
+                        ok = _redeemed[row.Id];
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        ok = false;
-                        PrintWarning($"Reward #{row.Id} failed: {ex.Message}");
+                        ok = true;
+                        try
+                        {
+                            Puts($"Reward #{row.Id} for {row.SteamId}: {row.Command}");
+                            _selfCmd = true;
+                            var reply = ConsoleSystem.Run(ConsoleSystem.Option.Server.Quiet(), row.Command) ?? "";
+                            _selfCmd = false;
+                            // a consola não lança exceções: um comando inválido responde em texto
+                            if (reply.IndexOf("not found", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                reply.IndexOf("invalid", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                reply.IndexOf("unknown", StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                ok = false;
+                                PrintWarning($"Reward #{row.Id} command refused: {reply}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _selfCmd = false;
+                            ok = false;
+                            PrintWarning($"Reward #{row.Id} failed: {ex.Message}");
+                        }
+                        _redeemed[row.Id] = ok;
+                        if (_redeemed.Count > 500) _redeemed.Clear();
                     }
+                    var rid = row.Id; var rok = ok;
                     Post("/api/plugin/redemptions/complete", new Dictionary<string, object>
                     {
-                        ["id"] = row.Id,
-                        ["ok"] = ok,
+                        ["id"] = rid,
+                        ["ok"] = rok,
                     });
                 }
             }, this, RequestMethod.GET, headers, 10f);
@@ -572,14 +635,25 @@ namespace Oxide.Plugins
             "kick", "banid", "unban", "mutechat", "unmutechat", "entity.deleteby",
         };
 
+        private bool _selfCmd; // true enquanto o próprio plugin corre comandos
+
+        private void RunSelf(string command)
+        {
+            _selfCmd = true;
+            try { ConsoleSystem.Run(ConsoleSystem.Option.Server.Quiet(), command); }
+            finally { _selfCmd = false; }
+        }
+
         private object OnServerCommand(ConsoleSystem.Arg arg)
         {
-            if (!_config.LogAdminActions || arg?.cmd == null) return null;
+            if (!_config.LogAdminActions || arg?.cmd == null || _selfCmd) return null;
             var conn = arg.Connection;
             // jogadores normais não conseguem correr estes comandos; se vier de um
             // jogador, só interessa se for admin/moderador (authLevel >= 1)
             if (conn != null && conn.authLevel < 1) return null;
             var cmd = arg.cmd.FullName ?? "";
+            // comandos base chegam como "global.kick", "global.teleport"...
+            if (cmd.StartsWith("global.", StringComparison.OrdinalIgnoreCase)) cmd = cmd.Substring(7);
             var interesting = false;
             foreach (var w in WatchedCmds)
                 if (cmd.StartsWith(w, StringComparison.OrdinalIgnoreCase)) { interesting = true; break; }
@@ -617,6 +691,7 @@ namespace Oxide.Plugins
             var headers = new Dictionary<string, string> { ["X-API-Key"] = _config.ApiKey };
             webrequest.Enqueue(url, null, (code, response) =>
             {
+                if (CheckAuth(code)) return;
                 if (code < 200 || code >= 300 || string.IsNullOrEmpty(response)) return;
                 BanResponse data;
                 try { data = JsonConvert.DeserializeObject<BanResponse>(response); }
@@ -629,7 +704,7 @@ namespace Oxide.Plugins
                     if (!ulong.TryParse(row.SteamId, out uid)) { applied.Add(row.Id); continue; }
                     // aspas/novas linhas fora da razão — vai para a consola do servidor
                     var reason = (row.Reason ?? "banned via site").Replace("\"", "'").Replace("\n", " ");
-                    ConsoleSystem.Run(ConsoleSystem.Option.Server.Quiet(), $"banid {uid} \"site\" \"{reason}\"");
+                    RunSelf($"banid {uid} \"site\" \"{reason}\"");
                     Puts($"[StatsHub] Site ban applied: {uid} ({reason})");
                     applied.Add(row.Id);
                 }
@@ -678,35 +753,78 @@ namespace Oxide.Plugins
             }
             _gather.Clear();
 
-            if (_queue.Count == 0) return;
+            SendPendingWipe();
 
-            // O site aceita no máximo 500 eventos por pedido — enviar em pedaços
-            // de 250 para nunca perder eventos silenciosamente (mesmo que a fila
-            // tenha crescido por causa de retries).
+            // O site aceita no máximo 500 eventos por pedido — lotes de 250.
+            // Cada lote guarda o SEU batchId até o site confirmar (2xx): um retry
+            // após timeout reenvia o mesmo id e o site ignora-o se já o processou.
             const int chunkSize = 250;
-            var pending = _queue.ToList();
-            _queue.Clear();
-
-            for (int i = 0; i < pending.Count; i += chunkSize)
+            if (_queue.Count > 0)
             {
-                var batch = pending.GetRange(i, Math.Min(chunkSize, pending.Count - i));
-                // batchId: o site ignora lotes repetidos, por isso um retry após
-                // timeout nunca duplica kills/gemas/playtime
-                var payload = new Dictionary<string, object>
+                var pending = _queue.ToList();
+                _queue.Clear();
+                for (int i = 0; i < pending.Count; i += chunkSize)
+                    _outbox.Add(new Batch { Id = Guid.NewGuid().ToString("N"), Events = pending.GetRange(i, Math.Min(chunkSize, pending.Count - i)) });
+            }
+            // limite de memória: 4000 eventos em espera — descarta os mais antigos (e diz)
+            while (_outbox.Sum(b => b.Events.Count) > 4000 && _outbox.Count > 1)
+            {
+                PrintWarning($"[StatsHub] Site unreachable for too long — dropping {_outbox[0].Events.Count} oldest events");
+                _outbox.RemoveAt(0);
+            }
+
+            foreach (var batch in _outbox.ToList())
+            {
+                if (batch.InFlight) continue;
+                batch.InFlight = true;
+                var b = batch;
+                Post("/api/ingest", new Dictionary<string, object> { ["events"] = b.Events, ["batchId"] = b.Id }, success =>
                 {
-                    ["events"] = batch,
-                    ["batchId"] = Guid.NewGuid().ToString("N"),
-                };
-                Post("/api/ingest", payload, success =>
-                {
-                    if (!success)
-                    {
-                        // devolve à fila para tentar de novo no próximo flush (com limite)
-                        if (batch.Count + _queue.Count <= 4000)
-                            _queue.InsertRange(0, batch);
-                    }
+                    b.InFlight = false;
+                    if (success) _outbox.Remove(b);
                 });
             }
+        }
+
+        private class Batch
+        {
+            [JsonProperty("id")] public string Id;
+            [JsonProperty("events")] public List<Dictionary<string, object>> Events;
+            [JsonIgnore] public bool InFlight;
+        }
+
+        private readonly List<Batch> _outbox = new List<Batch>();
+
+        private class OutboxFile
+        {
+            [JsonProperty("batches")] public List<Batch> Batches;
+            [JsonProperty("wipe")] public Dictionary<string, object> Wipe;
+        }
+
+        // O que ainda não foi confirmado pelo site sobrevive a reloads/restarts
+        private void SaveOutbox()
+        {
+            try
+            {
+                var file = new OutboxFile { Batches = _outbox, Wipe = _pendingWipe };
+                if (file.Batches.Count == 0 && file.Wipe == null) return;
+                Interface.Oxide.DataFileSystem.WriteObject("StatsHub_outbox", file);
+            }
+            catch (Exception ex) { PrintWarning($"[StatsHub] Could not save outbox: {ex.Message}"); }
+        }
+
+        private void LoadOutbox()
+        {
+            try
+            {
+                if (!Interface.Oxide.DataFileSystem.ExistsDatafile("StatsHub_outbox")) return;
+                var file = Interface.Oxide.DataFileSystem.ReadObject<OutboxFile>("StatsHub_outbox");
+                if (file?.Batches != null) _outbox.AddRange(file.Batches);
+                if (file?.Wipe != null) _pendingWipe = file.Wipe;
+                Interface.Oxide.DataFileSystem.WriteObject("StatsHub_outbox", new OutboxFile { Batches = new List<Batch>() });
+                if (_outbox.Count > 0) Puts($"[StatsHub] Restored {_outbox.Count} unsent batch(es) from disk");
+            }
+            catch (Exception ex) { PrintWarning($"[StatsHub] Could not load outbox: {ex.Message}"); }
         }
 
         private void SendHeartbeat()

@@ -119,7 +119,7 @@ function seed() {
     ['HeadAdmin', 'Founder / Owner', 'Founded the server. Never plays a wipe with advantages — separate admin account, moderation only.'],
     ['NightWatch', 'Head Admin', 'Cheater-catching specialist. Every piece of evidence recorded and published.'],
     ['ModAna', 'Moderator', 'Handles Discord tickets and in-game checks.'],
-    ['ShadowBan', 'Moderator', 'Moderator of the month in July. 23 cheaters banned with evidence.'],
+    ['ShadowBan', 'Moderator', 'Moderator of the month. 23 cheaters banned with evidence.'],
   ];
   for (const [name, role, blurb] of staff) {
     store.db.prepare('INSERT INTO staff (name, role, since, blurb) VALUES (?, ?, ?, ?)')
@@ -156,8 +156,8 @@ function seed() {
 
   store.addPost('Welcome to the server!',
     'Fresh server, fresh wipe. Rules on the site, staff on Discord. Good luck out there — and remember: cheaters do not last long around here.');
-  store.addPost('September 3rd wipe',
-    'Force wipe on Thursday at 7pm UTC. New map chosen by the community on the map vote page. Blueprints wipe too (monthly force wipe).');
+  store.addPost('Wipe schedule',
+    'Force wipe on the first Thursday of every month at 7pm UTC — the countdown on the home page always shows the next one. New map chosen by the community on the map vote page. Blueprints wipe too (monthly force wipe).');
 
   store.addOwCase('Suspected ESP near Launch Site', 'https://youtu.be/example-clip-1');
   store.addOwCase('Perfect recoil with an AK at 150m?', 'https://youtu.be/example-clip-2');
@@ -194,6 +194,9 @@ function seed() {
   }
   // e marcar toda a gente como vista nas últimas ~20 h (para streaks/atividade)
   store.db.prepare(`UPDATE players SET last_seen = ? - ABS(RANDOM() % 72000)`).run(now);
+
+  // a wipe de demonstração "começou" há 10 dias — coerente com kills/bans retro-datados
+  store.db.prepare('UPDATE wipes SET started_at = ? WHERE id = (SELECT MAX(id) FROM wipes)').run(now - 10 * 86400);
 
   console.log('[seed] Eventos do mapa...');
   const eventKinds = [['heli', 9], ['bradley', 14], ['crate', 30]];

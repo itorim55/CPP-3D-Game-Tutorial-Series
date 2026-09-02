@@ -24,15 +24,17 @@ Depois: clique direito no nome do servidor → **Copy Server ID**.
 ## Passo 3 — correr o script (no PC)
 
 ```powershell
-cd C:\Users\amaur\Desktop\RustWebSite
+cd C:\rustworthy\rust-server-website      # a pasta onde clonaste o site
 # primeiro em modo de ensaio, para veres o plano:
-node rust-server-website\deploy\discord-setup.js --token O_TEU_TOKEN --guild O_ID --dry-run
+node deploy\discord-setup.js --token O_TEU_TOKEN --guild O_ID --dry-run
 # depois a sério, já a escrever os webhooks no config do site:
-node rust-server-website\deploy\discord-setup.js --token O_TEU_TOKEN --guild O_ID --write-config
-# reinicia o site para os webhooks ativarem:
-taskkill /F /IM node.exe
-node rust-server-website\server\app.js --seed
+node deploy\discord-setup.js --token O_TEU_TOKEN --guild O_ID --write-config
 ```
+
+Depois **reinicia o site** (Ctrl+C na janela dele e `deploy\start.bat` — sem
+`--seed`, senão em produção enche a base de dados de dados de demonstração).
+E faz **Reset Token** ao bot no Developer Portal: depois do setup o token já não
+é preciso para nada.
 
 Com `--write-config`, os webhooks (killfeed, bans, staff-alerts,
 announcements) e o convite ficam logo no `server/config.json` — o killfeed
@@ -57,7 +59,7 @@ Cargos: ⚖️ Admin (laranja) · 🛡️ Moderator (âmbar) · 💎 Supporter (
 
 1. **Community**: Server Settings → Enable Community (desbloqueia o canal de
    regras oficial, onboarding e relatórios)
-2. **Ícone + banner**: usa `icon-rustworthy.png` e `banner-rustworthy.png`
+2. **Ícone + banner**: estão no site — `public\img\discord-icon.png` (512×512) e `public\img\discord-banner.png` (960×540)
 3. **Tickets**: adiciona o bot gratuito **Ticket Tool** (https://tickettool.xyz)
    → painel no #open-a-ticket, tickets abrem privados com a staff. (Um sistema
    de tickets precisa de um bot sempre ligado — o Ticket Tool é o standard

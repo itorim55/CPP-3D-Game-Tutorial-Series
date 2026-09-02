@@ -4,27 +4,35 @@
     "name": "Chat color (7 days)",
     "description": "Your name shows up colored in the server chat for 7 days.",
     "cost": 8000,
-    "command": "oxide.usergroup add {steamid} chatcolor"
+    "command": "oxide.usergroup add {steamid} chatcolor",
+    "name_pt": "Cor no chat (7 dias)",
+    "description_pt": "O teu nome aparece colorido no chat do servidor durante 7 dias."
   },
   {
     "id": "queue-skip-24h",
     "name": "Queue skip (24 h)",
     "description": "Skip the join queue for 24 hours. No in-game advantage.",
     "cost": 15000,
-    "command": "oxide.usergroup add {steamid} queueskip"
+    "command": "oxide.usergroup add {steamid} queueskip",
+    "name_pt": "Saltar a fila (24 h)",
+    "description_pt": "Entra à frente da fila durante 24 horas. Sem vantagem dentro do jogo."
   },
   {
     "id": "site-badge",
     "name": "'Supporter' badge on the site",
     "description": "A permanent badge on your public site profile. Active instantly.",
     "cost": 5000,
-    "command": ""
+    "command": "",
+    "name_pt": "Distintivo 'Supporter' no site",
+    "description_pt": "Um distintivo permanente no teu perfil público do site. Ativo de imediato."
   },
   {
     "id": "skin-crate",
     "name": "Cosmetic skin crate",
     "description": "A set of random skins (visual only). Delivered in-game by staff.",
     "cost": 20000,
-    "command": ""
+    "command": "",
+    "name_pt": "Caixa de skins cosméticas",
+    "description_pt": "Um conjunto de skins aleatórias (só visual). Entregue in-game pela staff."
   }
 ]

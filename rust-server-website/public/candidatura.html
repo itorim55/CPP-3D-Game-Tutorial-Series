@@ -13,7 +13,7 @@
 
 <header></header>
 
-<main>
+<main style="max-width:860px">
   <h2 class="section" style="margin-top:6px" data-i18n="apply.title">Moderator Application</h2>
 
   <div class="prose" style="margin-bottom:22px">
@@ -39,39 +39,39 @@
     </ul>
   </div>
 
-  <div id="form-area" class="card" style="max-width:800px">
+  <div id="form-area" class="card">
     <form id="app-form">
       <h3 style="margin-bottom:14px" data-i18n="apply.sectionA">A. Identity and contact</h3>
       <div class="form-grid">
-        <div class="field"><label data-i18n="apply.name">In-game name *</label><input type="text" name="name" required maxlength="64"></div>
-        <div class="field"><label>SteamID64 *</label><input type="text" name="steamId" required pattern="7656119[0-9]{10}" placeholder="7656119…"><div class="hint" data-i18n="apply.steamHint">Find it at steamid.io — starts with 7656119.</div></div>
-        <div class="field"><label data-i18n="apply.discord">Discord *</label><input type="text" name="discord" required maxlength="64" placeholder="user#0000 / @user"></div>
-        <div class="field"><label data-i18n="apply.age">Age *</label><input type="number" name="age" required min="18" max="99"></div>
-        <div class="field"><label data-i18n="apply.tz">Country / timezone</label><input type="text" name="timezone" maxlength="64" placeholder="Portugal (UTC+0/+1)" data-i18n-ph="apply.tzPh"></div>
-        <div class="field"><label data-i18n="apply.hours">Rust hours (Steam)</label><input type="number" name="hoursPlayed" min="0" max="99999"></div>
+        <div class="field"><label for="f-name" data-i18n="apply.name">In-game name *</label><input type="text" id="f-name" name="name" required maxlength="64"></div>
+        <div class="field"><label for="f-steamId">SteamID64 *</label><input type="text" id="f-steamId" name="steamId" required pattern="7656119[0-9]{10}" placeholder="7656119…"><div class="hint" data-i18n="apply.steamHint">Find it at steamid.io — starts with 7656119.</div></div>
+        <div class="field"><label for="f-discord" data-i18n="apply.discord">Discord *</label><input type="text" id="f-discord" name="discord" required maxlength="64" placeholder="user#0000 / @user"></div>
+        <div class="field"><label for="f-age" data-i18n="apply.age">Age *</label><input type="number" id="f-age" name="age" required min="18" max="99"></div>
+        <div class="field"><label for="f-timezone" data-i18n="apply.tz">Country / timezone</label><input type="text" id="f-timezone" name="timezone" maxlength="64" placeholder="Portugal (UTC+0/+1)" data-i18n-ph="apply.tzPh"></div>
+        <div class="field"><label for="f-hoursPlayed" data-i18n="apply.hours">Rust hours (Steam)</label><input type="number" id="f-hoursPlayed" name="hoursPlayed" min="0" max="99999"></div>
       </div>
 
       <h3 style="margin:22px 0 14px" data-i18n="apply.sectionB">B. Availability and experience</h3>
       <div class="form-grid">
-        <div class="field full"><label data-i18n="apply.avail">Weekly availability</label><input type="text" name="availability" maxlength="300" placeholder="e.g.: 3-4 nights a week, 8pm-midnight, weekend afternoons" data-i18n-ph="apply.availPh"></div>
-        <div class="field full"><label data-i18n="apply.exp">Previous staff experience</label><textarea name="experience" maxlength="4000" placeholder="Servers where you were staff, role, duration, reason for leaving. Tools you know: admin cam, RCON, RustAdmin, BattleMetrics, Oxide/Carbon…" data-i18n-ph="apply.expPh"></textarea></div>
+        <div class="field full"><label for="f-availability" data-i18n="apply.avail">Weekly availability</label><input type="text" id="f-availability" name="availability" maxlength="300" placeholder="e.g.: 3-4 nights a week, 8pm-midnight, weekend afternoons" data-i18n-ph="apply.availPh"></div>
+        <div class="field full"><label for="f-experience" data-i18n="apply.exp">Previous staff experience</label><textarea id="f-experience" name="experience" maxlength="4000" placeholder="Servers where you were staff, role, duration, reason for leaving. Tools you know: admin cam, RCON, RustAdmin, BattleMetrics, Oxide/Carbon…" data-i18n-ph="apply.expPh"></textarea></div>
       </div>
 
       <h3 style="margin:22px 0 14px" data-i18n="apply.sectionC">C. Motivation</h3>
-      <div class="field full"><label data-i18n="apply.motivation">Why do you want to moderate HERE, and why should we pick you? *</label><textarea name="motivation" required maxlength="4000"></textarea></div>
+      <div class="field full"><label for="f-motivation" data-i18n="apply.motivation">Why do you want to moderate HERE, and why should we pick you? *</label><textarea id="f-motivation" name="motivation" required maxlength="4000"></textarea></div>
 
       <h3 style="margin:22px 0 14px"><span data-i18n="apply.sectionD">D. Scenarios</span> <span style="color:var(--ink-muted);font-weight:400;font-size:13px" data-i18n="apply.sectionDNote">— the part that weighs most in the review</span></h3>
       <div class="field full">
-        <label data-i18n="apply.s1">1. A clan is reported for cheating, but there's no clear proof. Walk us through what you do, step by step. *</label>
-        <textarea name="scenario1" required maxlength="4000"></textarea>
+        <label for="f-scenario1" data-i18n="apply.s1">1. A clan is reported for cheating, but there's no clear proof. Walk us through what you do, step by step. *</label>
+        <textarea id="f-scenario1" name="scenario1" required maxlength="4000"></textarea>
       </div>
       <div class="field full">
-        <label data-i18n="apply.s2">2. A friend / teammate of yours is accused of cheating. What do you do? *</label>
-        <textarea name="scenario2" required maxlength="4000"></textarea>
+        <label for="f-scenario2" data-i18n="apply.s2">2. A friend / teammate of yours is accused of cheating. What do you do? *</label>
+        <textarea id="f-scenario2" name="scenario2" required maxlength="4000"></textarea>
       </div>
       <div class="field full">
-        <label data-i18n="apply.s3">3. A player publicly accuses YOU of admin abuse in chat. How do you respond?</label>
-        <textarea name="scenario3" maxlength="4000"></textarea>
+        <label for="f-scenario3" data-i18n="apply.s3">3. A player publicly accuses YOU of admin abuse in chat. How do you respond?</label>
+        <textarea id="f-scenario3" name="scenario3" maxlength="4000"></textarea>
       </div>
 
       <h3 style="margin:22px 0 14px" data-i18n="apply.sectionE">E. Integrity declarations</h3>

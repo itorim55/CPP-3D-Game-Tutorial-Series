@@ -51,7 +51,7 @@ StatsHub faz por frame: **nada**. O que faz por evento:
 |---|---|---|
 | Hook de kill (`OnPlayerDeath`) | por morte (~poucas/min) | montar um dicionário em memória: **microssegundos** |
 | Hook connect/disconnect | por entrada/saída | idem |
-| Hook de farm (`OnDispenserGathered`) | por pancada de farm | somar num dicionário: **nanossegundos** (e podes desligar: `TrackGather: false`) |
+| Hook de farm (`OnDispenserGathered`) | por pancada de farm | somar num dicionário: **nanossegundos** (e podes desligar: `"Track resource gathering": false`) |
 | Crédito de tempo | 1× a cada **5 min** | iterar a lista de jogadores: **< 1 ms** |
 | Envio do lote (`Flush`) | 1× a cada **30 s** | serializar JSON + HTTP **assíncrono** |
 | Heartbeat | 1× a cada **60 s** | ler 5 contadores já existentes |

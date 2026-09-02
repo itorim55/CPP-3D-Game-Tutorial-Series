@@ -140,7 +140,6 @@ const EN_JS = {
   'stats.eloEmpty': 'Nobody with 5+ fights this wipe yet.', 'stats.archive': 'Archive: $1 ($2)', 'stats.wipeWord': 'Wipe',
   'stats.team': 'Team $1', 'stats.noTeams': 'No teams recorded this wipe yet (the plugin reports native Rust teams every 5 min).',
   'stats.noRaids': 'No raids recorded this wipe. The bases thank you. 🏠',
-  'stats.noKills': 'No kills recorded.',
   'stats.kfLink': '\u2620 Live killfeed is on the home page \u2192',
   'home.newsTitle': '\ud83d\udcf0 Latest news', 'home.newsAll': 'all news \u2192',
   'staff.bans30': 'bans in the last 30 days', 'staff.bansTotal': 'bans in total',
@@ -170,8 +169,13 @@ const EN_JS = {
   'res.sulfur': '💥 Sulfur', 'res.hqm': '✨ HQM',
 
   // loja
-  'store.rate': '$1 gems per hour played', 'store.enterToSee': 'sign in to see 💎',
-  'store.redeem': 'Redeem', 'store.notEnough': 'Not enough gems', 'store.loginToRedeem': 'Sign in to redeem',
+  'store.rate': '$1 gems per hour played',
+  'store.redeem': 'Redeem', 'store.notEnough': 'Not enough gems',
+  'store.deliveryNote': 'Automatic rewards are delivered in-game within ~1 minute (if you are online). Manual items are handled by staff within 24 h.',
+  'home.onFire': '🔥 On fire right now',
+  'stats.hint': '💡 Short windows (hour/day) also help the community spot suspicious spikes — a player with abnormal kills in the last hour deserves an F7. Elo is seasonal (reset every wipe, minimum 5 fights).',
+  'chat.delete': 'Delete message', 'chat.minimize': 'Minimize chat',
+  'player.noId': 'No player selected — search a name on the Stats page.',
   'store.redeeming': 'redeeming…', 'store.redeemedAuto': '✅ Redeemed — delivery in ~1 min',
   'store.redeemedInstant': '✅ Redeemed — active on your profile now',
   'store.redeemedManual': '✅ Redeemed — manual delivery within 24 h', 'store.empty': 'Store is empty.',
@@ -249,7 +253,6 @@ const EN_JS = {
   'sum.meta': '$1 · started $2', 'sum.metaKills': '$1 kills by $2 players',
   'sum.current': 'current', 'sum.noData': 'Not enough data in this wipe yet.',
   'heat.deaths': '$1 PVP deaths with recorded position · map $2',
-  'heat.tip': ' · tip: set "mapImage" (a map image URL, e.g. from RustMaps) in server/config.json to overlay the real map',
 };
 
 // ---------- traduções ----------
@@ -358,7 +361,7 @@ const I18N = {
     'wr.noId': 'Falta o id do jogador neste link.',
     'tv.title': 'Modo TV',
 
-    'ach.title': '🏅 Conquistas',
+    'ach.title': 'Conquistas',
     'ach.desc': 'Todos os badges que podes desbloquear no servidor e quem os tem. Os badges de wipe fazem reset com o mapa; os restantes são para sempre. Aparecem automaticamente no teu perfil público.',
     'ach.holders': '$1 desbloqueado(s)',
     'ach.best': 'recorde: $1 ($2)',
@@ -371,11 +374,11 @@ const I18N = {
     'home.topWipe': 'Top da wipe', 'home.viewAll': 'ver tudo →',
     'home.liveKillfeed': 'Killfeed ao vivo', 'home.onFire': '🔥 Em fogo agora',
     'home.whyPlay': 'Porquê jogar aqui?',
-    'home.antiCheat': '🛡️ Anti-cheat a sério',
+    'home.antiCheat': 'Anti-cheat a sério',
     'home.antiCheatDesc': 'Cheaters apanhados em direto, provas gravadas, <a href="/staff">bans públicos</a>. Aqui a moderação é o produto.',
-    'home.liveStats': '📊 Estatísticas ao vivo',
+    'home.liveStats': 'Estatísticas ao vivo',
     'home.liveStatsDesc': 'Todas as kills, mortes, headshots e recursos registados em tempo real. Procura o teu nome e acompanha a tua evolução wipe a wipe.',
-    'home.noP2w': '⚖️ Zero pay-to-win',
+    'home.noP2w': 'Zero pay-to-win',
     'home.noP2wDesc': 'Nada de kits pagos nem loot à venda. Os apoios dão apenas cosméticos e cor no chat — <a href="/loja">vê a loja</a>: o jogo é igual para todos.',
 
     // stats (JS)
@@ -383,7 +386,6 @@ const I18N = {
     'stats.eloEmpty': 'Ainda ninguém com 5+ combates nesta wipe.', 'stats.archive': 'Arquivo: $1 ($2)', 'stats.wipeWord': 'Wipe',
     'stats.team': 'Equipa $1', 'stats.noTeams': 'Ainda sem equipas registadas nesta wipe (o plugin envia as equipas nativas a cada 5 min).',
     'stats.noRaids': 'Ainda sem raids registados nesta wipe. As bases agradecem. 🏠',
-    'stats.noKills': 'Sem kills registadas.',
     'stats.kfLink': '\u2620 O killfeed ao vivo est\u00e1 na p\u00e1gina inicial \u2192',
     'home.newsTitle': '\ud83d\udcf0 \u00daltimas novidades', 'home.newsAll': 'todas \u2192',
     'player.reportBox': '\ud83d\udea9 Suspeitas deste jogador? Reporta no jogo com <b>F7</b> ou no Discord \u2014 cheaters confirmados acabam na <a href="/staff#bans">lista p\u00fablica de bans</a>.',
@@ -429,8 +431,10 @@ const I18N = {
     'res.sulfur': '💥 Sulfur', 'res.hqm': '✨ HQM',
 
     // loja (JS)
-    'store.rate': '$1 gemas por cada hora jogada', 'store.enterToSee': 'entra para ver 💎',
-    'store.redeem': 'Resgatar', 'store.notEnough': 'Gemas insuficientes', 'store.loginToRedeem': 'Entra para resgatar',
+    'store.rate': '$1 gemas por cada hora jogada',
+    'store.redeem': 'Resgatar', 'store.notEnough': 'Gemas insuficientes',
+    'chat.delete': 'Apagar mensagem', 'chat.minimize': 'Minimizar chat',
+    'player.noId': 'Nenhum jogador selecionado — procura um nome na página Stats.',
     'store.redeeming': 'a resgatar…', 'store.redeemedAuto': '✅ Resgatado — entrega em ~1 min',
     'store.redeemedInstant': '✅ Resgatado — já ativo no teu perfil',
     'store.redeemedManual': '✅ Resgatado — entrega manual em 24 h', 'store.empty': 'Loja vazia.',
@@ -467,7 +471,7 @@ const I18N = {
     'ow.community': 'Comunidade: <b style="color:var(--bad)">$1% cheater</b> · $2% não sabe · <b style="color:var(--good)">$3% limpo</b> <span style="color:var(--ink-muted)">($4 votos)</span>',
     'ow.noVotes': 'Ainda sem votos da comunidade.',
     // overwatch (HTML)
-    'ow.title': 'Overwatch Comunitário 🕵️',
+    'ow.title': 'Overwatch Comunitário',
     'ow.sub': 'A comunidade também caça cheaters',
     'ow.desc': 'A staff publica aqui clips de jogadores suspeitos — <b>sempre anónimos</b> (sem nomes, para não haver witch-hunts). Vê o clip e dá o teu veredicto. Os votos da comunidade <b>não banem ninguém</b>: são mais um sinal para a investigação da staff, que decide sempre com provas gravadas. Precisas de <b>5 h+ de jogo</b> no servidor para votar — e só vês os resultados depois de votares, para não seres influenciado.',
 
@@ -493,7 +497,7 @@ const I18N = {
     'account.myRedemptions': 'Os meus resgates', 'account.myAppeals': 'Os meus apelos',
     'account.staffReply': 'Resposta da staff:',
     // apelo (HTML)
-    'appeal.title': 'Apelar um ban ⚖️',
+    'appeal.title': 'Apelar um ban',
     'appeal.intro': 'Todos os bans podem ser contestados — é uma promessa do nosso <a href="/staff">Código do Moderador</a>. Como funciona:',
     'appeal.li1': 'O apelo é revisto por um admin <b>diferente</b> do que aplicou o ban;',
     'appeal.li2': 'Revemos as provas gravadas do teu caso contigo em mente;',
@@ -563,7 +567,6 @@ const I18N = {
     'staff.p5': '<b>5. Respeito sempre.</b> Mesmo com cheaters e tóxicos: profissionalismo. Nós representamos o servidor.',
     'staff.transparency': 'Transparência de banimentos', 'staff.last30': 'últimos 30 dias',
     'staff.bans30': 'bans nos últimos 30 dias', 'staff.bansTotal': 'bans no total',
-    'staff.modMonth': 'moderador do mês 🏆',
     'staff.thWhen': 'Quando', 'staff.thPlayer': 'Jogador', 'staff.thReason': 'Motivo',
     'staff.thAdmin': 'Admin', 'staff.thEvidence': 'Provas',
 
@@ -592,7 +595,7 @@ const I18N = {
     'vs.longest': 'Kill + longa', 'vs.streak': 'Streak atual', 'vs.structures': 'Estruturas destruídas',
     'vs.hours': 'Horas',
     // vs (HTML)
-    'vs.title': '⚔️ 1 vs 1 — Comparador de jogadores',
+    'vs.title': '1 vs 1 — Comparador de jogadores',
     'vs.sub': 'Escolhe dois jogadores e vê quem manda. Inclui o histórico direto entre os dois.',
     'vs.phA': '🔍 jogador A…', 'vs.phB': '🔍 jogador B…',
 
@@ -605,10 +608,9 @@ const I18N = {
     'sum.meta': '$1 · começou a $2', 'sum.metaKills': '$1 kills por $2 jogadores',
     'sum.current': 'atual', 'sum.noData': 'Ainda não há dados suficientes nesta wipe.',
     'heat.deaths': '$1 mortes PVP com posição registada · mapa $2',
-    'heat.tip': ' · dica: define "mapImage" (URL de uma imagem do mapa, ex.: do RustMaps) em server/config.json para sobrepor o mapa real',
     // resumo / heatmap (HTML)
-    'sum.title': '🏁 Resumo da wipe',
-    'heat.title': '🗺️ Heatmap de mortes',
+    'sum.title': 'Resumo da wipe',
+    'heat.title': 'Heatmap de mortes',
     'heat.desc': 'Onde se morre neste mapa. Quanto mais quente (laranja→branco), mais mortes na zona. Norte para cima; coordenadas do jogo normalizadas ao tamanho do mapa.',
   },
 };
@@ -656,3 +658,46 @@ function applyI18n(root = document) {
 }
 
 document.addEventListener('DOMContentLoaded', () => applyI18n());
+
+// ---------- conquistas: o servidor envia nome/descrição em inglês (base); PT por padrão ----------
+const ACH_PT = {
+  'First Blood': 'Primeiro Sangue', 'Elite Sniper': 'Sniper de Elite', 'Machine': 'Máquina', 'Headhunter': 'Caça-Cabeças',
+  'Bullet Magnet': 'Íman de Balas', 'On Fire': 'Em Fogo', 'Night Owl': 'Coruja Noturna', 'Lumberjack': 'Lenhador', 'Miner': 'Mineiro',
+  'Sulfur King': 'Rei do Enxofre', 'Veteran': 'Veterano', 'Untouchable': 'Intocável', 'Demolition Man': 'Demolidor',
+  'Heli Hunter': 'Caçador de Helis', 'Tank Buster': 'Anti-Tanque', 'Fast Hands': 'Mãos Rápidas', 'Rampage': 'Rampage', 'Supporter': 'Supporter',
+};
+const ACH_DESC_PT = [
+  [/^Got their first kill on the server$/, 'Fez a primeira kill no servidor'],
+  [/^Get your first kill on the server$/, 'Faz a tua primeira kill no servidor'],
+  [/^Kill at (\d+) m$/, 'Kill a $1 m'],
+  [/^Land a kill from 300 m or further$/, 'Acerta uma kill a 300 m ou mais'],
+  [/^100\+ kills in one wipe$/, '100+ kills numa wipe'],
+  [/^50\+ headshots in one wipe$/, '50+ headshots numa wipe'],
+  [/^100\+ deaths in one wipe \(a hero\)$/, '100+ mortes numa wipe (um herói)'],
+  [/^(\d+) kills in a single hour$/, '$1 kills numa só hora'],
+  [/^5\+ kills inside a single hour$/, '5+ kills numa só hora'],
+  [/^10\+ kills in the small hours(?: \(00–06\))?$/, '10+ kills de madrugada (00–06)'],
+  [/^100k\+ wood in one wipe$/, '100k+ madeira numa wipe'],
+  [/^100k\+ stone in one wipe$/, '100k+ pedra numa wipe'],
+  [/^50k\+ sulfur in one wipe$/, '50k+ enxofre numa wipe'],
+  [/^100\+ hours on the server$/, '100+ horas no servidor'],
+  [/^10h\+ this wipe without a PVP death$/, '10h+ nesta wipe sem morrer em PVP'],
+  [/^(\d+) structures destroyed this wipe$/, '$1 estruturas destruídas nesta wipe'],
+  [/^50\+ structures destroyed this wipe$/, '50+ estruturas destruídas nesta wipe'],
+  [/^(\d+) Patrol Helis downed this wipe$/, '$1 Patrol Helis abatidos nesta wipe'],
+  [/^3\+ Patrol Heli(?:copter)?s downed (?:this|in one) wipe$/, '3+ Patrol Helis abatidos numa wipe'],
+  [/^(\d+) Bradleys destroyed this wipe$/, '$1 Bradleys destruídos nesta wipe'],
+  [/^3\+ Bradleys destroyed (?:this|in one) wipe$/, '3+ Bradleys destruídos numa wipe'],
+  [/^(\d+) crates hacked this wipe$/, '$1 crates hackeadas nesta wipe'],
+  [/^5\+ (?:locked )?crates hacked (?:this|in one) wipe$/, '5+ crates hackeadas numa wipe'],
+  [/^(\d+) kills without dying \(ongoing!\)$/, '$1 kills sem morrer (a decorrer!)'],
+  [/^10\+ kills without dying \(ongoing\)$/, '10+ kills sem morrer (a decorrer)'],
+  [/^Redeemed the supporter badge in the store$/, 'Resgatou o distintivo de supporter na loja'],
+  [/^Redeem the supporter badge in the store$/, 'Resgata o distintivo de supporter na loja'],
+];
+function tAch(b) {
+  if (LANG !== 'pt' || !b) return b;
+  const out = Object.assign({}, b, { name: ACH_PT[b.name] || b.name });
+  for (const [re, rep] of ACH_DESC_PT) { if (re.test(b.desc || '')) { out.desc = b.desc.replace(re, rep); break; } }
+  return out;
+}

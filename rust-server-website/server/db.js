@@ -136,6 +136,8 @@ CREATE TABLE IF NOT EXISTS store_items (
   id          TEXT PRIMARY KEY,
   name        TEXT NOT NULL,
   description TEXT,
+  name_pt     TEXT,
+  description_pt TEXT,
   cost        INTEGER NOT NULL,
   command     TEXT,
   active      INTEGER NOT NULL DEFAULT 1,
@@ -270,7 +272,11 @@ for (const sql of [
   'ALTER TABLE bans ADD COLUMN steam_id TEXT',
   'ALTER TABLE redemptions ADD COLUMN sent_ts INTEGER',
   'ALTER TABLE ow_cases ADD COLUMN vote_alerted INTEGER',
+  'ALTER TABLE store_items ADD COLUMN name_pt TEXT',
+  'ALTER TABLE store_items ADD COLUMN description_pt TEXT',
 ]) { try { db.exec(sql); } catch { /* coluna já existe */ } }
+// bases anteriores a sent_ts: resgates já enviados não voltam à fila do plugin
+db.exec("UPDATE redemptions SET sent_ts = ts WHERE status = 'sent' AND sent_ts IS NULL");
 
 // bounty de reporters pago (uma vez por alvo banido — sobrevive a delete+recreate do ban)
 db.exec('CREATE TABLE IF NOT EXISTS bounties_paid (steam_id TEXT PRIMARY KEY, ts INTEGER NOT NULL)');
@@ -493,10 +499,11 @@ function addNotice(steamId, text) {
 function pendingNotices(limit = 50) {
   // notices de jogadores que nunca mais voltaram expiram — senão 50 antigas
   // entupiam a fila para sempre e as novas nunca chegavam a ninguém
-  db.prepare('UPDATE notices SET delivered_ts = -1 WHERE delivered_ts IS NULL AND ts < ?')
+  db.prepare('UPDATE notices SET delivered_ts = -1 WHERE delivered_ts IS NULL AND created_ts < ?')
     .run(now() - 14 * 86400);
+  // mais recentes primeiro: 50 notices antigas de jogadores offline nunca bloqueiam as novas
   return db.prepare(
-    'SELECT id, steam_id, text FROM notices WHERE delivered_ts IS NULL ORDER BY id LIMIT ?').all(limit);
+    'SELECT id, steam_id, text FROM notices WHERE delivered_ts IS NULL ORDER BY id DESC LIMIT ?').all(limit);
 }
 
 function markNoticesDelivered(ids) {
@@ -759,15 +766,16 @@ function getWallet(steamId) {
 
 function syncStoreItems(items) {
   const up = db.prepare(`
-    INSERT INTO store_items (id, name, description, cost, command, active, sort)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO store_items (id, name, description, name_pt, description_pt, cost, command, active, sort)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET name = excluded.name, description = excluded.description,
+      name_pt = excluded.name_pt, description_pt = excluded.description_pt,
       cost = excluded.cost, command = excluded.command, active = excluded.active, sort = excluded.sort
   `);
   const ids = [];
   items.forEach((it, i) => {
-    up.run(it.id, it.name, it.description || null, it.cost | 0, it.command || null,
-           it.active === false ? 0 : 1, i);
+    up.run(it.id, it.name, it.description || null, it.name_pt || null, it.description_pt || null,
+           it.cost | 0, it.command || null, it.active === false ? 0 : 1, i);
     ids.push(it.id);
   });
   // desativa itens que já não estão no ficheiro (lista vazia = loja fechada)
@@ -780,7 +788,7 @@ function syncStoreItems(items) {
 }
 
 function listStore() {
-  return db.prepare('SELECT id, name, description, cost FROM store_items WHERE active = 1 ORDER BY sort').all();
+  return db.prepare('SELECT id, name, description, name_pt, description_pt, cost FROM store_items WHERE active = 1 ORDER BY sort').all();
 }
 
 function redeem(steamId, itemId) {
@@ -1017,7 +1025,7 @@ function mapAdmin(action, data) {
 
 // ---------- equipas (nativas do Rust, snapshot do plugin) ----------
 
-function updateTeams(wipeId, teamsArr) {
+function updateTeams(wipeId, teamsArr, truncated = false) {
   const up = db.prepare(`
     INSERT INTO teams (wipe_id, team_id, leader_id, members, updated_at) VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(wipe_id, team_id) DO UPDATE SET
@@ -1037,7 +1045,8 @@ function updateTeams(wipeId, teamsArr) {
              JSON.stringify(t.members.map(String).slice(0, 12)), now());
       kept.push(id);
     }
-    if (kept.length) {
+    // snapshot truncado (servidor com 200+ equipas): não apagar o que não coube
+    if (kept.length && !truncated) {
       db.prepare(`DELETE FROM teams WHERE wipe_id = ?
                   AND team_id NOT IN (${kept.map(() => '?').join(',')})`).run(wipeId, ...kept);
     } else {
@@ -1480,6 +1489,12 @@ function addBan({ steamName, reason, staffName, evidence, steamId }) {
 }
 
 function deleteBan(id) {
+  // ban apagado no site (SteamID errado, engano) → cancelar o banid ainda por
+  // aplicar no jogo; o que já foi aplicado fica registado como tal
+  const row = db.prepare('SELECT steam_id FROM bans WHERE id = ?').get(id | 0);
+  if (row?.steam_id) {
+    db.prepare("DELETE FROM ban_queue WHERE steam_id = ? AND status != 'applied'").run(row.steam_id);
+  }
   db.prepare('DELETE FROM bans WHERE id = ?').run(id | 0);
 }
 
@@ -1693,6 +1708,13 @@ function comparePlayers(idA, idB) {
 }
 
 // ---------- wipes ----------
+
+function describeWipe(id, body) {
+  db.prepare('UPDATE wipes SET map_seed = COALESCE(?, map_seed), map_size = COALESCE(?, map_size), label = COALESCE(?, label) WHERE id = ?')
+    .run(body.mapSeed ? String(body.mapSeed).slice(0, 20) : null,
+         Number.isFinite(body.mapSize) ? body.mapSize | 0 : null,
+         typeof body.label === 'string' ? body.label.slice(0, 40) : null, id);
+}
 
 function listWipes() {
   return db.prepare('SELECT id, started_at, label, map_seed, map_size FROM wipes ORDER BY started_at DESC LIMIT 24').all();
@@ -2047,7 +2069,7 @@ module.exports = {
   // votação de mapa
   mapState, castMapVote, mapAdmin, voteWeight,
   // wipes
-  listWipes, previousWipeId, wipeSummary,
+  listWipes, describeWipe, previousWipeId, wipeSummary,
   // equipas, elo, conquistas, heatmap, bans admin
   updateTeams, teamLeaderboard, playerTeam,
   eloLeaderboard, eloGet, eloTier,

@@ -7,7 +7,7 @@ in-game**, **votação de mapa com peso ganho por horas**, **Overwatch comunitá
 (revisão de clips de suspeitos), **apelos de ban**, novidades/changelog, secção
 de staff com transparência de bans, e candidaturas a moderador.
 
-**Zero dependências**: só precisa de Node.js 22+ (usa o SQLite embutido do Node).
+**Zero dependências**: só precisa de Node.js 22.13+ (24 LTS recomendado — usa o SQLite embutido do Node).
 Sem `npm install`, sem build. Ideal para self-hosting num PC em casa.
 
 ## Arranque rápido
@@ -50,8 +50,10 @@ rust-server-website/
 │   ├── staff.html     equipa, Código do Moderador, lista pública de bans
 │   ├── candidatura.html  formulário de candidatura a moderador
 │   ├── regras.html    regras do servidor
-│   └── admin.html     painel da staff: candidaturas, apelos, entregas,
-│                      overwatch, bans, votação de mapa, novidades (adminKey)
+│   └── admin.html     console da staff (um só, por permissão): mods veem reports,
+│                      watchlist e chat da staff; admins veem tudo — overview, candidaturas,
+│                      apelos, entregas, overwatch, bans, mapa, novidades, equipa, wipe.
+│                      Entrada por sessão Steam com cargo, ou adminKey (emergência)
 ├── plugin/
 │   └── StatsHub.cs    plugin Oxide/uMod: stats para o site + entrega de recompensas
 └── docs/
@@ -111,10 +113,13 @@ Não bane ninguém: é um F7 automático para a staff ir espectar.
 ## Integração com o Discord (webhooks)
 
 Em `config.json` → `discordWebhooks` podes definir 4 canais (cria os webhooks
-em Discord → Editar canal → Integrações): `killfeed` (digest de kills a cada
-lote de 30 s), `bans` (anúncio de cada banimento registado no /admin), `staff`
-(nova candidatura recebida) e `announcements` (resumo automático de fim de
-wipe). Deixa vazio o que não quiseres.
+em Discord → Editar canal → Integrações, ou deixa o `deploy/discord-setup.js`
+montar tudo): `killfeed` (digest de kills a cada lote de 30 s), `bans` (anúncio
+de cada banimento registado no console), `staff` (nova candidatura + alertas
+privados: pressão de reports F7, anomalias de kills, primeira kill de uma conta
+sinalizada, votos de Overwatch a acumular) e `announcements` (resumo automático
+de fim de wipe com "State of the server", novidades publicadas no console e o
+countdown 24 h antes do wipe). Deixa vazio o que não quiseres.
 
 ## Login Steam
 
@@ -166,9 +171,10 @@ Instalação do plugin: ver `plugin/README.md`.
 | `POST /api/redeem` · `/api/mapvote/vote` · `/api/owcases/vote` · `/api/appeals` | ações autenticadas (sessão Steam) |
 
 Endpoints do plugin (`/api/ingest`, `/api/heartbeat`, `/api/wipe`,
-`/api/plugin/redemptions[...]`) exigem o header `X-API-Key`. O painel
-`/api/admin/*` (candidaturas, apelos, entregas, overwatch, mapa, novidades)
-exige `X-Admin-Key`.
+`/api/plugin/redemptions|notices|bans[...]`) exigem o header `X-API-Key`.
+O console `/api/admin/*` aceita uma sessão Steam com cargo `admin` (tabela
+`roles`, gerida em Team) **ou** o header `X-Admin-Key`; `/api/mod/*` aceita
+qualquer cargo de staff.
 
 ## Produção (recomendado)
 

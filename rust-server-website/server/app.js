@@ -17,6 +17,15 @@ const og = require('./og');
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 const EXAMPLE_PATH = path.join(__dirname, 'config.example.json');
 
+// node:sqlite só existe sem flags a partir do 22.13 — falhar cedo com uma mensagem clara
+{
+  const [maj, min] = process.versions.node.split('.').map(Number);
+  if (maj < 22 || (maj === 22 && min < 13)) {
+    console.error(`\n⚠️  Node ${process.versions.node} é demasiado antigo: o site precisa de Node 22.13+ (24 LTS recomendado).\n   Descarrega em https://nodejs.org e volta a arrancar.\n`);
+    process.exit(1);
+  }
+}
+
 if (!fs.existsSync(CONFIG_PATH)) {
   const example = JSON.parse(fs.readFileSync(EXAMPLE_PATH, 'utf-8'));
   example.apiKey = crypto.randomBytes(24).toString('hex');
@@ -39,8 +48,13 @@ const clips = require('./clips');
 
 // O dono do servidor tem sempre cargo de admin no site (idempotente).
 // Substituível/removível via "ownerSteamId" no config.json ("" desativa).
-const OWNER_STEAM_ID = config.ownerSteamId !== undefined ? config.ownerSteamId : '76561198874661673';
-if (OWNER_STEAM_ID) store.setRole(String(OWNER_STEAM_ID), 'admin');
+const OWNER_STEAM_ID = String(config.ownerSteamId || '');
+if (/^7656119\d{10}$/.test(OWNER_STEAM_ID)) {
+  store.setRole(OWNER_STEAM_ID, 'admin');
+  console.log(`[roles] ownerSteamId ${OWNER_STEAM_ID} → admin`);
+} else if (OWNER_STEAM_ID) {
+  console.warn('[roles] ownerSteamId inválido (tem de ser um SteamID64 de 17 dígitos) — ignorado');
+}
 for (const [k, v] of Object.entries({
   server_name: config.serverName, server_ip: config.serverIp,
   discord: config.discord,
@@ -52,6 +66,11 @@ for (const [k, v] of Object.entries({
 // config.json é só o valor inicial — um boot nunca esmaga o que a UI definiu
 for (const [k, v] of Object.entries({ next_wipe: config.nextWipe, map_image: config.mapImage })) {
   if (v && store.getInfo(k) === null) store.setInfo(k, v);
+}
+// countdown nunca fica sem data: vazio ou no passado → próximo force wipe (1ª quinta, 19:00 UTC)
+{
+  const nw = store.getInfo('next_wipe');
+  if (!nw || new Date(nw).getTime() < Date.now() - 6 * 3600e3) store.setInfo('next_wipe', api.nextForceWipe());
 }
 if (!config.brandRest) store.setInfo('brand_rest', '');
 
@@ -75,12 +94,28 @@ const MIME = {
   '.js': 'text/javascript; charset=utf-8', '.json': 'application/json',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon', '.webp': 'image/webp', '.woff2': 'font/woff2',
+  '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8', '.webmanifest': 'application/manifest+json',
 };
+
+// sitemap gerado a partir das páginas públicas (sem consola, sem TV, sem utilitários)
+const SITEMAP_SKIP = new Set(['admin', 'mod', '404', 'tv', 'player']);
+let _sitemap = null;
+function serveSitemap(res) {
+  if (!_sitemap) {
+    const pages = fs.readdirSync(PUBLIC_DIR).filter((f) => f.endsWith('.html'))
+      .map((f) => f.slice(0, -5)).filter((p) => !SITEMAP_SKIP.has(p)).sort();
+    _sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+      pages.map((p) => `  <url><loc>${SITE_URL}/${p === 'index' ? '' : p}</loc></url>`).join('\n') + '\n</urlset>\n';
+  }
+  res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
+  res.end(_sitemap);
+}
 
 function serveStatic(req, res, url) {
   let p;
   try { p = decodeURIComponent(url.pathname); }
   catch { res.writeHead(400); res.end('Bad Request'); return; } // %-encoding inválido
+  if (p.includes('\0')) { res.writeHead(400); res.end('Bad Request'); return; } // %00 rebenta o fs
   if (p === '/') p = '/index.html';
   if (!path.extname(p)) p += '.html'; // /stats -> stats.html
   const file = path.normalize(path.join(PUBLIC_DIR, p));
@@ -174,8 +209,11 @@ function httpsSite() { return String(config.siteUrl || '').startsWith('https://'
 // Escreve em streaming direto para o disco: nunca carrega o vídeo em memória.
 function handleClipUpload(req, res) {
   if (req.method !== 'POST') { fail(res, 405, 'Method Not Allowed'); return; }
-  if (!config.adminKey || !keysMatch(req.headers['x-admin-key'], config.adminKey)) {
-    api.json(res, 401, { error: 'Invalid admin key' }); return;
+  // mesma regra dupla da API admin: adminKey OU sessão Steam com cargo admin
+  const viaKey = config.adminKey && keysMatch(req.headers['x-admin-key'], config.adminKey);
+  const session = viaKey ? null : auth.readSession(req, config.sessionSecret);
+  if (!viaKey && !(session?.steamId && store.roleOf(String(session.steamId)) === 'admin')) {
+    api.json(res, 401, { error: 'Admin access required' }); return;
   }
   const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
   const ext = type === 'video/webm' ? '.webm' : (type === 'video/mp4' ? '.mp4' : null);
@@ -256,7 +294,8 @@ const server = http.createServer((req, res) => {
     if (url.pathname.startsWith('/clips/')) { serveClip(req, res, url); return; }
     if (url.pathname === '/api/admin/owclip') { handleClipUpload(req, res); return; }
 
-    if (!url.pathname.startsWith('/api/')) { serveStatic(req, res, url); return; }
+    if (!url.pathname.startsWith('/api/')) { if (url.pathname === '/sitemap.xml') { serveSitemap(res); return; }
+  serveStatic(req, res, url); return; }
 
     // ler a sessão nunca pode derrubar o pedido (cookie forjado/inválido)
     let session = null;
@@ -284,6 +323,12 @@ const server = http.createServer((req, res) => {
       if (tooBig) return;
       let body = null;
       try { body = JSON.parse(Buffer.concat(chunks).toString('utf-8')); } catch { /* body fica null */ }
+      // defesa CSRF em profundidade: um POST cross-site do browser (Sec-Fetch-Site é
+      // definido pelo próprio browser, não pela página) nunca usa a sessão Steam.
+      // O plugin e os scripts não enviam este header, por isso não são afetados.
+      if (req.method === 'POST' && req.headers['sec-fetch-site'] === 'cross-site') {
+        api.json(res, 403, { error: 'Cross-site request blocked' }); return;
+      }
       try {
         if (!api.route(req, res, url, body, config, session)) {
           api.json(res, 404, { error: 'Unknown endpoint' });
@@ -335,5 +380,10 @@ setInterval(() => api.checkWipeHype(config), 30 * 60e3).unref();
 
 server.listen(PORT, HOST, () => {
   console.log(`Site running at http://${HOST}:${PORT} (public URL: ${SITE_URL})`);
-  console.log(`Plugin API key (X-API-Key): ${config.apiKey}`);
+  console.log(`Plugin API key (X-API-Key): …${String(config.apiKey).slice(-4)}  (completa em server/config.json)`);
+  if (httpsSite() && !config.trustProxy) {
+    // atrás do Cloudflare Tunnel todos os visitantes chegam com o IP do cloudflared:
+    // sem trustProxy o rate-limit das candidaturas bloqueia toda a gente após a 1ª
+    console.warn('[config] siteUrl é https mas "trustProxy" está false — atrás do Cloudflare Tunnel põe "trustProxy": true');
+  }
 });

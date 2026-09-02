@@ -110,11 +110,19 @@
 });
 
 // Código do Moderador: colapsado à linha do título; clicar expande (delegado — sobrevive ao i18n)
-document.querySelectorAll('#mod-code .pledge').forEach((p) => p.classList.add('closed'));
+document.querySelectorAll('#mod-code .pledge').forEach((p) => {
+  p.classList.add('closed'); p.tabIndex = 0; p.setAttribute('role', 'button'); p.setAttribute('aria-expanded', 'false');
+});
+function togglePledge(p) { p.classList.toggle('closed'); p.setAttribute('aria-expanded', String(!p.classList.contains('closed'))); }
 document.getElementById('mod-code').addEventListener('click', (e) => {
   if (e.target.closest('a')) return;
   const p = e.target.closest('.pledge');
-  if (p) p.classList.toggle('closed');
+  if (p) togglePledge(p);
+});
+document.getElementById('mod-code').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const p = e.target.closest('.pledge');
+  if (p) { e.preventDefault(); togglePledge(p); }
 });
 </script>
 </body>

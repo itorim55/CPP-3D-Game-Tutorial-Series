@@ -1,5 +1,6 @@
 # Exemplo de configuração do Cloudflare Tunnel.
-# Windows: C:\cloudflared\config.yml   Linux: ~/.cloudflared/config.yml
+# Windows: %USERPROFILE%\.cloudflared\config.yml (serviço: C:\Windows\System32\config\systemprofile\.cloudflared\)
+# Linux: ~/.cloudflared/config.yml
 # Substitui o hostname, o ID do tunnel e o caminho do ficheiro de credenciais
 # (criado pelo `cloudflared tunnel create rustworthy`).
 

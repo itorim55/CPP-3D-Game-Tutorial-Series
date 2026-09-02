@@ -124,7 +124,11 @@ function mountSubnav() {
   const row = document.createElement('nav');
   row.className = 'subnav';
   row.innerHTML = hub.items.map(([href, key]) => {
-    const active = href.split('#')[0] === path && (!href.includes('#') || location.hash === '#' + href.split('#')[1]);
+    // a pill sem hash só fica ativa quando o hash atual não pertence a outra pill do hub
+    const frag = href.includes('#') ? href.split('#')[1] : null;
+    const hubFrags = hub.items.map(([h]) => (h.includes('#') ? h.split('#')[1] : null)).filter(Boolean);
+    const active = href.split('#')[0] === path &&
+      (frag ? location.hash === '#' + frag : !hubFrags.includes(location.hash.slice(1)));
     return `<a href="${href}" ${active ? 'class="active"' : ''}>${t(key)}</a>`;
   }).join('');
   main.prepend(row);
@@ -234,7 +238,7 @@ function applyBrand(s) {
   });
 
   if (!document.title.includes(full)) {
-    document.title = `${document.title.split(' — ')[0]} — ${full}`;
+    document.title = `${document.title} — ${full}`; // sufixo, sem cortar "1 vs 1 — Comparator"
   }
 }
 
@@ -301,7 +305,7 @@ function buildTickerItems(s, kf, lb) {
   return items;
 }
 
-const TICKER_QUIET = ['/apelo', '/candidatura', '/regras'];
+const TICKER_QUIET = ['/apelo', '/candidatura', '/regras', '/admin'];
 
 async function renderTicker() {
   const header = document.querySelector('header');
@@ -380,7 +384,7 @@ function initChat(container, { defaultChannel = 'global' } = {}) {
         ${m.role ? `<span class="rolechip">${m.role === 'admin' ? 'ADMIN' : 'MOD'}</span>` : ''}
         <span class="txt">${esc(m.text)}</span>
         <span class="when">${timeAgo(m.ts)}</span>
-        ${user.isMod ? `<a href="#" class="del" data-del="${m.id}" title="delete">×</a>` : ''}
+        ${user.isMod ? `<a href="#" class="del" data-del="${m.id}" title="${t('chat.delete')}" aria-label="${t('chat.delete')}">×</a>` : ''}
       </div>`).join('');
     if (append) box.insertAdjacentHTML('beforeend', html);
     else box.innerHTML = html || `<p class="chat-empty">${t('chat.empty')}</p>`;
@@ -403,7 +407,7 @@ function initChat(container, { defaultChannel = 'global' } = {}) {
       return;
     }
     inp.innerHTML = `
-      <input type="text" id="ct-text" maxlength="300" placeholder="${t('chat.ph')}" autocomplete="off">
+      <input type="text" id="ct-text" maxlength="300" placeholder="${t('chat.ph')}" aria-label="${t('chat.ph')}" autocomplete="off">
       <button class="btn" id="ct-send">${t('chat.send')}</button>`;
     const send = async () => {
       const field = container.querySelector('#ct-text');
@@ -461,7 +465,7 @@ function mountChatDock() {
     <div class="cd-head">
       <b>${t('chat.title')}</b>
       <span class="live-badge" style="margin-left:auto"><span class="pulse"></span>LIVE</span>
-      <button class="cd-min" id="cd-min" title="—">—</button>
+      <button class="cd-min" id="cd-min" title="${t('chat.minimize')}" aria-label="${t('chat.minimize')}">—</button>
     </div>
     <div class="cd-body" id="cd-body"></div>`;
   document.body.appendChild(aside);
@@ -647,7 +651,8 @@ function renderAreaChart(container, data, { color = '#ff5b26', maxY = null, xFmt
   };
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => {
     const v = minX + (maxX - minX) * f;
-    return `<text x="${x(v)}" y="${H - 6}" text-anchor="middle" font-size="10" fill="#5c6675">${fmtHour(v)}</text>`;
+    const anchor = f === 0 ? 'start' : f === 1 ? 'end' : 'middle';
+    return `<text x="${x(v)}" y="${H - 6}" text-anchor="${anchor}" font-size="10" fill="#5c6675">${fmtHour(v)}</text>`;
   }).join('');
 
   const wrap = document.createElement('div');

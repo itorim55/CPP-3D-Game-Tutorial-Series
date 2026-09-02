@@ -44,7 +44,7 @@
 <header></header>
 
 <main>
-  <h2 class="section" style="margin-top:6px" data-i18n="vs.title">⚔️ 1 vs 1 — Player comparator</h2>
+  <h2 class="section" style="margin-top:6px" data-i18n="vs.title">1 vs 1 — Player comparator</h2>
   <p style="color:var(--ink-muted);font-size:13px" data-i18n="vs.sub">Pick two players and see who's boss. Includes their direct head-to-head history.</p>
 
   <div class="grid cols-2" style="margin-top:14px;max-width:760px">
@@ -79,15 +79,19 @@ function attachSearch(input, results, assign) {
     timer = setTimeout(async () => {
       const r = await api(`/api/search?q=${encodeURIComponent(q)}`);
       out.innerHTML = r.rows.map((p) => `
-        <div class="row" style="cursor:pointer" data-pick="${esc(p.steam_id)}" data-name="${esc(p.name)}">
+        <div class="row" style="cursor:pointer" tabindex="0" role="button" data-pick="${esc(p.steam_id)}" data-name="${esc(p.name)}">
           <b>${esc(p.name)}</b><span class="meta">${hours(p.playtime_s)}</span>
         </div>`).join('') || `<p style="color:var(--ink-muted);font-size:13px">${t('vs.nothing')}</p>`;
-      out.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('click', () => {
-        assign(el.dataset.pick);
-        document.getElementById(input).value = el.dataset.name;
-        out.innerHTML = '';
-        maybeLoad();
-      }));
+      out.querySelectorAll('[data-pick]').forEach((el) => {
+        const pick = () => {
+          assign(el.dataset.pick);
+          document.getElementById(input).value = el.dataset.name;
+          out.innerHTML = '';
+          maybeLoad();
+        };
+        el.addEventListener('click', pick);
+        el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+      });
     }, 250);
   });
 }
@@ -193,6 +197,12 @@ async function load() {
 }
 
 if (A && B) load();
+// vindo do perfil ("Compare with another player"): mostrar quem já está no lado A
+if (A && !B) {
+  api(`/api/player?id=${encodeURIComponent(A)}`)
+    .then((p) => { const el = document.getElementById('search-a'); if (el && p?.name) el.value = p.name; })
+    .catch(() => {});
+}
 </script>
 </body>
 </html>

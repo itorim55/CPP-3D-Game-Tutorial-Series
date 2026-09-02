@@ -9,7 +9,11 @@ const https = require('node:https');
 const _warned = new Set(); // um aviso por código de erro, não spam por post
 
 function send(webhookUrl, payload) {
-  if (!webhookUrl || !webhookUrl.startsWith('https://discord.com/api/webhooks/')) return;
+  if (!webhookUrl) return;
+  if (!/^https:\/\/(ptb\.|canary\.)?discord(app)?\.com\/api\/webhooks\//.test(webhookUrl)) {
+    if (!_warned.has('badurl')) { _warned.add('badurl'); console.warn('[discord] webhook URL ignorado — tem de ser https://discord.com/api/webhooks/…'); }
+    return;
+  }
   try {
     const body = JSON.stringify(payload);
     const req = https.request(webhookUrl, {
@@ -31,6 +35,8 @@ function send(webhookUrl, payload) {
 }
 
 const ORANGE = 0xe0552e, RED = 0xd05c5c, GOLD = 0xd8a94e;
+// nomes vindos do jogo nunca podem virar markdown/links mascarados no Discord
+const md = (s) => String(s ?? '').replace(/([\\*_~`|\[\]()])/g, '\\$1');
 
 /** Killfeed: um digest por lote de ingestão (evita rate-limit do Discord). */
 function killfeed(url, lines) {
@@ -50,13 +56,13 @@ function banAnnounce(url, { steamName, reason, staffName, evidence, steamId }, s
     embeds: [{
       color: RED,
       author: { name: 'RUSTWORTHY · BAN HAMMER' },
-      title: `⛔  ${steamName} has been banned`,
+      title: `⛔  ${md(steamName)} has been banned`,
       description:
-        `**📋 Reason**\n${reason}\n\n` +
+        `**📋 Reason**\n${md(reason)}\n\n` +
         (evidence ? `**🎥 Evidence**\n${evidence}\n\n` : '') +
         `Another one gone. The island stays clean. 🧹`,
       fields: [
-        { name: '🛡️ Banned by', value: staffName, inline: true },
+        { name: '🛡️ Banned by', value: md(staffName), inline: true },
         ...(site ? [{ name: '⚖️ Think it\'s a mistake?', value: `[Appeal here](${site}/apelo)`, inline: true }] : []),
         ...(site && steamId ? [{ name: '📊 Their stats', value: `[Profile](${site}/player?id=${steamId})`, inline: true }] : []),
       ],
@@ -71,7 +77,7 @@ function newApplication(url, { name, discord, steamId }) {
     embeds: [{
       color: GOLD,
       title: '📋 New moderator application',
-      description: `**${name}** (${discord})\nSteamID: ${steamId}\nReview in the panel: /admin`,
+      description: `**${md(name)}** (${md(discord)})\nSteamID: ${steamId}\nReview in the panel: /admin`,
     }],
   });
 }
@@ -79,13 +85,13 @@ function newApplication(url, { name, discord, steamId }) {
 function wipeSummaryPost(url, s, siteUrl) {
   if (!s) return;
   const f = [];
-  if (s.topKiller) f.push({ name: '⚔️ Top killer', value: `${s.topKiller.name} (${s.topKiller.n} kills)`, inline: true });
-  if (s.topElo) f.push({ name: '🦅 Best Elo', value: `${s.topElo.name} (${s.topElo.rating})`, inline: true });
-  if (s.longestKill) f.push({ name: '🎯 Longest kill', value: `${s.longestKill.name} — ${Math.round(s.longestKill.distance)} m`, inline: true });
-  if (s.topHeadshots) f.push({ name: '🎖️ Most headshots', value: `${s.topHeadshots.name} (${s.topHeadshots.n})`, inline: true });
-  if (s.topFarmer) f.push({ name: '🌾 Top farmer', value: `${s.topFarmer.name}`, inline: true });
-  if (s.topHours) f.push({ name: '⏱️ Most hours', value: `${s.topHours.name} (${Math.round(s.topHours.seconds / 3600)} h)`, inline: true });
-  if (s.topDeaths) f.push({ name: '🧲 Punching bag', value: `${s.topDeaths.name} (${s.topDeaths.n} deaths)`, inline: true });
+  if (s.topKiller) f.push({ name: '⚔️ Top killer', value: `${md(s.topKiller.name)} (${s.topKiller.n} kills)`, inline: true });
+  if (s.topElo) f.push({ name: '🦅 Best Elo', value: `${md(s.topElo.name)} (${s.topElo.rating})`, inline: true });
+  if (s.longestKill) f.push({ name: '🎯 Longest kill', value: `${md(s.longestKill.name)} — ${Math.round(s.longestKill.distance)} m`, inline: true });
+  if (s.topHeadshots) f.push({ name: '🎖️ Most headshots', value: `${md(s.topHeadshots.name)} (${s.topHeadshots.n})`, inline: true });
+  if (s.topFarmer) f.push({ name: '🌾 Top farmer', value: `${md(s.topFarmer.name)}`, inline: true });
+  if (s.topHours) f.push({ name: '⏱️ Most hours', value: `${md(s.topHours.name)} (${Math.round(s.topHours.seconds / 3600)} h)`, inline: true });
+  if (s.topDeaths) f.push({ name: '🧲 Punching bag', value: `${md(s.topDeaths.name)} (${s.topDeaths.n} deaths)`, inline: true });
   // prova de trabalho da moderação — os jogadores VEEM a limpeza a acontecer
   if (s.modStats) {
     const m = s.modStats;

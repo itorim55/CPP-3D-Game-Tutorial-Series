@@ -48,6 +48,7 @@
 
   <p id="my-redemptions" style="display:none;margin-top:22px;font-size:14px">
     <a href="/conta" data-i18n="store.myRedLink">📦 My redemptions &amp; delivery status →</a>
+    <span style="display:block;color:var(--ink-muted);font-size:12.5px;margin-top:6px" data-i18n="store.deliveryNote">Automatic rewards are delivered in-game within ~1 minute (if you are online). Manual items are handled by staff within 24 h.</span>
   </p>
 </main>
 
@@ -85,10 +86,10 @@ async function load() {
     return `
     <div class="card store-item">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
-        <b style="font-size:16px">${esc(it.name)}</b>
+        <b style="font-size:16px">${esc(LANG === 'pt' && it.name_pt || it.name)}</b>
         <span class="cost">${fmtNum(it.cost)} 💎</span>
       </div>
-      <p style="color:var(--ink-2);font-size:13.5px;margin:8px 0 14px">${esc(it.description || '')}</p>
+      <p style="color:var(--ink-2);font-size:13.5px;margin:8px 0 14px">${esc(LANG === 'pt' && it.description_pt || it.description || '')}</p>
       ${user.loggedIn ? `<button class="btn" data-id="${esc(it.id)}" ${canAfford ? '' : 'disabled'}>
         ${canAfford ? t('store.redeem') : t('store.notEnough')}
       </button>` : ''}

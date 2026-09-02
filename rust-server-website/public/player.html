@@ -25,7 +25,7 @@
 (async () => {
   const id = new URLSearchParams(location.search).get('id');
   const el = document.getElementById('content');
-  if (!id) { el.innerHTML = '<p>Missing <code>id</code> parameter.</p>'; return; }
+  if (!id) { el.innerHTML = `<p class="empty">${t('player.noId')}</p>`; return; }
 
   let p;
   try { p = await api(`/api/player?id=${encodeURIComponent(id)}`); }
@@ -59,7 +59,7 @@
     </div>
 
     ${p.badges.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center">
-      ${p.badges.map((b) => `<span title="${esc(b.desc)}" style="background:var(--surface);border:1px solid var(--line);padding:6px 14px;font-size:13px;cursor:help">${b.icon} <b>${esc(b.name)}</b></span>`).join('')}
+      ${p.badges.map(tAch).map((b) => `<span title="${esc(b.desc)}" style="background:var(--surface);border:1px solid var(--line);padding:6px 14px;font-size:13px;cursor:help">${b.icon} <b>${esc(b.name)}</b></span>`).join('')}
       <a href="/conquistas" style="font-size:12.5px">${t('player.allBadges')}</a>
     </div>` : ''}
 
@@ -117,14 +117,14 @@
       </div>
       <div class="card">
         <h3>${t('player.victims')}</h3>
-        ${p.victims.length ? p.victims.map((v) => `
-          <p style="font-size:14px">${playerLink(v.steam_id, v.name || v.steam_id)} <span style="color:var(--ink-muted)">× ${v.n}</span></p>`).join('')
+        ${p.victims.length ? `<table><tbody>${p.victims.map((v) => `
+          <tr><td>${playerLink(v.steam_id, v.name || v.steam_id)}</td><td class="num">× ${v.n}</td></tr>`).join('')}</tbody></table>`
           : '<p style="color:var(--ink-muted);font-size:13px">—</p>'}
       </div>
       <div class="card">
         <h3>${t('player.nemesis')}</h3>
-        ${p.nemesis.length ? p.nemesis.map((v) => `
-          <p style="font-size:14px">${playerLink(v.steam_id, v.name || v.steam_id)} <span style="color:var(--ink-muted)">× ${v.n}</span></p>`).join('')
+        ${p.nemesis.length ? `<table><tbody>${p.nemesis.map((v) => `
+          <tr><td>${playerLink(v.steam_id, v.name || v.steam_id)}</td><td class="num">× ${v.n}</td></tr>`).join('')}</tbody></table>`
           : '<p style="color:var(--ink-muted);font-size:13px">—</p>'}
       </div>
     </div>

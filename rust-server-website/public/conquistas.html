@@ -14,7 +14,7 @@
 <header></header>
 
 <main>
-  <h2 class="section" style="margin-top:6px" data-i18n="ach.title">🏅 Achievements</h2>
+  <h2 class="section" style="margin-top:6px" data-i18n="ach.title">Achievements</h2>
   <p style="color:var(--ink-muted);font-size:13px;margin-top:6px" data-i18n="ach.desc">
     Every badge you can unlock on the server and who holds it. Wipe badges reset with the map;
     the others are forever. Badges show up on your public profile automatically.
@@ -42,8 +42,8 @@
       <div style="display:flex;align-items:center;gap:12px">
         <span class="ach-ico">${b.icon}</span>
         <div>
-          <h3 style="margin:0">${esc(b.name)}</h3>
-          <p style="color:var(--ink-2);font-size:13px;margin:2px 0 0">${esc(b.desc)}</p>
+          <h3 style="margin:0">${esc(tAch(b).name)}</h3>
+          <p style="color:var(--ink-2);font-size:13px;margin:2px 0 0">${esc(tAch(b).desc)}</p>
         </div>
       </div>
       ${b.holders.length ? `

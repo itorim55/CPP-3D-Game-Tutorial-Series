@@ -7,13 +7,13 @@ do dono desta máquina. Idioma base: inglês, com seletor EN|PT (i18n em
 
 ## Arquitetura
 
-- **Zero dependências**: Node 22+ apenas (usa `node:sqlite`). Sem npm install, sem build.
+- **Zero dependências**: Node 22.13+ apenas (24 LTS recomendado; usa `node:sqlite`). Sem npm install, sem build.
 - `server/app.js` — HTTP + estáticos + injeção de Open Graph dinâmico + rotas de login Steam (OpenID)
-- `server/api.js` — todas as rotas /api/* (públicas, autenticadas por sessão, plugin via X-API-Key, admin via X-Admin-Key) + alertas de anomalia de kills e de pressão de reports F7; watchlist anti-cheat em db.js
+- `server/api.js` — todas as rotas /api/* (públicas, autenticadas por sessão, plugin via X-API-Key, admin via sessão Steam com cargo admin OU X-Admin-Key, mods via /api/mod/*) + alertas de anomalia de kills, pressão de reports F7 e votos de Overwatch; automação de wipe (countdown, hype 24h antes, resumo com State of the server); watchlist anti-cheat em db.js
 - `server/db.js` — esquema SQLite e todas as consultas (leaderboards com janelas de tempo, Elo sazonal, equipas, raids agrupados, streaks, conquistas, heatmap, resumo de wipe)
 - `server/auth.js` — Steam OpenID 2.0 + cookie de sessão HMAC
 - `server/og.js` — meta tags Open Graph por rota com dados ao vivo
-- `server/discord.js` — webhooks (killfeed, bans, candidaturas, resumo de wipe)
+- `server/discord.js` — webhooks (killfeed, bans, candidaturas + alertas da staff, resumo de wipe, novidades, hype de wipe); nomes sempre escapados de markdown
 - `server/steam.js` — avatares Steam com cache na tabela players (XML público ou steamApiKey opcional)
 - `server/clips.js` + rotas em app.js — clips de Overwatch alojados em `data/clips/` (upload raw da staff, streaming com Range, apagados automaticamente ao fechar o caso)
 - `public/` — ~20 páginas HTML em inglês com `data-i18n`; `js/i18n.js` (dicionário PT), `js/common.js` (nav/rodapé/ticker injetados, chat reutilizável initChat(), helpers). Cargos: tabela `roles` gerida no console (Team). Console único da staff em /admin (o /mod redireciona): mods veem Watchlist/Reports/Staff chat via /api/mod/*; admins veem tudo — entram pela sessão Steam (cargo admin) ou pela adminKey (emergência); chat global/staff com polling de 5 s em /api/chat

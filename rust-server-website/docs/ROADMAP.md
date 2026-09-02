@@ -81,9 +81,9 @@ As minhas opiniões sobre prioridades, com base na análise da concorrência
 - **Plugins úteis a instalar no servidor** (todos grátis): Player Ranks
   (Codefling), Statistics DB, Playtime Tracker (uMod), DiscordMessages
   (webhooks para o Discord), e o nosso StatsHub.cs para o site.
-- **Segurança do site**: mantém a `adminKey` fora do Discord/git; a página
-  /admin é noindex mas a chave é a única proteção. Com Steam login na fase 1,
-  troca para autenticação por conta.
+- **Segurança do site** ✅ feito: o console aceita a sessão Steam de quem tem
+  cargo `admin` (ownerSteamId automático); a `adminKey` ficou como chave de
+  emergência — mantém-na fora do Discord/git.
 - **Monitorização do servidor de jogo**: RustServerMetrics (HarmonyMod) →
   InfluxDB → Grafana se quiseres dashboards de FPS/lag; não misturar com o
   site de stats de jogadores.

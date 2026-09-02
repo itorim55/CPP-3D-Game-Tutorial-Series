@@ -14,9 +14,8 @@
 <header></header>
 
 <main>
-  <h2 class="section" style="margin-top:6px" data-i18n="stats.title">Leaderboards</h2>
-
   <div id="view-boards">
+  <h2 class="section" style="margin-top:6px" data-i18n="stats.title">Leaderboards</h2>
   <div class="tabs" id="metric-tabs">
     <button data-by="kills" class="active" data-i18n="stats.mKills">Kills</button>
     <button data-by="deaths" data-i18n="stats.mDeaths">Deaths</button>
@@ -27,7 +26,7 @@
     <button data-by="playtime" data-i18n="stats.mHours">Hours played</button>
     <button data-by="precision" data-i18n="stats.mPrecision">Precision 🎯</button>
     <span class="spacer"></span>
-    <select id="wipe-select" style="width:auto;padding:7px 14px;font-size:13px">
+    <select id="wipe-select" aria-label="Wipe" style="width:auto;padding:7px 14px;font-size:13px">
       <option value="w:1h" data-i18n="stats.wLastHour">⏱️ Last hour</option>
       <option value="w:24h" data-i18n="stats.wToday">Today (24 h)</option>
       <option value="w:7d" data-i18n="stats.w7d">Last 7 days</option>
@@ -38,7 +37,7 @@
   </div>
 
   <div style="margin:12px 0;max-width:360px">
-    <input type="text" id="search" placeholder="🔍 search player…" data-i18n-ph="stats.searchPh" autocomplete="off">
+    <input type="text" id="search" aria-label="Search player" placeholder="🔍 search player…" data-i18n-ph="stats.searchPh" autocomplete="off">
     <div id="search-results" class="feed" style="margin-top:8px"></div>
   </div>
 
@@ -300,6 +299,14 @@ async function loadMapEvents() {
     block('📦', t('stats.evCrate'), m.crate, m.totals.crate, 'Crates');
 }
 
+// ids do jogo → nomes legíveis (o id fica no title)
+const WEAPON_NAMES = {
+  'explosive.timed.deployed': 'C4', 'explosive.satchel.deployed': 'Satchel', 'rocket_basic': 'Rocket',
+  'rocket_hv': 'HV Rocket', 'rocket_fire': 'Incendiary Rocket', 'grenade.f1.deployed': 'F1 Grenade',
+  'grenade.beancan.deployed': 'Beancan', 'ammo.rocket.basic': 'Rocket', 'ammo.rifle.explosive': 'Explo Ammo',
+  'ammo.rocket.mlrs': 'MLRS', '40mm_grenade_he': '40mm HE', 'explosive.flare.deployed': 'Flare',
+};
+
 async function loadRaids() {
   const r = await api('/api/raids');
   document.getElementById('raids-body').innerHTML = r.rows.map((raid) => `
@@ -308,7 +315,7 @@ async function loadRaids() {
       <td><b>${esc(raid.grid || '?')}</b></td>
       <td class="num">💥 ${raid.destroyed}</td>
       <td style="white-space:normal">${raid.raiders.map((p) => playerLink(p.steamId, p.name)).join(', ')}</td>
-      <td style="color:var(--ink-muted);font-size:13px">${raid.weapons.map(esc).join(', ') || '—'}</td>
+      <td style="white-space:normal">${raid.weapons.map((w) => `<span class="badge" title="${esc(w)}" style="margin:2px 4px 2px 0">${esc(WEAPON_NAMES[w] || w)}</span>`).join('') || '—'}</td>
     </tr>`).join('') || `<tr><td colspan="5">${t('stats.noRaids')}</td></tr>`;
 }
 

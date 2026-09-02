@@ -14,6 +14,14 @@ E recebe do site:
 - **Recompensas da loja** — a cada 60 s pergunta ao site se há resgates
   pendentes e executa o comando de consola respetivo (ex.:
   `oxide.usergroup add <steamid> queueskip`). Desativável na config.
+- **Notices** — mensagens do site para jogadores no chat (ex.: obrigado + bounty
+  por um report que levou a ban).
+- **Bans do site** — bans registados no console com SteamID são aplicados no
+  jogo com `banid` em ≤60 s. Desativável.
+- **Registo público de ações de admin** — comandos privilegiados (give, spawn,
+  teleport, godmode, vanish, noclip, demos, kicks, bans…) executados por admins
+  ou pela consola/RCON vão para a página Trust do site. Desativável.
+- **Demos automáticas** — 3 reporters distintos em 24h → `demo.record` do alvo.
 
 ## Instalação
 
@@ -32,7 +40,11 @@ E recebe do site:
   "Track resource gathering": true,
   "Track raids (destroyed structures)": true,
   "Deliver store rewards (runs commands)": true,
-  "Reward poll interval (seconds)": 60.0
+  "Auto server demo on report pressure (seconds, 0 = off)": 60.0,
+  "Auto demo: distinct reporters in 24h to trigger": 3,
+  "Reward poll interval (seconds)": 60.0,
+  "Apply site bans in-game (banid)": true,
+  "Public admin action log (give/spawn/teleport...)": true
 }
 ```
 
@@ -73,6 +85,6 @@ cargos no Discord) funcionam em qualquer das opções.
 ## Notas
 
 - Os eventos são enviados em lotes a cada 30 s — uma kill não gera um pedido HTTP imediato.
-- Se o site estiver em baixo, os eventos ficam em fila (até 2000) e são reenviados.
+- Se o site estiver em baixo, os eventos ficam em fila (até 4000) e são reenviados; cada lote leva um `batchId` para um retry nunca duplicar kills/gemas.
 - Testado com a API do Oxide para Rust de 2026; se um hook mudar de assinatura
   após um update da Facepunch, verifica os avisos na consola do servidor.

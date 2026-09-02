@@ -25,6 +25,9 @@ function cleanUrl(s, max = 300) {
   return v && /^https?:\/\//i.test(v) ? v : null;
 }
 
+// nomes de jogadores em embeds do Discord: sem markdown/links mascarados
+function md(s) { return String(s ?? '').replace(/([\\*_~`|\[\]()])/g, '\\$1'); }
+
 function clean(s, max = 200) {
   if (typeof s !== 'string') return null;
   return s.replace(/[\x00-\x1f\x7f]/g, '').slice(0, max).trim() || null;
@@ -44,13 +47,28 @@ const _seenBatches = new Map();
 
 function handleIngest(body, config) {
   const bid = typeof body.batchId === 'string' ? body.batchId.slice(0, 64) : null;
+  if (bid && _seenBatches.has(bid)) return { ok: true, accepted: 0, duplicate: true };
+  // tudo-ou-nada: um erro a meio do lote reverte os eventos já aplicados, para
+  // que o retry do plugin (mesmo batchId) nunca conte duas vezes
+  store.db.exec('SAVEPOINT ingest');
+  let result;
+  try {
+    result = ingestEvents(body, config);
+    store.db.exec('RELEASE ingest');
+  } catch (e) {
+    try { store.db.exec('ROLLBACK TO ingest'); store.db.exec('RELEASE ingest'); } catch { /* já fechado */ }
+    throw e;
+  }
   if (bid) {
-    if (_seenBatches.has(bid)) return { ok: true, accepted: 0, duplicate: true };
     _seenBatches.set(bid, Date.now());
     if (_seenBatches.size > 500) {
       for (const [k, t] of _seenBatches) { if (Date.now() - t > 3600e3) _seenBatches.delete(k); }
     }
   }
+  return result;
+}
+
+function ingestEvents(body, config) {
   const wipe = store.currentWipe();
   const gemsPerHour = config.gemsPerHour ?? 1000;
   const killLines = [];
@@ -69,14 +87,14 @@ function handleIngest(body, config) {
           posX: Number.isFinite(e.posX) ? e.posX : null,
           posZ: Number.isFinite(e.posZ) ? e.posZ : null,
         }, wipe.id);
-        killLines.push(`⚔️ **${clean(e.attackerName, 32) || '?'}** killed **${clean(e.victimName, 32) || '?'}**` +
+        killLines.push(`⚔️ **${md(clean(e.attackerName, 32) || '?')}** killed **${md(clean(e.victimName, 32) || '?')}**` +
           ` (${clean(e.weapon, 32) || '?'}${Number.isFinite(e.distance) ? `, ${Math.round(e.distance)}m` : ''}${e.headshot ? ', HS 🎯' : ''})`);
         checkFirstKillFlags(String(e.attackerId), clean(e.attackerName, 64), wipe.id, config);
         accepted++;
         break;
       }
       case 'teams': {
-        if (Array.isArray(e.teams)) { store.updateTeams(wipe.id, e.teams); accepted++; }
+        if (Array.isArray(e.teams)) { store.updateTeams(wipe.id, e.teams, !!e.truncated); accepted++; }
         break;
       }
       case 'raid': {
@@ -92,10 +110,11 @@ function handleIngest(body, config) {
         break;
       }
       case 'mapevent': {
-        if (!e.steamId || !e.kind) break;
+        const kind = clean(e.kind, 12);
+        if (!e.steamId || !kind) break;
         store.upsertPlayer(String(e.steamId), clean(e.name, 64), ts);
         store.recordMapEvent({
-          ts, kind: clean(e.kind, 12), steamId: String(e.steamId),
+          ts, kind, steamId: String(e.steamId),
           posX: Number.isFinite(e.posX) ? e.posX : null,
           posZ: Number.isFinite(e.posZ) ? e.posZ : null,
         }, wipe.id);
@@ -110,10 +129,11 @@ function handleIngest(body, config) {
         break;
       }
       case 'gather': {
-        if (!e.steamId || !e.resource) break;
+        const resource = clean(e.resource, 32);
+        if (!e.steamId || !resource) break;
         const amount = Math.min(Math.max(0, e.amount | 0), 100000);
         if (!amount) break;
-        store.recordGather(wipe.id, String(e.steamId), clean(e.resource, 32), amount);
+        store.recordGather(wipe.id, String(e.steamId), resource, amount);
         accepted++;
         break;
       }
@@ -135,19 +155,21 @@ function handleIngest(body, config) {
       }
       case 'accuracy': {
         // agregados de pontaria: tiros/acertos/headshots por arma (5 em 5 min)
-        if (!e.steamId || !e.weapon) break;
+        const weapon = clean(e.weapon, 64);
+        if (!e.steamId || !weapon) break;
         const shots = Math.min(Math.max(0, e.shots | 0), 20000);
         const hits = Math.min(Math.max(0, e.hits | 0), shots);
         const hs = Math.min(Math.max(0, e.headshots | 0), hits);
         if (!shots) break;
-        store.recordAccuracy(wipe.id, String(e.steamId), clean(e.weapon, 64), shots, hits, hs);
+        store.recordAccuracy(wipe.id, String(e.steamId), weapon, shots, hits, hs);
         accepted++;
         break;
       }
       case 'admincmd': {
         // comando privilegiado executado no servidor — vai direto para o registo público
-        if (!e.command) break;
-        store.recordAdminAction(ts, clean(e.steamId, 20) || 'server', clean(e.name, 64), clean(e.command, 200));
+        const cmd = clean(e.command, 200);
+        if (!cmd) break;
+        store.recordAdminAction(ts, clean(e.steamId, 20) || 'server', clean(e.name, 64), cmd);
         accepted++;
         break;
       }
@@ -401,10 +423,22 @@ function route(req, res, url, body, config, session) {
       // idempotência: um retry do plugin (timeout) ou um OnNewSave repetido
       // no mesmo arranque não pode partir a wipe em duas
       if (store.now() - oldWipe.started_at < 3600) {
-        json(res, 200, { ok: true, wipe: oldWipe, skipped: 'wipe already started recently' }); return true;
+        // a wipe "First wipe" é criada no 1º acesso; se o servidor de jogo se
+        // apresentar logo a seguir, aproveitar os metadados em vez de os perder
+        if (!oldWipe.map_seed && body.mapSeed) {
+          store.describeWipe(oldWipe.id, {
+            mapSeed: clean(body.mapSeed, 32), label: clean(body.label, 64),
+            mapSize: Number.isFinite(body.mapSize) ? body.mapSize | 0 : null,
+          });
+        }
+        json(res, 200, { ok: true, wipe: store.currentWipe(), skipped: 'wipe already started recently' }); return true;
       }
-      const newWipe = store.startWipe(body);
+      const newWipe = store.startWipe({
+        mapSeed: clean(body.mapSeed, 32), label: clean(body.label, 64),
+        mapSize: Number.isFinite(body.mapSize) ? body.mapSize | 0 : null,
+      });
       if (newWipe.id !== oldWipe.id) {
+        _firstKillAlerted.clear(); // alerta de "1ª kill de conta sinalizada" é por wipe
         const summary = store.wipeSummary(oldWipe.id);
         if (summary) summary.modStats = store.modStats(oldWipe.started_at);
         if (summary && summary.totals?.kills > 0) {
@@ -435,8 +469,10 @@ function route(req, res, url, body, config, session) {
       // manual; o dono pode sempre sobrepor no console (Wipe settings)
       {
         const cur = store.getInfo('next_wipe');
-        if (!cur || new Date(cur).getTime() <= Date.now()) {
-          store.setInfo('next_wipe', nextForceWipe());
+        // já passou OU está a <24h (a wipe aconteceu um pouco antes da hora marcada,
+        // p.ex. 18:30 para as 19:00) → o countdown salta logo para a próxima
+        if (!cur || new Date(cur).getTime() - Date.now() < 24 * 3600e3) {
+          store.setInfo('next_wipe', nextForceWipe(new Date(Date.now() + 24 * 3600e3)));
         }
       }
       json(res, 200, { ok: true, wipe: newWipe });
@@ -455,7 +491,7 @@ function route(req, res, url, body, config, session) {
         json(res, 200, store.status()); return true;
       case '/api/leaderboard': {
         const by = url.searchParams.get('by') || 'kills';
-        const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 100);
+        const limit = Math.min(Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10) || 50), 100);
         const period = url.searchParams.get('period');
         const wipeParam = url.searchParams.get('wipeId');
         const windowParam = url.searchParams.get('window');
@@ -542,7 +578,7 @@ function route(req, res, url, body, config, session) {
         return true;
       }
       case '/api/killfeed':
-        json(res, 200, { rows: store.killfeed(parseInt(url.searchParams.get('limit') || '50', 10) || 50) });
+        json(res, 200, { rows: store.killfeed(Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10) || 50)) });
         return true;
       case '/api/player': {
         const id = url.searchParams.get('id');
@@ -722,7 +758,7 @@ function route(req, res, url, body, config, session) {
       }
     }
 
-    if (req.method === 'POST' && body) {
+    if (req.method === 'POST' && body && typeof body === 'object' && !Array.isArray(body)) {
       switch (p) {
         case '/api/admin/applications': {
           const allowed = ['pending', 'reviewing', 'interview', 'approved', 'rejected'];
@@ -744,7 +780,7 @@ function route(req, res, url, body, config, session) {
           const title = clean(body.title, 120), text = cleanText(body.body, 8000);
           if (!title || !text) { json(res, 400, { error: 'Title and body are required' }); return true; }
           store.addPost(title, text);
-          discord.newsPost(config.discordWebhooks?.announcements, { title, body: text, siteUrl: config.siteUrl });
+          discord.newsPost(config.discordWebhooks?.announcements, { title, body: text, siteUrl: String(config.siteUrl || '').replace(/\/$/, '') });
           json(res, 200, { ok: true }); return true;
         }
         case '/api/admin/settings': {
@@ -852,9 +888,12 @@ function route(req, res, url, body, config, session) {
 
 // 1ª quinta-feira do próximo mês às 19:00 UTC (o force wipe da Facepunch)
 function nextForceWipe(from = new Date()) {
-  const first = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + 1, 1, 19, 0, 0));
-  first.setUTCDate(1 + ((4 - first.getUTCDay() + 7) % 7)); // 4 = quinta
-  return first.toISOString();
+  for (let add = 0; add <= 1; add++) {
+    const first = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + add, 1, 19, 0, 0));
+    first.setUTCDate(1 + ((4 - first.getUTCDay() + 7) % 7)); // 4 = quinta
+    if (first.getTime() > from.getTime()) return first.toISOString();
+  }
+  /* istanbul ignore next */ return null;
 }
 
 // ---------- hype de wipe: post automático no Discord 24h antes ----------
@@ -888,4 +927,4 @@ function checkWipeHype(config) {
   } catch { /* o hype nunca pode derrubar nada */ }
 }
 
-module.exports = { route, json, checkWipeHype };
+module.exports = { route, json, checkWipeHype, nextForceWipe };

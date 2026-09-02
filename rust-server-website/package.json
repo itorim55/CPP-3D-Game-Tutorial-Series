@@ -1,0 +1,14 @@
+{
+  "name": "rustworthy-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Community website for the Rustworthy Rust server \u2014 zero dependencies, Node 22.13+",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node server/app.js",
+    "seed": "node server/app.js --seed"
+  },
+  "license": "MIT"
+}

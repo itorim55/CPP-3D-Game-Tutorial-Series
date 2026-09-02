@@ -26,7 +26,7 @@
 }
 .ad-brand b { color: var(--accent); font-weight: 400; }
 .ad-group {
-  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.5px;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.5px;
   color: var(--ink-muted); text-transform: uppercase; padding: 14px 16px 5px;
 }
 .ad-item {
@@ -35,6 +35,7 @@
   color: var(--ink-2); cursor: pointer; border-left: 2px solid transparent; user-select: none;
 }
 .ad-item:hover { color: var(--ink); background: var(--surface-2); }
+.ad-item:focus-visible, .ov-tile:focus-visible, #lock-btn:focus-visible, #sec-refresh:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .ad-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
 .ad-item .i { width: 20px; text-align: center; font-size: 14px; }
 .ad-item .cnt {
@@ -112,11 +113,11 @@
       <h2 style="font-family:var(--font-stencil);font-size:26px;letter-spacing:2px">STAFF<span style="color:var(--accent)">/</span>CONSOLE</h2>
       <p style="color:var(--ink-muted);font-size:13px;margin:8px 0 16px" id="acc-msg">
         One console for the whole team. Sign in with Steam — your role decides what you see.</p>
-      <a class="btn" style="width:100%;text-align:center" id="acc-steam" href="/auth/steam">Sign in with Steam</a>
+      <a class="btn steam" style="width:100%;text-align:center" id="acc-steam" href="/auth/steam">Sign in with Steam</a>
       <details style="margin-top:16px">
         <summary style="cursor:pointer;color:var(--ink-muted);font-size:12.5px">Emergency access (adminKey)</summary>
         <p style="color:var(--ink-muted);font-size:12px;margin:8px 0">For when Steam sign-in is down. Lives in <code>server/config.json</code> — never share it.</p>
-        <input type="password" id="admin-key" placeholder="adminKey…" autocomplete="off">
+        <input type="password" id="admin-key" aria-label="Admin key" placeholder="adminKey…" autocomplete="off">
         <button class="btn ghost" style="margin-top:10px;width:100%" id="load-btn">Unlock with key</button>
       </details>
     </div>
@@ -141,7 +142,7 @@
       <div class="ad-item adm-only" data-s="redemptions"><span class="i">💎</span>Deliveries<b class="cnt" data-cnt="redemptionsPending"></b></div>
       <div class="ad-item adm-only" data-s="map"><span class="i">🗺️</span>Map vote</div>
       <div class="ad-item adm-only" data-s="posts"><span class="i">📰</span>News</div>
-      <div class="ad-foot"><a href="/">← site</a><a id="lock-btn">🔒 lock</a></div>
+      <div class="ad-foot"><a id="lock-btn">🔒 lock</a></div>
     </aside>
     <section style="min-width:0">
       <div class="ad-head">
@@ -198,7 +199,7 @@ async function renderApps() {
         </div>
       </details>
       ${statusButtons('app', a.id, a.status, ['pending', 'reviewing', 'interview', 'approved', 'rejected'])}
-    </div>`).join('') || '<p style="color:var(--ink-muted)">No applications.</p>';
+    </div>`).join('') || '<p class="empty"><b>Inbox zero</b>No applications waiting.</p>';
 }
 
 async function renderAppeals() {
@@ -216,7 +217,7 @@ async function renderAppeals() {
         <input type="text" data-response-for="${a.id}" placeholder="reply to the player…" style="flex:1;min-width:220px">
       </div>
       ${statusButtons('appeal', a.id, a.status, ['pending', 'reviewing', 'accepted', 'rejected'])}
-    </div>`).join('') || '<p style="color:var(--ink-muted)">No appeals.</p>';
+    </div>`).join('') || '<p class="empty"><b>All answered</b>No appeals waiting.</p>';
 }
 
 async function renderRedemptions() {
@@ -234,7 +235,7 @@ async function renderRedemptions() {
       </div>
       ${r.command ? `<code style="font-size:12px;color:var(--ink-muted)">${esc(r.command)}</code>` : '<span style="font-size:12px;color:var(--gold)">manual delivery</span>'}
       ${statusButtons('redemption', r.id, r.status, ['pending', 'sent', 'delivered', 'failed'])}
-    </div>`).join('') || '<p style="color:var(--ink-muted)">No redemptions.</p>');
+    </div>`).join('') || '<p class="empty"><b>All delivered</b>No redemptions yet.</p>');
 }
 
 async function renderOw() {
@@ -251,9 +252,9 @@ async function renderOw() {
           <input name="title" required maxlength="120" placeholder="e.g. Case #14 — AK spray, 180 m"></div>
         <div class="field"><label>Clip URL (YouTube/Streamable)</label>
           <input name="clipUrl" maxlength="300" placeholder="leave empty if uploading a file"></div>
-        <div class="field"><label>…or upload the clip (MP4/WebM, 200 MB max)</label>
+        <div class="field"><label>…or upload a clip</label>
           <input type="file" name="clipFile" accept="video/mp4,video/webm">
-          <p class="hint">Hosted clips play directly on the site and are <b>deleted automatically</b> when you close the case — no disk build-up.</p>
+          <p class="hint">MP4/WebM, 200 MB max. Hosted clips play on the site and are <b>deleted automatically</b> when the case closes.</p>
         </div>
       </div>
       <div class="form-foot">
@@ -337,7 +338,7 @@ async function renderBans() {
         <span style="color:var(--ink-2);font-size:13.5px">${esc(b.reason)}</span>
         <span style="color:var(--ink-muted);font-size:12.5px">${esc(b.staff_name)} · ${timeAgo(b.ts)}</span>
         ${b.evidence ? `<a href="${esc(b.evidence)}" target="_blank" rel="noopener" style="font-size:13px">🎬 evidence</a>` : ''}
-        <button class="btn ghost" data-del-ban="${b.id}" style="margin-left:auto;padding:4px 12px;font-size:12px">remove</button>
+        <button class="btn ghost danger" data-del-ban="${b.id}" style="margin-left:auto;padding:4px 12px;font-size:12px">remove</button>
       </div>`).join('');
 
   const banForm = document.getElementById('ban-form');
@@ -466,7 +467,7 @@ async function renderPosts() {
         <div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap">
           <h3 style="margin:0">${esc(p.title)}</h3>
           <span style="color:var(--ink-muted);font-size:12px">${fmtDate(p.ts)}</span>
-          <button class="btn ghost" data-del-post="${p.id}" style="margin-left:auto;padding:4px 12px;font-size:12px">delete</button>
+          <button class="btn ghost danger" data-del-post="${p.id}" style="margin-left:auto;padding:4px 12px;font-size:12px">delete</button>
         </div>
         <p style="margin-top:8px;white-space:pre-line">${esc(p.body)}</p>
       </div>`).join('') || '<p style="color:var(--ink-muted)">Nothing published yet.</p>');
@@ -488,8 +489,8 @@ async function renderTeam() {
   const { rows } = await aGet('/api/admin/roles');
   body().innerHTML = `
     <p style="color:var(--ink-muted);font-size:13px;margin-bottom:12px">
-      Site roles. Mods see the <b>MOD</b> nav link, the staff chat, /mod (watchlist + reports)
-      and can delete chat messages. They do NOT get this admin panel — that stays adminKey-only.</p>
+      Site roles. <b>mod</b> → this console shows only Watchlist, Reports and Staff chat (+ chat moderation).
+      <b>admin</b> → the full console, signed in with Steam. The adminKey stays as the emergency fallback.</p>
     <form id="role-form" class="composer">
       <div class="c-head"><b>👥 Grant a site role</b>
         <span class="sub">the player must log in with Steam at least once to show a name</span></div>
@@ -509,8 +510,8 @@ async function renderTeam() {
       <b>${esc(r.name || r.steam_id)}</b>
       <span class="rolechip">${esc(r.role.toUpperCase())}</span>
       <span style="font-size:12px;color:var(--ink-muted)">${esc(r.steam_id)}</span>
-      <a href="#" data-remove-role="${esc(r.steam_id)}" style="margin-left:auto;font-size:13px;color:var(--bad)">remove</a>
-    </div>`).join('') || '<p style="color:var(--ink-muted)">No roles yet — add your own SteamID first.</p>');
+      <a href="#" class="btn ghost danger" data-remove-role="${esc(r.steam_id)}" style="margin-left:auto;padding:4px 12px;font-size:12px">remove</a>
+    </div>`).join('') || '<p class="empty"><b>No staff yet</b>Add a SteamID above to grant the first role.</p>');
 
   document.getElementById('role-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -551,7 +552,7 @@ async function renderReports() {
         </span>
       </div>
       <div id="rep-${esc(r.target_id)}" style="display:none;margin-top:10px"></div>
-    </div>`).join('') || '<p style="color:var(--ink-muted)">No reports yet. 🎉</p>');
+    </div>`).join('') || '<p class="empty"><b>Radar quiet</b>No F7 reports yet.</p>');
 
   body().querySelectorAll('[data-expand]').forEach((a) => a.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -616,7 +617,7 @@ async function renderOverview() {
   const tiles = TILE_DEFS.map((t) => {
     const n = sum[t.key] || 0;
     const cls = n === 0 ? 'ok' : (t.hot ? 'hot' : 'warn');
-    return `<div class="ov-tile ${cls}" data-goto="${t.s}">
+    return `<div class="ov-tile ${cls}" data-goto="${t.s}" tabindex="0" role="button">
       <div class="n">${n}</div>
       <div class="l">${t.label}</div>
       <div class="s">${n === 0 ? '✓ ' + t.okText : 'click to handle →'}</div>
@@ -626,7 +627,7 @@ async function renderOverview() {
   body().innerHTML = `
     <div class="ov-grid">${tiles}</div>
     ${ms ? `<h3 style="font-family:var(--font-display);letter-spacing:1.5px;text-transform:uppercase;font-size:15px;color:var(--ink-2);margin:24px 0 10px">This wipe's receipts (public)</h3>
-    <div class="ov-grid" style="grid-template-columns:repeat(4,1fr)">
+    <div class="ov-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
       <div class="ov-tile" style="cursor:default"><div class="n">${ms.bans}</div><div class="l">cheaters banned</div></div>
       <div class="ov-tile" style="cursor:default"><div class="n">${ms.reports}</div><div class="l">F7 reports processed</div></div>
       <div class="ov-tile" style="cursor:default"><div class="n">${ms.appealsAnswered}</div><div class="l">appeals answered</div></div>
@@ -769,6 +770,15 @@ document.getElementById('lock-btn').addEventListener('click', () => {
   location.reload();
 });
 
+// teclado: sidebar, tiles, lock e refresh são divs/spans clicáveis → focáveis + Enter/Espaço
+document.querySelectorAll('.ad-item, #lock-btn, #sec-refresh').forEach((el) => {
+  el.tabIndex = 0; el.setAttribute('role', 'button');
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const el = e.target.closest('.ad-item, #lock-btn, #sec-refresh, [data-goto]');
+  if (el && el === e.target) { e.preventDefault(); el.click(); }
+});
 document.getElementById('ad-side').addEventListener('click', (e) => {
   const b = e.target.closest('.ad-item[data-s]');
   if (b) show(b.dataset.s);

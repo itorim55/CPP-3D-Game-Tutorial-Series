@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /admin
+Disallow: /mod
+Disallow: /api/
+Sitemap: /sitemap.xml

@@ -6,7 +6,7 @@ colegas de qualquer lado, sem abrir portas no router. Escrito para Windows
 
 ## 0. O que vais precisar
 
-- **Node.js 22 ou superior** — https://nodejs.org (instalador Windows, "LTS" serve se for 22+; confirma com `node --version`)
+- **Node.js 22.13 ou superior** (24 LTS recomendado) — https://nodejs.org. O site usa o SQLite nativo do Node (`node:sqlite`), que só existe sem flags a partir da 22.13. Confirma com `node --version`.
 - **Uma conta Cloudflare gratuita** — https://dash.cloudflare.com/sign-up
 - **Um domínio** (ex.: rustworthy.gg / .pt / .com — ~€10/ano na Cloudflare Registrar, Namecheap ou Porkbun). Sem domínio também dá para testar com um URL temporário (passo 4-B).
 
@@ -32,24 +32,45 @@ No primeiro arranque foi criado `server\config.json` com chaves novas. Edita-o:
 
 ```json
 {
-  "siteUrl": "https://stats.oteudominio.com",   // o URL público (passo 4)
+  "siteUrl": "https://stats.oteudominio.com",   // o URL público EXATO, com https:// (passo 4)
+  "ownerSteamId": "7656119XXXXXXXXXX",          // o TEU SteamID64 → admin do console, automático
   "serverName": "Rustworthy | Full Vanilla | EU",
   "serverIp": "connect IP-DO-SERVIDOR-DE-JOGO:28015",
   "discord": "https://discord.gg/OTEULINK",
-  "nextWipe": "2026-09-03T18:00:00Z",
   "gemsPerHour": 1000,
-  "anomalyKillsPerHour": 15,
-  "discordWebhooks": { ... }                    // opcional, ver README
+  "trustProxy": true,                           // atrás do Cloudflare Tunnel
+  "discordWebhooks": { ... }                    // o deploy/discord-setup.js preenche isto
 }
 ```
 
+⚠️ O `config.json` é lido **uma vez no arranque** — depois de o editares, reinicia o site.
+
+Todas as chaves (as que não puseres usam a omissão):
+
+| Chave | Omissão | Para quê |
+|---|---|---|
+| `port` / `host` | 8080 / 0.0.0.0 | porta e interface do site |
+| `siteUrl` | http://localhost:8080 | URL público exato (login Steam, embeds, links do Discord) |
+| `ownerSteamId` | vazio | SteamID64 do dono → cargo `admin` no console em cada arranque |
+| `brandAccent` / `brandRest` | RUST / vazio | as duas metades do nome (a primeira fica laranja) |
+| `serverName` / `serverIp` / `discord` | — | hero da home: nome, linha `connect …`, botão Discord |
+| `donateUrl` | vazio | link de donativos na loja (vazio esconde o botão) |
+| `nextWipe` | vazio | **só o valor inicial** — depois é gerido no console (Map vote → Wipe settings) e avança sozinho a cada wipe |
+| `mapImage` | vazio | idem: imagem de fundo do heatmap, só inicial |
+| `nextMapSeed` / `nextMapSize` | vazio | hype pré-wipe na home (seed/size do próximo mapa) |
+| `gemsPerHour` | 1000 | gemas por hora jogada |
+| `anomalyKillsPerHour` | 15 | kills/hora que disparam o alerta de pico para a staff |
+| `reportAlertThreshold` | 3 | reports F7 distintos em 24h que disparam alerta + prioridade |
+| `reporterBountyGems` | 5000 | gemas para cada reporter quando o alvo é banido |
+| `owVoteAlertThreshold` | 5 | votos "cheater" num caso de Overwatch que avisam a staff |
+| `trustProxy` | false | `true` atrás do Cloudflare Tunnel (IP real para rate-limits) |
+| `discordWebhooks.*` | vazio | `bans`, `staff`, `announcements` (`killfeed` opcional) |
+| `steamApiKey` | vazio | opcional: avatares/flags via Web API oficial em vez do XML público |
+| `devLogin` | false | login falso para testes locais — **nunca em produção** |
+| `apiKey` / `adminKey` / `sessionSecret` | geradas | plugin ↔ site · chave de emergência do console · assinatura das sessões |
+
 - **apiKey**: vai para a config do plugin StatsHub no servidor de jogo. Nunca a publiques.
-- **adminKey**: a tua "password" da página /admin. Nunca a partilhes.
-- **trustProxy**: põe `true` quando o site correr atrás do Cloudflare Tunnel
-  (passo 4) — assim o rate-limit usa o IP real do jogador, não o do túnel. Em
-  testes locais diretos, deixa `false`.
-- **mapImage** (opcional): URL de uma imagem do mapa da wipe (ex.: exportada do
-  RustMaps) para o heatmap de mortes a sobrepor. Vazio = grelha estilizada.
+- **adminKey**: chave de **emergência** do console — no dia a dia entras com a tua conta Steam (cargo admin). Nunca a partilhes.
 - Para produção real, apaga a pasta `data\` depois de testares (limpa os dados de demonstração) e arranca sem `--seed`.
 
 ## 3. Arrancar automaticamente com o Windows
@@ -90,7 +111,9 @@ cd C:\cloudflared
 .\cloudflared.exe tunnel route dns rustworthy stats.oteudominio.com
 ```
 
-Cria `C:\cloudflared\config.yml` (há um exemplo em `deploy\cloudflared-config.yml`):
+Cria o ficheiro `config.yml` na pasta `%USERPROFILE%\.cloudflared\` (ex.:
+`C:\Users\O-TEU-USER\.cloudflared\config.yml` — é a única pasta que o
+cloudflared lê sem flags; há um exemplo em `deploy\cloudflared-config.yml`):
 
 ```yaml
 tunnel: rustworthy
@@ -103,9 +126,12 @@ ingress:
 
 Testa: `.\cloudflared.exe tunnel run rustworthy` → abre https://stats.oteudominio.com 🎉
 
-Instala como serviço (arranca sozinho para sempre):
+Instala como serviço (arranca sozinho para sempre). O serviço corre como
+SYSTEM e lê a config **noutra pasta** — copia-a primeiro:
 
 ```powershell
+mkdir C:\Windows\System32\config\systemprofile\.cloudflared -Force
+copy $env:USERPROFILE\.cloudflared\* C:\Windows\System32\config\systemprofile\.cloudflared\
 .\cloudflared.exe service install
 ```
 
@@ -134,9 +160,35 @@ deploy\backup.bat             # corre à mão, ou agenda no Task Scheduler (diá
 
 ## 6. Ligar o servidor de jogo (quando o tiveres)
 
-1. No host do servidor de Rust, instala o Oxide/uMod e copia `plugin\StatsHub.cs` para `oxide/plugins/`.
-2. Edita `oxide/config/StatsHub.json`: `Site URL` = o teu URL público, `API key` = a `apiKey` do `server\config.json`.
-3. `oxide.reload StatsHub` — em ~1 minuto o heartbeat aparece no site (bolinha verde na home).
+Ordem certa (a mesma da secção 6-B):
+
+1. Atualiza o servidor de Rust (SteamCMD `app_update 258550`).
+2. Instala/reinstala o Oxide/uMod por cima — ⚠️ **cada update mensal da
+   Facepunch apaga o Oxide**; volta a extrair o zip depois de cada update.
+3. Copia `plugin\StatsHub.cs` para `oxide/plugins/`.
+4. Arranca o servidor uma vez: o plugin compila e cria `oxide/config/StatsHub.json`.
+5. Edita esse ficheiro com os nomes de chave **exatos**:
+   `"Site URL (no trailing slash)"` = o teu URL público e
+   `"API key (apiKey from the site config.json)"` = a `apiKey` do `server\config.json`.
+   (Chaves com nomes diferentes são ignoradas em silêncio → 401 em tudo.)
+6. `oxide.reload StatsHub` — em ~1 minuto o heartbeat aparece no site (bolinha verde na home).
+
+### Apresentação no browser de servidores (grátis, o canal de descoberta nº 1)
+
+No `server.cfg` (ou `+` no arranque):
+
+```
+server.hostname "[EU] Rustworthy | Full Vanilla | Monthly | Active Admins"
+server.description "Full vanilla. Zero pay-to-win. Cheaters caught live, bans public with evidence.\nNext wipe: 1st Thursday 19:00 UTC\nhttps://stats.oteudominio.com · discord.gg/OTEULINK"
+server.url "https://stats.oteudominio.com"
+server.headerimage "https://stats.oteudominio.com/img/server-header.png"
+server.logoimage "https://stats.oteudominio.com/img/server-logo.png"
+server.tags "monthly,vanilla,EU"
+```
+
+As duas imagens já vêm com o site (512×256 e 512×512, no estilo do site). Os
+sites tipo just-wiped.net detetam wipes sozinhos; a data na description é o
+que os faz mostrar o teu servidor bem.
 
 O plugin também **aplica no jogo os bans registados no console do site** (com
 SteamID): faz poll a cada minuto e corre `banid`. Desativável na config do
@@ -197,11 +249,14 @@ Com site + tunnel + Discord + servidor de teste a correr:
 ## 7. Checklist final antes de divulgar
 
 - [ ] `data\` apagada e site arrancado SEM `--seed` (dados de demonstração fora)
-- [ ] `siteUrl` = URL público real; login Steam testado (entra com a tua conta)
+- [ ] `siteUrl` = URL público EXATO com `https://`; `trustProxy: true`; site reiniciado
+- [ ] `ownerSteamId` = o teu SteamID64; login Steam testado → o link MOD abre o console completo
 - [ ] `devLogin` ausente ou `false` no config.json
-- [ ] /admin abre e aceita a adminKey; candidatura de teste enviada e visível
-- [ ] Webhooks do Discord configurados (killfeed, bans, staff, announcements)
-- [ ] Backup agendado
+- [ ] `apiKey` rodada se alguma vez a colaste num chat; plugin com a mesma
+- [ ] Webhooks do Discord configurados — `deploy\discord-setup.js` faz isto (ver `deploy\DISCORD.md`)
+- [ ] Browser de servidores: hostname, description, url, headerimage, logoimage, tags (secção 6)
+- [ ] BattleMetrics: servidor reclamado; link no Discord
+- [ ] Backup agendado (Task Scheduler → `deploy\backup.bat` diário)
 - [ ] Link do site no Discord e na descrição do servidor de jogo
 
 ---
