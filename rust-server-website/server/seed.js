@@ -167,9 +167,11 @@ function seed() {
       .run(1, id, i < 6 ? 'cheat' : i < 8 ? 'unsure' : 'clean');
   });
 
-  store.mapAdmin('add', { label: 'Map A — classic, 2 lakes', seed: '183456201', size: 3800 });
-  store.mapAdmin('add', { label: 'Map B — big island + ocean', seed: '990122837', size: 4000 });
-  store.mapAdmin('add', { label: 'Map C — mountains and snow', seed: '447789123', size: 3600 });
+  // imagens de demonstração geradas (ilhas fictícias) — a demo funciona sem acesso à internet
+  store.mapAdmin('add', { label: 'Map A — classic, 2 lakes', seed: '183456201', size: 3800, imageUrl: '/img/demo-map-a.jpg' });
+  store.mapAdmin('add', { label: 'Map B — big island + ocean', seed: '990122837', size: 4000, imageUrl: '/img/demo-map-b.jpg' });
+  store.mapAdmin('add', { label: 'Map C — mountains and snow', seed: '447789123', size: 3600, imageUrl: '/img/demo-map-c.jpg' });
+  if (store.getInfo('map_image') === null) store.setInfo('map_image', '/img/demo-map.jpg');
   store.mapAdmin('open', {});
   const opts = store.db.prepare('SELECT id FROM map_options WHERE round = 1').all();
   ids.slice(0, 12).forEach((id, i) => {
